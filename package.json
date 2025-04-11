@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "scripts": {
@@ -23,5 +23,15 @@
   "bugs": {
     "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"
   },
-  "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme"
+  "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme",
+  "dependencies": {
+    "connect-pg-simple": "^10.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "joi": "^17.13.3",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.14.1"
+  }
 }

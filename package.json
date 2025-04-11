@@ -1,0 +1,27 @@
+{
+  "name": "mbkauthe",
+  "version": "1.0.0",
+  "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MIbnEKhalid/mbkauthe.git"
+  },
+  "keywords": [
+    "login",
+    "authentication",
+    "nodejs",
+    "express",
+    "session",
+    "security"
+  ],
+  "author": "Muhammad Bin Khalid",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"
+  },
+  "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme"
+}

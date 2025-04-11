@@ -1,6 +1,0 @@
-import router from "./routes/main";
-
-
-console.log("Hello, World!");
-
-export default router;

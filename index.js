@@ -1,6 +1,6 @@
-import router from "./lib/main.js";
 import dotenv from "dotenv";
-import Joi from "joi"; 
+import Joi from "joi";
+import router from "./lib/main.js";
 dotenv.config();
 
 const envSchema = Joi.object({
@@ -17,7 +17,7 @@ const { error } = envSchema.validate(process.env);
 if (error) {
     throw new Error(`Environment variable validation error: ${error.message}`);
 }
-
-console.log("Hello, World!");
-
+export { validateSession, checkRolePermission, validateSessionAndRole, getUserData } from "./lib/validateSessionAndRole.js";
+export { authenticate } from "./lib/auth.js";
+export { dblogin } from "./lib/pool.js";
 export default router;

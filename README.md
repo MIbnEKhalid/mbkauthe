@@ -55,13 +55,15 @@ app.listen(3000, () => {
 
 Example `.env` file:
 ```code
-RECAPTCHA_SECRET_KEY=your-recaptcha-secret-key
-SESSION_SECRET_KEY=your-session-secret-key
-LOGIN_DB=postgres://username:password@host:port/database
-DOMAIN=yourdomain.com
-IS_DEPLOYED=true
-MBKAUTH_TWO_FA_ENABLE=false
-COOKIE_EXPIRE_TIME=2
+mbkautheVar='{
+    "RECAPTCHA_SECRET_KEY": "your-recaptcha-secret-key",
+    "SESSION_SECRET_KEY": "your-session-secret-key",
+    "IS_DEPLOYED": "true",
+    "LOGIN_DB": "postgres://username:password@host:port/database",
+    "MBKAUTH_TWO_FA_ENABLE": "false",
+    "COOKIE_EXPIRE_TIME": 2,
+    "DOMAIN": "yourdomain.com"
+}'
 ```
 
 ## API Endpoints

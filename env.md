@@ -2,11 +2,29 @@
 
 [<- Back](README.md)
 
-## reCAPTCHA Settings
+## Application Settings
+
 ```properties
-RECAPTCHA_SECRET_KEY=123
+APP_NAME=mbkauthe
 ```
-> Note: Obtain your secret key from Google reCAPTCHA Admin Console.
+
+> **APP_NAME**: Specifies the name of the application. This is used to distinguish one project from another and is critical for ensuring users are restricted to specific apps. It corresponds to the `AllowedApp` column in the Users table.
+
+## reCAPTCHA Settings
+
+```properties
+RECAPTCHA_ENABLED=true
+RECAPTCHA_SECRET_KEY=your-secret-key
+BYPASS_USERS=["demo", "user1"]
+```
+
+> **RECAPTCHA_ENABLED**: Set to `true` to enable reCAPTCHA verification.
+
+> **RECAPTCHA_SECRET_KEY**: Provide the secret key obtained from the [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin).
+
+> **BYPASS_USERS**: Specify an array of usernames (e.g., `["demo", "user1"]`) that will bypass reCAPTCHA verification.
+
+> **Note**: Ensure `RECAPTCHA_SECRET_KEY` is set when `RECAPTCHA_ENABLED=true`.
 
 
 ## Session Settings

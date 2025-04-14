@@ -22,6 +22,7 @@
   - `HaveMailAccount` (BOOLEAN)(optional): Indicates if the user has a linked mail account.
   - `SessionId` (TEXT): The session ID associated with the user.
   - `GuestRole` (JSONB): Stores additional guest-specific role information in binary JSON format.
+  - `AllowedApps`(JSONB): 
 
 - **Schema:**
   ```sql
@@ -34,6 +35,7 @@
       "HaveMailAccount" BOOLEAN NOT NULL DEFAULT false,
       "SessionId" TEXT,
       "GuestRole" JSONB DEFAULT '{"allowPages": [""], "NotallowPages": [""]}'::jsonb
+      "AllowedApps" JSONB DEFAULT '{"allowPages": [""], "NotallowPages": [""]}'::jsonb
   );
   ```
 

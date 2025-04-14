@@ -8,6 +8,7 @@
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+  - [Implementation in a Project](#implementation-in-a-project)
   - [Basic Setup](#basic-setup)
 - [API Endpoints](#api-endpoints)
   - [Login](#login)
@@ -37,6 +38,18 @@ npm install mbkauthe
 ```
 
 ## Usage
+
+### Implementation in a Project
+
+For a practical example of how to use this package, check out the [ProjectImplementation branch](https://github.com/MIbnEKhalid/mbkauthe/tree/ProjectImplementation) of the repository. This branch demonstrates the integration of the package, including a login page, a protected page, and logout functionality.
+
+You can explore the functionality of `mbkAuthe` using the following demo account on [mbkauthe.mbktechstudio.com](https://mbkauthe.mbktechstudio.com):
+
+- **Username**: `demo`
+- **Password**: `demo`
+
+This demo provides a hands-on experience with the authentication system, including login, session management, and other features.
+
 ### Basic Setup
 1. Import and configure the router in your Express application:
 ```javascript
@@ -51,17 +64,20 @@ app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
 ```
-2. Ensure your ``.env` file is properly configured. Refer to the [Configuration Guide(env.md)](env.md) for details.
+2. Ensure your `.env` file is properly configured. Refer to the [Configuration Guide(env.md)](env.md) for details.
 
 Example `.env` file:
 ```code
 mbkautheVar='{
+    "APP_NAME": "MBKAUTH",
     "RECAPTCHA_SECRET_KEY": "your-recaptcha-secret-key",
+    "RECAPTCHA_Enabled": "false",
+    "BypassUsers": ["user1","user2"],
     "SESSION_SECRET_KEY": "your-session-secret-key",
     "IS_DEPLOYED": "true",
     "LOGIN_DB": "postgres://username:password@host:port/database",
     "MBKAUTH_TWO_FA_ENABLE": "false",
-    "COOKIE_EXPIRE_TIME": 2,
+    "COOKIE_EXPIRE_TIME": "1",
     "DOMAIN": "yourdomain.com"
 }'
 ```

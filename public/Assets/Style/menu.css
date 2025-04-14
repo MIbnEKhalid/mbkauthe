@@ -1,0 +1,83 @@
+.custom-context-menu {
+	position: fixed;
+	background-color: rgb(36, 36, 36);
+	border: 1px solid #000000;
+	padding: 5px 0;
+	box-shadow: 2px 2px 5px rgba(41, 121, 167, 0.3);
+	z-index: 1000;
+	font-family: sans-serif;
+	border-radius: 5px;
+	min-width: 150px;
+}
+
+.custom-context-menu ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.custom-context-menu li {
+	padding: 8px 15px;
+	cursor: pointer;
+	transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+	font-size: 16px;
+}
+
+.custom-context-menu li:hover {
+	background-color: #333;
+	color: #f0f0f0;
+}
+
+.custom-context-menu li a {
+	display: block;
+	text-decoration: none;
+	color: rgb(255, 255, 255);
+}
+
+.custom-context-menu.dark-theme {
+	background-color: #282828;
+	border-color: #444;
+	color: #eee;
+	box-shadow: 2px 2px 7px rgba(0, 0, 0, 0.6);
+}
+
+.custom-context-menu.dark-theme li:hover {
+	background-color: #444;
+	color: #fff;
+}
+
+.custom-context-menu.dark-theme li a {
+	color: #eee;
+}
+
+.custom-context-menu li+li {
+	border-top: 1px solid #eee;
+	margin-top: 5px;
+	padding-top: 5px;
+}
+
+.custom-context-menu.dark-theme li+li {
+	border-top-color: #555;
+}
+
+@media (max-width: 768px) {
+	.custom-context-menu li {
+		padding: 10px 20px;
+		font-size: 18px;
+	}
+
+	.custom-context-menu {
+		font-size: 0.9em;
+		padding: 3px 0;
+		min-width: 120px;
+	}
+
+	.custom-context-menu li {
+		padding: 6px 12px;
+	}
+
+	.custom-context-menu li+li {
+		margin-top: 3px;
+		padding-top: 3px;
+	}
+}

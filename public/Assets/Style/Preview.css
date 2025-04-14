@@ -1,0 +1,294 @@
+/* Preview.css - Refined Styles */
+
+/* --- Root Variables for Color Palette (Optional but Good Practice) --- */
+:root {
+    --preview-bg: #2e3038;          /* Slightly lighter than editor bg */
+    --preview-text-color: #e0e0e0;    /* Softer white text */
+    --heading-color: #ffffff;       /* Pure white for strong headings */
+    --link-color: #7cb3ff;          /* Lighter, more vibrant blue links */
+    --link-hover-color: #a9d4ff;
+    --code-bg: #383a47;             /* Monokai-ish code background */
+    --code-text-color: #f8f8f2;     /* Monokai-ish code text */
+    --blockquote-bg: #3f424f;       /* Blockquote background */
+    --blockquote-border: #7cb3ff;   /* Blockquote border matches link color */
+    --hr-color: #4e5264;            /* Horizontal rule color */
+    --table-border:  #4e5264;         /* Table border color */
+    --table-header-bg: #454957;      /* Table header background */
+    --table-stripe-bg: #353842;     /* Table even row stripe */
+    --copy-button-bg: #7cb3ff;      /* Copy button background */
+    --copy-button-hover-bg: #a9d4ff;
+}
+
+
+/* General styles for the preview content area */
+.preview-content {
+    max-width: 950px; /* Slightly wider max-width for content */
+    margin: 0 auto; /* More top/bottom margin */
+    padding: 10px 10px; /* Increased padding for more spacious feel */
+    background-color: transparent; /* Use root variable */
+    border-radius: 6px; /* Slightly more rounded corners */
+    font-family: 'Roboto', sans-serif;
+    color: var(--preview-text-color); /* Use root variable */
+    line-height: 1.8; /* Further improved line height */
+    word-wrap: break-word;
+    height: 100%;
+    font-size: 1.05rem; /* Slightly larger base font size */
+}
+
+/* Headings within the preview content */
+.preview-content h1,
+.preview-content h2,
+.preview-content h3,
+.preview-content h4,
+.preview-content h5,
+.preview-content h6 {
+    font-family: 'Roboto', sans-serif; /* Reverted to Roboto for headings for better consistency */
+    font-weight: 700; /* Bold headings */
+    color: var(--heading-color); /* Use root variable - pure white for strong headings */
+    margin-top: 20px; /* More top margin for headings */
+    margin-bottom: 20px; /* More bottom margin for headings */
+    line-height: 1.3;
+    letter-spacing: -0.02em; /* Slightly tighter letter spacing for headings */
+    text-transform: none; /* Removed uppercase for a cleaner look - can re-enable if desired */
+}
+
+.preview-content h1 {
+    font-size: 2rem; /* Slightly larger h1 */
+    border-bottom: 0.0625rem solid var(--hr-color); /* Added subtle bottom border to h1 */
+    padding-bottom: 0.3em;
+}
+
+.preview-content h2 {
+    font-size: 2.2rem;
+}
+
+.preview-content h3 {
+    font-size: 1.8rem;
+}
+
+.preview-content h4 {
+    font-size: 1.5rem;
+}
+
+.preview-content h5 {
+    font-size: 1.25rem;
+}
+
+.preview-content h6 {
+    font-size: 1.1rem;
+    color: var(--preview-text-color); /* Slightly muted h6 */
+    font-weight: 500;
+}
+
+/* Paragraphs within the preview content */
+.preview-content p {
+    margin-bottom: 20px; /* Increased paragraph bottom margin */
+    font-size: 0.875rem; /* Match base font size */
+    color: var(--preview-text-color);
+}
+
+/* Links within the preview content */
+.preview-content a {
+    color: var(--link-color); /* Use root variable - brighter blue */
+    text-decoration: none;
+    font-weight: 500; /* Slightly bolder links */
+    transition: color 0.3s ease, text-shadow 0.3s ease; /* Added text-shadow transition */
+}
+
+.preview-content a:hover {
+    color: var(--link-hover-color); /* Lighter blue on hover */
+    text-decoration: underline;
+    text-shadow: 0 0 3px var(--link-hover-color); /* Subtle glow on hover */
+}
+
+/* Lists within the preview content */
+.preview-content ul,
+.preview-content ol {
+    margin-left: 30px; /* Slightly increased list indentation */
+    margin-bottom: 20px; /* Increased list bottom margin */
+}
+
+.preview-content li {
+    margin-bottom: 10px; /* Increased list item bottom margin */
+    line-height: 1.6;
+}
+
+/* Code blocks within the preview content */
+.preview-content pre {
+    background-color: var(--code-bg); /* Use root variable - Monokai-ish */
+    color: var(--code-text-color); /* Use root variable - Monokai-ish */
+    padding: 20px; /* Increased code block padding */
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 25px; /* Increased code block bottom margin */
+    font-family: 'Fira Code', monospace;
+    font-size: 0.95rem; /* Slightly larger code font size */
+    line-height: 1.6;
+    border: 1px solid var(--hr-color); /* Added subtle border to code blocks */
+}
+
+.preview-content pre code {
+    display: block;
+    padding: 0;
+    background: none;
+    color: inherit;
+}
+
+/* Style for inline code */
+.preview-content code:not(pre code) {
+    font-family: 'Fira Code', monospace;
+    background-color: var(--code-bg); /* Use same code background for inline */
+    color: var(--code-text-color); /* Use same code text color for inline */
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    border: 1px solid var(--hr-color); /* Added subtle border to inline code too */
+}
+
+/* Blockquotes */
+.preview-content blockquote {
+    border-left: 6px solid var(--blockquote-border); /* Use root variable - link color border */
+    background-color: var(--blockquote-bg); /* Use root variable */
+    padding: 20px 25px; /* Increased blockquote padding */
+    margin: 20px 0; /* Increased blockquote margin */
+    font-style: italic;
+    color: var(--preview-text-color); /* Use preview text color for blockquote text */
+    border-radius: 0 8px 8px 0;
+    quotes: "\201C""\201D""\2018""\2019"; /* Proper quotes */
+}
+
+.preview-content blockquote::before {
+    color: var(--blockquote-border);
+    content: open-quote;
+    font-size: 4em;
+    line-height: 0.1em;
+    margin-right: 0.25em;
+    vertical-align: -0.4em;
+}
+
+
+.preview-content blockquote p {
+    margin-bottom: 0;
+    font-size: 1.05rem; /* Match base font size in blockquote */
+}
+
+/* Horizontal Rules (---, ***, etc. in Markdown) */
+.preview-content hr {
+    border: none;
+    border-top: 1.5px solid var(--hr-color); /* Use root variable - slightly thicker hr */
+    margin: 35px 0; /* Increased hr margin */
+    opacity: 0.7; /* Slightly faded hr */
+}
+
+/* Tables */
+.preview-content table {
+    display: block;
+    width: 100%;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
+    font-variant: tabular-nums;
+    margin-bottom: 1rem;
+}
+
+.preview-content th,
+.preview-content td {
+    text-align: left;
+    border: 1px solid var(--main-border-color);
+}
+
+.preview-content th {
+    background-color: var(--table-header-bg); /* Use root variable */
+    font-weight: bold;
+    color: var(--heading-color); /* White table header text */
+}
+.preview-content tr:nth-child(even) td {
+    background-color: var(--table-stripe-bg); /* Use root variable - striped rows */
+}
+
+/* --- Code Copy Button Styles --- */
+.preview-content .code-block-container {
+    position: relative;
+    margin-bottom: 25px; /* Match margin of <pre> */
+}
+
+.preview-content .code-block-container pre {
+    margin-bottom: 0;
+}
+
+/* Images within the preview content */
+.preview-content img {
+    max-width: 100%;
+    height: auto;
+    margin: 0 0;
+    border-radius: 10px;
+}
+
+.copy-button {
+    position: absolute;
+    top: 15px; /* Adjusted button position */
+    right: 15px;
+    background-color: var(--copy-button-bg); /* Use root variable - link color */
+    color: var(--preview-text-color);
+    border: none;
+    padding: 10px 14px; /* Increased button padding */
+    border-radius: 6px; /* Slightly more rounded button corners */
+    cursor: pointer;
+    font-size: 0.9rem; /* Slightly larger button font size */
+    opacity: 0.85; /* Slightly less transparent */
+    transition: opacity 0.3s ease, background-color 0.3s ease, transform 0.2s ease; /* Added transform transition */
+}
+
+.copy-button:hover {
+    opacity: 1;
+    background-color: var(--copy-button-hover-bg); /* Use root variable - lighter blue */
+    transform: translateY(-2px); /* Slight lift on hover */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Added subtle shadow on hover */
+}
+
+.copy-button:active {
+    transform: translateY(0); /* Press effect */
+    box-shadow: none;
+}
+
+
+.copy-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--copy-button-bg-rgb-values), 0.5); /* Example - adjust as needed for focus ring */
+}
+
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .preview-content {
+        padding: 30px 25px; /* Adjusted padding for smaller screens */
+        margin: 0 auto;
+        border-radius: 0; /* Remove border-radius on small screens */
+        box-shadow: none; /* Remove shadow on small screens */
+        font-size: 1rem; /* Reverted base font size to 1rem on smaller screens */
+    }
+
+    .preview-content h1 {
+        font-size: 2.4rem; /* Slightly smaller h1 on small screens */
+    }
+
+    .preview-content h2 {
+        font-size: 2rem;
+    }
+
+    .preview-content h3 {
+        font-size: 1.6rem;
+    }
+
+    .preview-content ul,
+    .preview-content ol {
+        margin-left: 25px; /* Adjusted list indentation */
+    }
+
+    .copy-button {
+        padding: 8px 12px; /* Adjusted button padding on smaller screens */
+        font-size: 0.85rem;
+        top: 10px; /* Adjusted button position */
+        right: 10px;
+    }
+}

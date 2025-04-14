@@ -1,0 +1,22 @@
+{
+  "name": "nodejstemplate",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "author": "Muhammad Bin Khalid",
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-handlebars": "^8.0.1",
+    "mbkauthe": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

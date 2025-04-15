@@ -4,19 +4,26 @@
 
 ## Table of Contents
 
-- [Introduction](#mbkauth)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Implementation in a Project](#implementation-in-a-project)
-  - [Basic Setup](#basic-setup)
-- [API Endpoints](#api-endpoints)
-  - [Login](#login)
-  - [Logout](#logout)
-  - [Terminate All Sessions](#terminate-all-sessions)
-- [Database Structure](#database-structure)
-- [License](#license)
-- [Contact & Support](#contact--support)
+- [mbkauthe](#mbkauthe)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Implementation in a Project](#implementation-in-a-project)
+    - [Basic Setup](#basic-setup)
+  - [Middleware Function Documentation](#middleware-function-documentation)
+    - [validateSession(session)](#validatesessionsession)
+    - [checkRolePermission(userRole, requiredRoles)](#checkrolepermissionuserrole-requiredroles)
+    - [validateSessionAndRole(session, userRole, requiredRoles)](#validatesessionandrolesession-userrole-requiredroles)
+    - [getUserData(session)](#getuserdatasession)
+    - [authenticate(session)](#authenticatesession)
+  - [API Endpoints](#api-endpoints)
+    - [Login](#login)
+    - [Logout](#logout)
+    - [Terminate All Sessions](#terminate-all-sessions)
+  - [Database Structure](#database-structure)
+  - [License](#license)
+  - [Contact \& Support](#contact--support)
 
 `mbkAuthe` is a reusable authentication system for Node.js applications, designed to simplify session management, user authentication, and role-based access control. It integrates seamlessly with PostgreSQL and supports features like Two-Factor Authentication (2FA), session restoration, and reCAPTCHA verification.
 
@@ -81,6 +88,96 @@ mbkautheVar='{
     "DOMAIN": "yourdomain.com"
 }'
 ```
+
+## Middleware Function Documentation
+
+### `validateSession(session)`
+Validates the user's session to ensure it is active and not expired.
+
+- **Parameters:**
+  - `session` (Object): The session object to validate.
+
+- **Returns:**
+  - `boolean`: Returns `true` if the session is valid, otherwise `false`.
+
+Usage
+```
+// Require vaild session or to be login to access this page
+router.get(["/home"], validateSession, (req, res) => {
+  // Restricted Code
+});
+```
+
+---
+
+### `checkRolePermission(userRole, requiredRoles)`
+Checks if the user has the required role permissions.
+
+- **Parameters:**
+  - `userRole` (string): The role of the user.
+  - `requiredRoles`(optional) (string[]): An array of roles that are allowed access.
+
+- **Returns:**
+  - `boolean`: Returns `true` if the user has the required permissions, otherwise `false`.
+
+Usage
+```
+// Require vaild session or to be login to access this page
+router.get(["/admin"], validateSession, checkRolePermission("SuperAdmin"), (req, res) => {
+  // Restricted Code
+});
+```
+---
+
+### `validateSessionAndRole(session, userRole, requiredRoles)`
+Validates both the session and the user's role permissions.
+
+- **Parameters:**
+  - `session` (Object): The session object to validate.
+  - `userRole` (string): The role of the user.
+  - `requiredRoles` (optional) (string[]): An array of roles that are allowed access.
+
+- **Returns:**
+  - `boolean`: Returns `true` if both the session and role permissions are valid, otherwise `false`.
+
+Usage
+```
+// Require vaild session or to be login to access this page
+router.get(["/admin"], validateSessionAndRole("SuperAdmin"), (req, res) => {
+  // Restricted Code
+});
+```
+---
+
+### `getUserData(session)`
+Retrieves user data based on the session.
+
+- **Parameters:**
+  - `session` (Object): The session object containing user information.
+
+- **Returns:**
+  - `Object|null`: Returns the user data object if found, otherwise `null`.
+
+---
+
+### `authenticate(session)`
+Authenticates the user by validating the session and retrieving user data.
+
+- **Parameters:**
+  - `session` (Object): The session object to authenticate.
+
+- **Returns:**
+  - `Object|null`: Returns the authenticated user data if successful, otherwise `null`.
+
+Usage
+```
+// Require vaild session or to be login to access this page
+router.post(["/terminateAllSessions"], authenticate(mbkautheVar.Password), (req, res) => {
+  // Restricted Code
+});
+```
+
+
 
 ## API Endpoints
 

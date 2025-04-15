@@ -35,7 +35,7 @@
       "HaveMailAccount" BOOLEAN NOT NULL DEFAULT false,
       "SessionId" TEXT,
       "GuestRole" JSONB DEFAULT '{"allowPages": [""], "NotallowPages": [""]}'::jsonb
-      "AllowedApps" JSONB DEFAULT '{"allowPages": [""], "NotallowPages": [""]}'::jsonb
+      "AllowedApps" JSONB DEFAULT '["mbkauthe"]'::jsonb
   );
   ```
 

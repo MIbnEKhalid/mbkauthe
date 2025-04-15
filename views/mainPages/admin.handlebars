@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Home page with authentication and role-based access control.">
     <meta name="author" content="Your Name">
-    <title>Home</title>
+    <title>Admin</title>
     <script src="/Assets/Scripts/logout.js"></script>
     <style>
         /* GitHub Dark Theme Inspired Styles */
@@ -113,11 +113,12 @@
 
 <body>
     <div class="container">
-        <h1>This Page Is Protected And Requires Authentication</h1>
+        <h1>This Page Is Protected And Requires Authentication and Role SuperAdmin</h1>
 
 
         <p>UserName From Backend: <span class="output">{{UserName}}</span></p>
         <p>UserName From Cookie: <span class="output" id="userNamefromCookie"></span></p>
+        <p>User Role: <span class="output">{{Role}}</span></p>
 
         <button onclick="logout()" aria-label="Logout">Logout</button>
         <a href="/admin" aria-label="Admin Page">/admin (Requires Auth And Role SuperAdmin)</a>

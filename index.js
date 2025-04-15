@@ -20,27 +20,21 @@ router.use(mbkAuthRouter);   // <--- Keep mbkAuthRouter after express.json()
 router.use(compression());
 // Configure Handlebars
 router.engine("handlebars", engine({
-    defaultLayout: false,
-    partialsDir: [
-        path.join(__dirname, "views/templates"),
-        path.join(__dirname, "views/notice"),
-        path.join(__dirname, "views")
-    ],
-    cache: false,
-    helpers: { // <-- ADD THIS helpers OBJECT
-        eq: function (a, b) { // <-- Move your helpers inside here
-            return a === b;
-        },
-        encodeURIComponent: function (str) {
-            return encodeURIComponent(str);
-        },
-        formatTimestamp: function (timestamp) {
-            return new Date(timestamp).toLocaleString();
-        },
-        jsonStringify: function (context) {
-            return JSON.stringify(context);
-        }
+  defaultLayout: false,
+  partialsDir: [
+    path.join(__dirname, "views/templates"),
+    path.join(__dirname, "views/notice"),
+    path.join(__dirname, "views")
+  ],
+  cache: false,
+  helpers: { // <-- ADD THIS helpers OBJECT
+    eq: function (a, b) { // <-- Move your helpers inside here
+      return a === b;
+    },
+    encodeURIComponent: function (str) {
+      return encodeURIComponent(str);
     }
+  }
 }));
 
 router.set("view engine", "handlebars");
@@ -61,7 +55,7 @@ router.use(
 router.use(mbkAuthRouter);
 
 
-router.get(["/login", "/signin","/"], (req, res) => {
+router.get(["/login", "/signin", "/"], (req, res) => {
   if (req.session && req.session.user) {
     return res.render("mainPages/login.handlebars", { userLoggedIn: true, UserName: req.session.user.username });
   }
@@ -69,10 +63,13 @@ router.get(["/login", "/signin","/"], (req, res) => {
 });
 
 // Require vaild session or to be login to access this page
-router.get(["/home"],validateSession, (req, res) => {
-    return res.status(200).render("mainPages/home", { userLoggedIn: true, UserName: req.session.user.username });
-  
-}); 
+router.get(["/home"], validateSession, (req, res) => {
+  return res.status(200).render("mainPages/home", { UserName: req.session.user.username });
+});
+
+router.get(["/admin"], validateSessionAndRole("SuperAdmin"), (req, res) => {
+  return res.status(200).render("mainPages/admin", { UserName: req.session.user.username, Role: req.session.user.role });
+});
 
 const port = 3130;
 

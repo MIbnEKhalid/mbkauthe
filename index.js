@@ -21,8 +21,7 @@ if (mbkautheVar.RECAPTCHA_Enabled === "true") {
     if (mbkautheVar.RECAPTCHA_SECRET_KEY === undefined) {
         throw new Error("mbkautheVar.RECAPTCHA_SECRET_KEY is required");
     }
-}  console.log(mbkautheVar.IS_DEPLOYED === 'true' ? `.${mbkautheVar.DOMAIN}` : undefined);
-
+}
 if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
     const expireTime = parseFloat(mbkautheVar.COOKIE_EXPIRE_TIME);
     if (isNaN(expireTime) || expireTime <= 0) {
@@ -35,6 +34,14 @@ if (mbkautheVar.BypassUsers !== undefined) {
     }
 }
 
+if (process.env.test === "true") {
+    const app = express();
+    const port = 3000;
+    app.use(router);
+    app.listen(port, () => {
+        console.log(`Server running on http://localhost:${port}`);
+    });
+}
 
 export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate } from "./lib/validateSessionAndRole.js";
 export { dblogin } from "./lib/pool.js";

@@ -21,6 +21,9 @@
     - [Login](#login)
     - [Logout](#logout)
     - [Terminate All Sessions](#terminate-all-sessions)
+    - [Package Information](#package-information)
+    - [Version Information](#version-information)
+    - [Package Lock Information](#package-lock-information)
   - [Database Structure](#database-structure)
   - [License](#license)
   - [Contact \& Support](#contact--support)
@@ -211,8 +214,38 @@ router.post(["/terminateAllSessions"], authenticate(mbkautheVar.Password), (req,
 - Response:
   - `200`: All sessions terminated successfully.
   - `500`: Internal server error.
-  - 
-  
+
+### Package Information
+
+**GET** `/mbkauthe/package`
+
+- **Description**: Retrieves the `package.json` file of the `mbkauthe` package, which contains metadata about the package, such as its name, version, dependencies, and more.
+- **Response**:
+  - `200`: Successfully retrieved the `package.json` file.
+    - **Body**: JSON object containing the contents of the `package.json` file.
+  - `500`: Internal server error.
+
+
+### Version Information
+
+**GET** `/mbkauthe/version` or `/mbkauthe/v`
+
+- **Description**: Retrieves the current version of the `mbkauthe` package from the `package.json` file.
+- **Response**:
+  - `200`: Successfully retrieved the version information.
+    - **Body**: JSON object containing the version, e.g., `{ "version": "1.0.0" }`.
+  - `500`: Internal server error.
+
+
+### Package Lock Information
+
+**GET** `/mbkauthe/package-lock`
+
+- **Description**: Retrieves the `package-lock.json` file from the project where the `mbkauthe` package is installed. Filters and returns only the dependency information related to `mbkauthe`, including resolved versions and integrity hashes.
+- **Response**:
+  - `200`: Successfully retrieved the filtered `package-lock.json` data for `mbkauthe`.
+    - **Body**: JSON object containing the filtered dependency information for `mbkauthe`.
+  - `500`: Internal server error.
 
 ## Database Structure
 

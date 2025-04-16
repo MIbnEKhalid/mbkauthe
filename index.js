@@ -21,7 +21,8 @@ if (mbkautheVar.RECAPTCHA_Enabled === "true") {
     if (mbkautheVar.RECAPTCHA_SECRET_KEY === undefined) {
         throw new Error("mbkautheVar.RECAPTCHA_SECRET_KEY is required");
     }
-}
+}  console.log(mbkautheVar.IS_DEPLOYED === 'true' ? `.${mbkautheVar.DOMAIN}` : undefined);
+
 if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
     const expireTime = parseFloat(mbkautheVar.COOKIE_EXPIRE_TIME);
     if (isNaN(expireTime) || expireTime <= 0) {

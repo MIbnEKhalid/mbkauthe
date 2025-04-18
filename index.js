@@ -1,3 +1,4 @@
+import express from "express"; // Add this line
 import router from "./lib/main.js";
 
 import dotenv from "dotenv";

@@ -2,13 +2,23 @@
     <div class="showmessageWindow">
         <h1></h1>
         <p></p>
-        <button class="buttons full" style="font-size: 20px;margin-top: 10px;" onclick="hideMessage()">Okay</button>
+        <a href="" target="_blank" class="error-code"></a>
+        <button class="btn btn-save full" style="font-size: 20px; margin-top: 10px;"
+            onclick="hideMessage()">Okay</button>
     </div>
 </div>
 <script>
-    function showMessage(message, heading) {
+    showMessage("Failed to load the page. Please try again later.", "Error", "404");
+    function showMessage(message, heading, errorCode) {
         document.querySelector(".showmessageWindow h1").innerText = heading;
         document.querySelector(".showmessageWindow p").innerHTML = message;
+        if (errorCode) {
+            document.querySelector(".showmessageWindow .error-code").style.display = "block";
+            document.querySelector(".showmessageWindow .error-code").innerText = `Error Code: ${errorCode}`;
+        } else {
+            document.querySelector(".showmessageWindow .error-code").style.display = "none";
+        }
+        document.querySelector(".showmessageWindow .error-code").href = `https://mbktechstudio.com/ErrorCode/#${errorCode}`;
         document
             .querySelector(".showMessageblurWindow")
             .classList
@@ -42,7 +52,7 @@
         justify-content: center;
         align-items: center;
         z-index: 1000;
-        backdrop-filter: blur(5px);
+        backdrop-filter: blur(10px);
     }
 
     .showMessageblurWindow.active {
@@ -58,11 +68,14 @@
     }
 
     .showmessageWindow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         font-family: 'Roboto', sans-serif;
-        background: linear-gradient(135deg, #000, #111);
+        background: rgba(0, 0, 0, 0.6);
         padding: 20px 30px;
         border-radius: 15px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
         max-width: 90%;
         width: 600px;
         position: relative;
@@ -114,6 +127,33 @@
             opacity: 1;
             transform: scale(1);
         }
+    }
+
+    .showmessageWindow .error-code {
+        font-family: 'Roboto', sans-serif;
+        font-size: 16px;
+        text-align: center;
+        color: #ff4d4d;
+        font-weight: 700;
+        margin: 10px auto;
+        padding: 5px 10px;
+        background: rgba(255, 77, 77, 0.1);
+        border: 1px solid #ff4d4d;
+        border-radius: 5px;
+        display: inline-block;        
+        transition: all 0.3s ease-in; 
+    }
+
+    .showmessageWindow .error-code:hover {
+        background: rgba(255, 77, 77, 0.2);
+        color:#007bff;
+        text-decoration: none;
+        transition: all 0.3s ease-out; 
+    }
+
+
+    .showmessageWindow .btn-save {
+        width: 100%;
     }
 
     @keyframes fadeOut {

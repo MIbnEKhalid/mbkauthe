@@ -190,7 +190,9 @@
                     if (response.ok) {
                         return data;
                     } else {
-                        throw new Error(data.message || "An error occurred");
+                        const error = new Error(data.message || "An error occurred");
+                        error.errorCode = data.errorCode;
+                        throw error;
                     }
                 });
             })
@@ -203,7 +205,7 @@
                     window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '/home';
                 } else {
                     grecaptcha.reset();
-                    showMessage(data.message, "Error");
+                    showMessage(data.message, "Error", data.errorCode);
                     document.getElementById('loginMessage').innerText = data.message;
                     if (data.code === 401 && data.message === "Invalid 2FA code") {
                         console.log("data.message");
@@ -219,8 +221,8 @@
                     tokenCon.style.display = "block";
                     tokenInput.setAttribute('required', '');
                 } else {
-                    console.error('Error:', error);
-                    showMessage(error.message, "Error");
+                    console.log("Sending error response:" + error.message + " " + error.errorCode);
+                    showMessage(error.message, "Error", error.errorCode);
                     loginButton.disabled = false;
                     loginButton.innerText = "Login";
                 }

@@ -1,11 +1,11 @@
 {
   "name": "mbkauthe",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "set test=true&& node index.js"
+    "test": "set test=true&& nodemon index.js"
   },
   "repository": {
     "type": "git",
@@ -35,5 +35,8 @@
     "express-session": "^1.18.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.14.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
   }
 }

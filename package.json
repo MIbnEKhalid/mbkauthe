@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -31,6 +31,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.14.1"

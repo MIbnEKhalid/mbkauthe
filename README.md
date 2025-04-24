@@ -32,12 +32,18 @@
 
 ## Features
 
-- **Session Management**: Secure session handling using `express-session` and `connect-pg-simple`.
-- **Role-Based Access Control**: Validate user roles and permissions with ease.
-- **Two-Factor Authentication (2FA)**: Optional 2FA support for enhanced security.
-- **reCAPTCHA Integration**: Protect login endpoints with Google reCAPTCHA.
-- **Cookie Management**: Configurable cookie expiration and domain settings.
-- **PostgreSQL Integration**: Uses a connection pool for efficient database interactions.
+- **Session Management:** Simplifies session handling with secure session restoration and expiration mechanisms.
+- **User Authentication:** Provides robust authentication, including support for username/password and Two-Factor Authentication (2FA).
+- **Role-Based Access Control (RBAC):** Enables fine-grained access control by validating user roles and permissions.
+- **Integration with PostgreSQL:** Seamlessly integrates with PostgreSQL for user and session data storage.
+- **reCAPTCHA Verification:** Adds an extra layer of security with reCAPTCHA support to prevent automated attacks.
+- **Middleware Functions:** Includes reusable middleware for session validation, role checking, and user authentication.
+- **API Endpoints:** Offers a set of RESTful APIs for login, logout, session termination, and package information retrieval.
+- **Environment Configuration:** Supports flexible configuration through .env files for deployment-specific settings.
+- **Demo Account:** Provides a demo account for hands-on exploration of the authentication system.
+- **Database Schema:** Predefined database structure for user, session, and 2FA data management.
+- **Extensibility:** Designed to be easily integrated into existing Node.js applications.
+- **Secure Cookies:** Ensures secure session handling with cookie expiration and domain-specific settings
 
 ## Installation
 
@@ -87,7 +93,7 @@ mbkautheVar='{
     "IS_DEPLOYED": "true",
     "LOGIN_DB": "postgres://username:password@host:port/database",
     "MBKAUTH_TWO_FA_ENABLE": "false",
-    "COOKIE_EXPIRE_TIME": "1",
+    "COOKIE_EXPIRE_TIME": 2,
     "DOMAIN": "yourdomain.com"
 }'
 ```

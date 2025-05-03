@@ -36,6 +36,7 @@ if (mbkautheVar.BypassUsers !== undefined) {
 }
 
 if (process.env.test === "true") {
+    console.log("Test mode is enabled. Starting server in test mode.");
     const app = express();
     const port = 3000;
     app.use(router);

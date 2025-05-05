@@ -71,3 +71,5 @@ MBKAUTH_TWO_FA_ENABLE=false
 COOKIE_EXPIRE_TIME=5
 ```
 > Cookie expiration time in days. Default is `2 days`.
+
+"layout": false

@@ -45,7 +45,6 @@ if (process.env.test === "true") {
     });
 }
 
-export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate } from "./lib/validateSessionAndRole.js";
+export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate, authapi } from "./lib/validateSessionAndRole.js";
 export { dblogin } from "./lib/pool.js";
-export { authapi } from "./lib/authapi.js";
 export default router;

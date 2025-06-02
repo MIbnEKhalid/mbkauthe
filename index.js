@@ -1,9 +1,16 @@
 import express from "express"; // Add this line
 import router from "./lib/main.js";
-
+import { engine } from "express-handlebars";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 let mbkautheVar;
+
 try {
     mbkautheVar = JSON.parse(process.env.mbkautheVar);
 } catch (error) {
@@ -35,15 +42,26 @@ if (mbkautheVar.BypassUsers !== undefined) {
     }
 }
 
+const app = express();
 if (process.env.test === "true") {
     console.log("Test mode is enabled. Starting server in test mode.");
-    const app = express();
     const port = 3000;
     app.use(router);
     app.listen(port, () => {
         console.log(`Server running on http://localhost:${port}`);
     });
 }
+
+app.set("views", path.join(__dirname, "node_modules/mbkauthe/views"));
+
+app.engine("handlebars", engine({
+    defaultLayout: false,
+    partialsDir: [
+        path.join(__dirname, "node_modules/mbkauthe/views"),
+    ],
+}));
+
+app.set("view engine", "handlebars");
 
 export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate, authapi } from "./lib/validateSessionAndRole.js";
 export { dblogin } from "./lib/pool.js";

@@ -1,5 +1,6 @@
 import express from "express"; // Add this line
 import router from "./lib/main.js";
+import { getLatestVersion } from "./lib/info.js";
 import { engine } from "express-handlebars";
 import dotenv from "dotenv";
 import path from "path";
@@ -62,6 +63,14 @@ app.engine("handlebars", engine({
 }));
 
 app.set("view engine", "handlebars");
+
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const packageJson = require("./package.json");
+const latestVersion = await getLatestVersion();
+if(latestVersion !== packageJson.version) {
+    console.warn(`Warning: The current version (${packageJson.version}) is not the latest version (${latestVersion}). Please update mbkauthe.`);
+}
 
 export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate, authapi } from "./lib/validateSessionAndRole.js";
 export { dblogin } from "./lib/pool.js";

@@ -8,11 +8,11 @@
     <meta name="description"
         content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
     <meta name="keywords" content="MBK Tech Studio, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
-    <meta property="og:title" content="Portal Login | MBK Tech Studio" />
+    <meta property="og:title" content="Login | MBK Tech Studio" />
     <meta property="og:image" content="https://www.mbktechstudio.com/Assets/Images/Icon/logo.png" />
     <meta property="og:url" content="https://portal.mbktechstudio.com/login">
     <title>Login | MBK Tech Studio Portal</title>
-    <link rel="icon" type="image/x-icon" href="/Assets/Images/dgicon.svg">
+    <link rel="icon" type="image/x-icon" href="https://mbktechstudio.com/Assets/Images/Icon/dgicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -390,7 +390,7 @@
         <nav>
             <div class="navbar">
                 <a class="logo">
-                    <img src="/Assets/Images/dg.svg" alt="MBK Tech Studio Logo">
+                    <img src="https://mbktechstudio.com/Assets/Images/Icon/dgicon.svg" alt="MBK Tech Studio Logo">
                     <span class="logo-text">MBK Authe</span>
                 </a>
             </div>
@@ -523,7 +523,7 @@
 
                         // Redirect to the appropriate page
                         const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
-                        window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '/chatbot';
+                        window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
                     } else {
                         // Handle errors
                         grecaptcha.reset();

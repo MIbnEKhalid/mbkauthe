@@ -5,8 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
+    <meta name="description" content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
     <meta name="keywords" content="MBK Tech Studio, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
     <meta property="og:title" content="Login | MBK Tech Studio" />
     <meta property="og:image" content="https://www.mbktechstudio.com/Assets/Images/Icon/logo.png" />
@@ -16,8 +15,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         :root {
@@ -66,7 +64,6 @@
             flex-direction: column;
         }
 
-        /* Header - Consistent with index */
         header {
             position: fixed;
             top: 0;
@@ -80,7 +77,7 @@
         }
 
         nav {
-            padding: 15px 5%;
+            padding: 10px 5%;
             max-width: 1400px;
             margin: 0 auto;
         }
@@ -116,7 +113,6 @@
             color: transparent;
         }
 
-        /* Login Container */
         .login-container {
             flex: 1;
             display: flex;
@@ -131,11 +127,11 @@
         .login-box {
             background: var(--dark-light);
             border-radius: var(--radius-xl);
-            padding: 3rem;
+            padding: 2rem;
             width: 100%;
             max-width: 500px;
             box-shadow: var(--shadow-lg);
-            border: 1px solid var(--glass-border);
+            border: .125rem solid var(--glass-border);
             position: relative;
             z-index: 2;
             transition: var(--transition);
@@ -165,15 +161,14 @@
             border-radius: 2px;
         }
 
-        /* Form Elements */
         .form-group {
             position: relative;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
         }
 
         .form-input {
             width: 100%;
-            padding: 15px 20px;
+            padding: 12px 20px;
             background: var(--darker);
             border: 2px solid var(--glass-border);
             border-radius: var(--radius-sm);
@@ -223,7 +218,7 @@
 
         .btn-login {
             width: 100%;
-            padding: 15px;
+            padding: 10px;
             border-radius: var(--radius-sm);
             background: var(--primary);
             color: white;
@@ -249,7 +244,6 @@
             box-shadow: none;
         }
 
-        /* Additional Links */
         .login-links {
             display: flex;
             justify-content: space-between;
@@ -266,7 +260,6 @@
             color: var(--primary);
         }
 
-        /* Terms Info */
         .terms-info {
             margin-top: 2rem;
             font-size: 0.8rem;
@@ -279,14 +272,12 @@
             font-weight: 500;
         }
 
-        /* Recaptcha */
         .recaptcha-container {
-            margin: 2rem 0;
+            margin: 1rem 0;
             display: flex;
             justify-content: center;
         }
 
-        /* 2FA Token Container */
         .token-container {
             animation: fadeInUp 0.4s ease-out;
         }
@@ -299,7 +290,6 @@
             display: block;
         }
 
-        /* Floating Elements */
         .ai-element {
             position: absolute;
             opacity: 0.1;
@@ -359,7 +349,6 @@
             }
         }
 
-        /* Responsive Styles */
         @media (max-width: 768px) {
             .login-box {
                 padding: 2rem;
@@ -382,6 +371,55 @@
                 align-items: center;
             }
         }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .remember-me input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            margin-right: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .remember-me input[type="checkbox"]:checked {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .remember-me input[type="checkbox"]:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 10px;
+        }
+
+        .remember-me label {
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .remember-me label:hover {
+            color: var(--light);
+        }
     </style>
 </head>
 
@@ -398,7 +436,7 @@
     </header>
 
     <section class="login-container">
-        <!-- Floating AI elements -->
+
         <i class="fas fa-robot ai-element"></i>
         <i class="fas fa-microchip ai-element"></i>
         <i class="fas fa-user-astronaut ai-element"></i>
@@ -438,6 +476,11 @@
                     </div>
                 </div>
 
+                <div class="form-group remember-me">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+
                 <button type="submit" class="btn-login" id="loginButton">
                     <span id="loginButtonText">Login</span>
                 </button>
@@ -458,7 +501,6 @@
     </section>
 
     <script>
-
 
         // Toggle password visibility
         const togglePassword = document.getElementById('togglePassword');
@@ -494,6 +536,8 @@
             const recaptchaResponse = grecaptcha.getResponse();
             const loginButton = document.getElementById('loginButton');
             const loginButtonText = document.getElementById('loginButtonText');
+            const rememberMe = document.getElementById('rememberMe').checked;
+
 
             if (!username || !password) {
                 showMessage('Username and password are required', 'Login Error');
@@ -520,6 +564,12 @@
                     if (data.success) {
                         loginButtonText.textContent = 'Success! Redirecting...';
                         sessionStorage.setItem('sessionId', data.sessionId);
+
+                        if (rememberMe) {
+                            localStorage.setItem('rememberedUsername', username);
+                        } else {
+                            localStorage.removeItem('rememberedUsername');
+                        }
 
                         // Redirect to the appropriate page
                         const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
@@ -562,6 +612,53 @@
 
             if (passwordFromUrl) {
                 document.getElementById('loginPassword').value = passwordFromUrl;
+            }
+        });
+        // Auto focus on the first empty field
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const usernameFromUrl = urlParams.get('username');
+            const passwordFromUrl = urlParams.get('password');
+            const usernameInput = document.getElementById('loginUsername');
+
+            if (usernameFromUrl) {
+                usernameInput.value = usernameFromUrl;
+            }
+
+            if (passwordFromUrl) {
+                document.getElementById('loginPassword').value = passwordFromUrl;
+            }
+
+            // Automatically focus the username field
+            usernameInput.focus();
+        });
+        //Remember me functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const usernameFromUrl = urlParams.get('username');
+            const passwordFromUrl = urlParams.get('password');
+            const usernameInput = document.getElementById('loginUsername');
+
+            // Check for remembered username in localStorage
+            const rememberedUsername = localStorage.getItem('rememberedUsername');
+            if (rememberedUsername) {
+                usernameInput.value = rememberedUsername;
+                document.getElementById('rememberMe').checked = true;
+            }
+
+            if (usernameFromUrl) {
+                usernameInput.value = usernameFromUrl;
+            }
+
+            if (passwordFromUrl) {
+                document.getElementById('loginPassword').value = passwordFromUrl;
+            }
+
+            // Automatically focus the first empty field
+            if (!usernameInput.value) {
+                usernameInput.focus();
+            } else {
+                document.getElementById('loginPassword').focus();
             }
         });
     </script>

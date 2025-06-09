@@ -228,12 +228,10 @@
             cursor: pointer;
             transition: var(--transition);
             box-shadow: var(--shadow-sm);
-            margin-top: 1rem;
         }
 
         .btn-login:hover {
             background: var(--primary-dark);
-            transform: translateY(-3px);
             box-shadow: var(--shadow-md);
         }
 
@@ -420,6 +418,20 @@
         .remember-me label:hover {
             color: var(--light);
         }
+        
+        .WarningboxInfo {
+            background: var(--dark-light);
+            border: 0.5px solid var(--warning);
+            border-left: 4px solid var(--warning);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-sm);
+            color: var(--warning);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 1rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
     </style>
 </head>
 
@@ -485,6 +497,14 @@
                     <span id="loginButtonText">Login</span>
                 </button>
 
+                {{#if userLoggedIn }}
+                <div class="WarningboxInfo">
+                    You Are Already Logged In With username
+                    <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>. Go To
+                    <a class="terms-link" href="/home">Home Page</a>
+                </div>
+                {{/if }}
+
                 <div class="login-links">
                     <a onclick="fpass()" class="login-link">Forgot Password?</a>
                     <a href="https://www.mbktechstudio.com/Support" target="_blank" class="login-link">Need Help?</a>
@@ -492,9 +512,9 @@
 
                 <p class="terms-info">
                     By logging in, you agree to our
-                    <a href="/info/Terms&Conditions" class="terms-link">Terms & Conditions</a>
+                    <a href="/info/Terms&Conditions" target="_blank" class="terms-link">Terms & Conditions</a>
                     and
-                    <a href="/info/PrivacyPolicy" class="terms-link">Privacy Policy</a>.
+                    <a href="/info/PrivacyPolicy" target="_blank" class="terms-link">Privacy Policy</a>.
                 </p>
             </form>
         </div>
@@ -570,10 +590,13 @@
                         } else {
                             localStorage.removeItem('rememberedUsername');
                         }
-
+                        
                         // Redirect to the appropriate page
                         const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
                         window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
+
+                        loginButton.disabled = false;
+                        loginButtonText.textContent = 'Login';
                     } else {
                         // Handle errors
                         grecaptcha.reset();

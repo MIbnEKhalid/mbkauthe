@@ -1,6 +1,6 @@
 import express from "express"; // Add this line
 import router from "./lib/main.js";
-import { getLatestVersion } from "./lib/info.js";
+import { getLatestVersion } from "./lib/main.js";
 import { engine } from "express-handlebars";
 import dotenv from "dotenv";
 import path from "path";

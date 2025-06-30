@@ -1,75 +1,198 @@
-# Configuration Guide
+# Environment Configuration Guide
 
-[<- Back](README.md)
+[← Back to README](README.md)
 
-## Application Settings
+This guide explains how to configure your MBKAuth application using environment variables. Create a `.env` file in your project root and set the following variables according to your deployment needs.
 
-```properties
+---
+
+## 📱 Application Settings
+
+### App Name Configuration
+```env
 APP_NAME=mbkauthe
 ```
 
-> **APP_NAME**: Specifies the name of the application. This is used to distinguish one project from another and is critical for ensuring users are restricted to specific apps. It corresponds to the `AllowedApp` column in the Users table.
+**Description:** Defines the application identifier used for user access control.
 
-## reCAPTCHA Settings
+- **Purpose:** Distinguishes this application from others in your ecosystem
+- **Security:** Users are restricted to apps they're authorized for via the `AllowedApp` column in the Users table
+- **Required:** Yes
 
-```properties
-RECAPTCHA_ENABLED=true
-RECAPTCHA_SECRET_KEY=your-secret-key
-BYPASS_USERS=["demo", "user1"]
+---
+
+## 🔐 Session Management
+
+### Session Configuration
+```env
+SESSION_SECRET_KEY=your-secure-random-key-here
+IS_DEPLOYED=false
+DOMAIN=localhost
 ```
 
-> **RECAPTCHA_ENABLED**: Set to `true` to enable reCAPTCHA verification.
+#### SESSION_SECRET_KEY
+**Description:** Cryptographic key for session security.
 
-> **RECAPTCHA_SECRET_KEY**: Provide the secret key obtained from the [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin).
+- **Security:** Use a strong, randomly generated key (minimum 32 characters)
+- **Generation:** Generate securely at [Generate Secret](https://generate-secret.vercel.app/32)
+- **Example:** `SESSION_SECRET_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6`
+- **Required:** Yes
 
-> **BYPASS_USERS**: Specify an array of usernames (e.g., `["demo", "user1"]`) that will bypass reCAPTCHA verification.
+#### IS_DEPLOYED
+**Description:** Deployment environment flag that affects session behavior.
 
-> **Note**: Ensure `RECAPTCHA_SECRET_KEY` is set when `RECAPTCHA_ENABLED=true`.
+**Values:**
+- `true` - Production/deployed environment
+  - Sessions work across all subdomains of your specified domain
+  - **Important:** Login will NOT work on `localhost` when set to `true`
+- `false` - Local development environment
+  - Sessions work on localhost for development
 
+**Default:** `false`
 
-## Session Settings
-```properties
-SESSION_SECRET_KEY=123
+#### DOMAIN
+**Description:** Your application's domain name.
+
+**Configuration:**
+- **Production:** Set to your actual domain (e.g., `mbktechstudio.com`)
+- **Development:** Use `localhost` or set `IS_DEPLOYED=false`
+- **Subdomains:** When `IS_DEPLOYED=true`, sessions are shared across all subdomains
+
+**Examples:**
+```env
+# Production
+DOMAIN=yourdomain.com
 IS_DEPLOYED=true
-DOMAIN=mbktechstudio.com
+
+# Development
+DOMAIN=localhost
+IS_DEPLOYED=false
 ```
-> **SESSION_SECRET_KEY**: Generate a secure key using [Generate Secret](https://generate-secret.vercel.app/32).
 
-> **IS_DEPLOYED**:
+---
 
-> - `true`: For deployed environments. Sessions are shared across all subDOMAINs of `.mbktechstudio.com` or the DOMAIN specified in `DOMAIN`.
+## 🗄️ Database Configuration
 
-> - `false`: For local development.
-
-> - Important: If set to `true`, login functionality will not work on `localhost`. Use a valid DOMAIN for proper operation.
-
-> **DOMAIN**:
-
-> - Set `DOMAIN` to your DOMAIN
-
-> - If you don't have a DOMAIN, set `IS_DEPLOYED=false`.
-
-
-## Database Settings
-
-```properties
-LOGIN_DB=postgresql://username:password@server.DOMAIN/db_name
+### PostgreSQL Connection
+```env
+LOGIN_DB=postgresql://username:password@host:port/database_name
 ```
-> Replace the placeholder with your PostgreSQL connection string.
 
+**Description:** PostgreSQL database connection string for user authentication.
 
-## Two-Factor Authentication (2FA)
-```properties
+**Format:** `postgresql://[username]:[password]@[host]:[port]/[database]`
+
+**Examples:**
+```env
+# Local database
+LOGIN_DB=postgresql://admin:password123@localhost:5432/mbkauth_db
+
+# Remote database
+LOGIN_DB=postgresql://user:pass@db.example.com:5432/production_db
+
+# With SSL (recommended for production)
+LOGIN_DB=postgresql://user:pass@host:5432/db?sslmode=require
+```
+
+**Required:** Yes
+
+---
+
+## 🔒 Two-Factor Authentication (2FA)
+
+### 2FA Configuration
+```env
 MBKAUTH_TWO_FA_ENABLE=false
 ```
-> MBKAUTH_TWO_FA_ENABLE: Set to `true` to enable Two-Factor Authentication.
 
+**Description:** Enables or disables Two-Factor Authentication for enhanced security.
 
-## Cookie Settings
+**Values:**
+- `true` - Enable 2FA (recommended for production)
+- `false` - Disable 2FA (default)
 
-```properties
-COOKIE_EXPIRE_TIME=5
+**Note:** When enabled, users will need to configure an authenticator app (Google Authenticator, Authy, etc.) for login.
+
+---
+
+## 🍪 Cookie Settings
+
+### Cookie Expiration
+```env
+COOKIE_EXPIRE_TIME=2
 ```
-> Cookie expiration time in days. Default is `2 days`.
 
-"layout": false
+**Description:** Sets how long authentication cookies remain valid.
+
+- **Unit:** Days
+- **Default:** `2` days
+- **Range:** 1-30 days (recommended)
+- **Security:** Shorter periods are more secure but require more frequent logins
+
+**Examples:**
+```env
+COOKIE_EXPIRE_TIME=1   # 1 day (high security)
+COOKIE_EXPIRE_TIME=7   # 1 week (balanced)
+COOKIE_EXPIRE_TIME=30  # 1 month (convenience)
+```
+
+---
+
+## 🚀 Quick Setup Examples
+
+### Development Environment
+```env
+# .env file for local development
+APP_NAME=mbkauthe
+SESSION_SECRET_KEY=dev-secret-key-change-in-production
+IS_DEPLOYED=false
+DOMAIN=localhost
+LOGIN_DB=postgresql://admin:password@localhost:5432/mbkauth_dev
+MBKAUTH_TWO_FA_ENABLE=false
+COOKIE_EXPIRE_TIME=7
+```
+
+### Production Environment
+```env
+# .env file for production deployment
+APP_NAME=mbkauthe
+SESSION_SECRET_KEY=your-super-secure-production-key-here
+IS_DEPLOYED=true
+DOMAIN=yourdomain.com
+LOGIN_DB=postgresql://dbuser:securepass@prod-db.example.com:5432/mbkauth_prod
+MBKAUTH_TWO_FA_ENABLE=true
+COOKIE_EXPIRE_TIME=2
+```
+
+---
+
+## ⚠️ Important Security Notes
+
+1. **Never commit your `.env` file** to version control
+2. **Use strong, unique secrets** for production environments
+3. **Enable HTTPS** when `IS_DEPLOYED=true`
+4. **Regularly rotate** your `SESSION_SECRET_KEY`
+5. **Use environment-specific databases** (separate dev/prod databases)
+6. **Enable 2FA** for production environments
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Login not working on localhost:**
+- Ensure `IS_DEPLOYED=false` for local development
+- Check that `DOMAIN=localhost`
+
+**Session not persisting:**
+- Verify `SESSION_SECRET_KEY` is set and consistent
+- Check cookie settings in your browser
+
+**Database connection errors:**
+- Verify database credentials and connection string format
+- Ensure database server is running and accessible
+
+**2FA issues:**
+- Confirm authenticator app time is synchronized
+- Verify `MBKAUTH_TWO_FA_ENABLE` setting matches your setup

@@ -5,7 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
+    <meta name="description"
+        content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
     <meta name="keywords" content="MBK Tech Studio, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
     <meta property="og:title" content="Login | MBK Tech Studio" />
     <meta property="og:image" content="https://www.mbktechstudio.com/Assets/Images/Icon/logo.png" />
@@ -15,8 +16,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --primary: #4361ee;
@@ -270,12 +271,6 @@
             font-weight: 500;
         }
 
-        .recaptcha-container {
-            margin: 1rem 0;
-            display: flex;
-            justify-content: center;
-        }
-
         .token-container {
             animation: fadeInUp 0.4s ease-out;
         }
@@ -418,7 +413,7 @@
         .remember-me label:hover {
             color: var(--light);
         }
-        
+
         .WarningboxInfo {
             background: var(--dark-light);
             border: 0.5px solid var(--warning);
@@ -481,11 +476,6 @@
                         title="Token must be exactly 6 digits" maxlength="6" minlength="6" />
                     <label class="form-label">2FA Token</label>
                     <i class="fas fa-info-circle input-icon" onclick="tokeninfo()"></i>
-                </div>
-
-                <div class="recaptcha-container">
-                    <div class="g-recaptcha" data-theme="dark" data-sitekey="6LfhaPgqAAAAAPgOw7r3rNOHKKfh5d7K3MMJeUHo">
-                    </div>
                 </div>
 
                 <div class="form-group remember-me">
@@ -553,7 +543,6 @@
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             const token = document.getElementById('token') ? document.getElementById('token').value.trim() : '';
-            const recaptchaResponse = grecaptcha.getResponse();
             const loginButton = document.getElementById('loginButton');
             const loginButtonText = document.getElementById('loginButtonText');
             const rememberMe = document.getElementById('rememberMe').checked;
@@ -575,8 +564,7 @@
                 body: JSON.stringify({
                     username,
                     password,
-                    token,
-                    recaptcha: recaptchaResponse
+                    token
                 })
             })
                 .then(response => response.json())
@@ -590,7 +578,7 @@
                         } else {
                             localStorage.removeItem('rememberedUsername');
                         }
-                        
+
                         // Redirect to the appropriate page
                         const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
                         window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
@@ -599,7 +587,6 @@
                         loginButtonText.textContent = 'Login';
                     } else {
                         // Handle errors
-                        grecaptcha.reset();
                         loginButton.disabled = false;
                         loginButtonText.textContent = 'Login';
 
@@ -615,7 +602,6 @@
                     }
                 })
                 .catch(error => {
-                    grecaptcha.reset();
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Login';
                     console.error('Error:', error);

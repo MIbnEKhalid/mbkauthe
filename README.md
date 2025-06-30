@@ -28,7 +28,7 @@
   - [License](#license)
   - [Contact \& Support](#contact--support)
 
-`mbkAuthe` is a reusable authentication system for Node.js applications, designed to simplify session management, user authentication, and role-based access control. It integrates seamlessly with PostgreSQL and supports features like Two-Factor Authentication (2FA), session restoration, and reCAPTCHA verification.
+`mbkAuthe` is a reusable authentication system for Node.js applications, designed to simplify session management, user authentication, and role-based access control. It integrates seamlessly with PostgreSQL and supports features like Two-Factor Authentication (2FA) and session restoration.
 
 ## Features
 
@@ -36,7 +36,6 @@
 - **User Authentication:** Provides robust authentication, including support for username/password and Two-Factor Authentication (2FA).
 - **Role-Based Access Control (RBAC):** Enables fine-grained access control by validating user roles and permissions.
 - **Integration with PostgreSQL:** Seamlessly integrates with PostgreSQL for user and session data storage.
-- **reCAPTCHA Verification:** Adds an extra layer of security with reCAPTCHA support to prevent automated attacks.
 - **Middleware Functions:** Includes reusable middleware for session validation, role checking, and user authentication.
 - **API Endpoints:** Offers a set of RESTful APIs for login, logout, session termination, and package information retrieval.
 - **Environment Configuration:** Supports flexible configuration through .env files for deployment-specific settings.
@@ -86,16 +85,14 @@ Example `.env` file:
 ```code
 mbkautheVar='{
     "APP_NAME": "MBKAUTH",
-    "RECAPTCHA_SECRET_KEY": "your-recaptcha-secret-key",
-    "RECAPTCHA_Enabled": "false",
-    "BypassUsers": ["user1","user2"],
     "SESSION_SECRET_KEY": "your-session-secret-key",
     "IS_DEPLOYED": "true",
     "LOGIN_DB": "postgres://username:password@host:port/database",
     "MBKAUTH_TWO_FA_ENABLE": "false",
     "COOKIE_EXPIRE_TIME": 2,
     "DOMAIN": "yourdomain.com",
-    "layout": false
+    "layout": false,
+    "loginRedirectURL": "/admin"
 }'
 ```
 
@@ -198,7 +195,6 @@ router.post(["/terminateAllSessions"], authenticate(mbkautheVar.Password), (req,
   - `username`: User's username.
   - `password`: User's password.
   - `token`: (Optional) 2FA token.
-  - `recaptcha`: reCAPTCHA response.
 
 - Response:
   - `200`: Login successful.

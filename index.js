@@ -49,6 +49,7 @@ app.engine("handlebars", engine({
     defaultLayout: false,
     partialsDir: [
         path.join(__dirname, "node_modules/mbkauthe/views"),
+        path.join(__dirname, "node_modules/mbkauthe/views/Error"),
     ],
 }));
 

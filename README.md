@@ -91,7 +91,6 @@ mbkautheVar='{
     "MBKAUTH_TWO_FA_ENABLE": "false",
     "COOKIE_EXPIRE_TIME": 2,
     "DOMAIN": "yourdomain.com",
-    "layout": false,
     "loginRedirectURL": "/admin"
 }'
 ```

@@ -698,7 +698,7 @@
                 {{/if }}
 
                 <div class="login-links">
-                    <a onclick="fpass()" class="login-link">Forgot Password?</a>
+                    <a href="https://portal.mbktechstudio.com/forgot-password" class="login-link">Forgot Password?</a>
                     <a href="https://www.mbktechstudio.com/Support" target="_blank" class="login-link">Need Help?</a>
                 </div>
 
@@ -783,9 +783,9 @@
                         sessionStorage.setItem('sessionId', data.sessionId);
 
                         if (rememberMe) {
-                            localStorage.setItem('rememberedUsername', username);
+                            setCookie('rememberedUsername', username, 30); // 30 days
                         } else {
-                            localStorage.removeItem('rememberedUsername');
+                            deleteCookie('rememberedUsername');
                         }
 
                         // Redirect to the appropriate page
@@ -817,6 +817,39 @@
                     showMessage('An error occurred. Please try again.', 'Login Error');
                 });
         });
+
+        // Cookie helper functions for cross-domain functionality
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            // Set cookie for the entire domain (works across all subdomains)
+            const domain = window.location.hostname.includes('.') ? 
+                           '.' + window.location.hostname.split('.').slice(-2).join('.') : 
+                           window.location.hostname;
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; domain=" + domain + "; SameSite=Lax";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            const domain = window.location.hostname.includes('.') ? 
+                           '.' + window.location.hostname.split('.').slice(-2).join('.') : 
+                           window.location.hostname;
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + domain;
+        }
 
         // Check for URL parameters
         document.addEventListener('DOMContentLoaded', function () {
@@ -850,6 +883,7 @@
             // Automatically focus the username field
             usernameInput.focus();
         });
+
         //Remember me functionality
         document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
@@ -857,8 +891,8 @@
             const passwordFromUrl = urlParams.get('password');
             const usernameInput = document.getElementById('loginUsername');
 
-            // Check for remembered username in localStorage
-            const rememberedUsername = localStorage.getItem('rememberedUsername');
+            // Check for remembered username in cookies
+            const rememberedUsername = getCookie('rememberedUsername');
             if (rememberedUsername) {
                 usernameInput.value = rememberedUsername;
                 document.getElementById('rememberMe').checked = true;

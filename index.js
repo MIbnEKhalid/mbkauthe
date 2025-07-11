@@ -35,19 +35,23 @@ if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
 
 const app = express();
 if (process.env.test === "true") {
-    console.log("Test mode is enabled. Starting server in test mode.");
+    console.log("[mbkauthe] Test mode is enabled. Starting server in test mode.");
     const port = 3000;
     app.use(router);
     app.listen(port, () => {
-        console.log(`Server running on http://localhost:${port}`);
+        console.log(`[mbkauthe] Server running on http://localhost:${port}`);
     });
 }
 
-app.set("views", path.join(__dirname, "node_modules/mbkauthe/views"));
+app.set("views", [
+  path.join(__dirname, "views"),
+  path.join(__dirname, "node_modules/mbkauthe/views")
+]);
 
 app.engine("handlebars", engine({
     defaultLayout: false,
     partialsDir: [
+        path.join(__dirname, "views"),
         path.join(__dirname, "node_modules/mbkauthe/views"),
         path.join(__dirname, "node_modules/mbkauthe/views/Error"),
     ],
@@ -60,7 +64,7 @@ const require = createRequire(import.meta.url);
 const packageJson = require("./package.json");
 const latestVersion = await getLatestVersion();
 if(latestVersion !== packageJson.version) {
-    console.warn(`Warning: The current version (${packageJson.version}) is not the latest version (${latestVersion}). Please update mbkauthe.`);
+    console.warn(`[mbkauthe] Warning: The current version (${packageJson.version}) is not the latest version (${latestVersion}). Please update mbkauthe.`);
 }
 
 export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate, authapi } from "./lib/validateSessionAndRole.js";

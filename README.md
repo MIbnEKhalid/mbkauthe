@@ -76,7 +76,7 @@ const app = express();
 app.use(mbkAuthRouter);
 
 app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+  console.log("[mbkauthe] Server is running on port 3000");
 });
 ```
 2. Ensure your `.env` file is properly configured. Refer to the [Configuration Guide(env.md)](env.md) for details.

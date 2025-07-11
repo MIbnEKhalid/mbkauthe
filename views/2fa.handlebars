@@ -529,6 +529,21 @@
                 showMessage('Failed to verify token. Please try again.', 'Error');
             }
         });
+
+        // Auto focus on empty token field
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            const tokenInput = document.getElementById('token');
+
+            if (tokenFromUrl) {
+                tokenInput.value = tokenFromUrl;
+            }
+
+            // Automatically focus the token input field
+            tokenInput.focus();
+        });
+
     </script>
 </body>
 

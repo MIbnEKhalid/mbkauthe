@@ -36,7 +36,7 @@ if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
 const app = express();
 if (process.env.test === "true") {
     console.log("[mbkauthe] Test mode is enabled. Starting server in test mode.");
-    const port = 3000;
+    const port = 5555;
     app.use(router);
     app.listen(port, () => {
         console.log(`[mbkauthe] Server running on http://localhost:${port}`);

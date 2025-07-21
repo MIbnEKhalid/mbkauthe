@@ -242,6 +242,60 @@
             box-shadow: none;
         }
 
+        .social-login {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-dark);
+        }
+
+        .divider span {
+            background: var(--dark);
+            padding: 0 15px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .btn-github {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            background: #24292e;
+            color: white;
+            font-weight: 500;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-github:hover {
+            background: #3b4045;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .btn-github i {
+            font-size: 1.1rem;
+        }
+
         .login-links {
             display: flex;
             justify-content: space-between;
@@ -511,6 +565,17 @@
                 <button type="submit" class="btn-login" id="loginButton">
                     <span id="loginButtonText">Login</span>
                 </button>
+                {{#if githubLoginEnabled }}
+                <div class="social-login">
+                    <div class="divider">
+                        <span>or</span>
+                    </div>
+                    <a href="/mbkauthe/api/github/login" class="btn-github">
+                        <i class="fab fa-github"></i>
+                        <span>Continue with GitHub</span>
+                    </a>
+                </div>
+                {{/if }}
 
                 {{#if userLoggedIn }}
                 <div class="WarningboxInfo">
@@ -598,7 +663,7 @@
                 })
             })
                 .then(response => response.json())
-                .then(data => {
+                .then data => {
                     if (data.success) {
                         if (data.twoFactorRequired) {
                             // Redirect to 2FA page

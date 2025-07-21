@@ -14,9 +14,7 @@
   - [Middleware Function Documentation](#middleware-function-documentation)
     - [validateSession(session)](#validatesessionsession)
     - [checkRolePermission(userRole, requiredRoles)](#checkrolepermissionuserrole-requiredroles)
-    - [validateSessionAndRole(session, userRole, requiredRoles)](#validatesessionandrolesession-userrole-requiredroles)
-    - [getUserData(session)](#getuserdatasession)
-    - [authenticate(session)](#authenticatesession)
+    - [validateSessionAndRole(session, userRole, requiredRoles)]
   - [API Endpoints](#api-endpoints)
     - [Login](#login)
     - [Logout](#logout)
@@ -153,17 +151,6 @@ router.get(["/admin"], validateSessionAndRole("SuperAdmin"), (req, res) => {
   // Restricted Code
 });
 ```
----
-
-### `getUserData(session)`
-Retrieves user data based on the session.
-
-- **Parameters:**
-  - `session` (Object): The session object containing user information.
-
-- **Returns:**
-  - `Object|null`: Returns the user data object if found, otherwise `null`.
-
 ---
 
 ### `authenticate(session)`

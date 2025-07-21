@@ -1,3 +1,127 @@
+# GitHub Login Setup Guide
+
+## Overview
+This GitHub login feature allows users to authenticate using their GitHub account if it's already linked to their account in the system. Users must first connect their GitHub account through the regular account linking process, then they can use GitHub to log in directly.
+
+## Setup Instructions
+
+### 1. Environment Variables
+Add these to your `.env` file:
+
+```env
+# GitHub OAuth App Configuration
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_LOGIN_CALLBACK_URL=https://yourdomain.com/mbkauthe/api/github/login/callback
+BASE_URL=https://yourdomain.com
+```
+
+### 2. GitHub OAuth App Setup
+1. Go to GitHub Settings > Developer settings > OAuth Apps
+2. Create a new OAuth App
+3. Set the Authorization callback URL to: `https://yourdomain.com/mbkauthe/api/github/login/callback`
+4. Copy the Client ID and Client Secret to your `.env` file
+
+### 3. Database Schema
+Ensure your `user_github` table exists with these columns:
+
+```sql
+CREATE TABLE user_github (
+    id SERIAL PRIMARY KEY,
+    user_name VARCHAR(255) REFERENCES "Users"("UserName"),
+    github_id VARCHAR(255) UNIQUE NOT NULL,
+    github_username VARCHAR(255),
+    access_token TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## How It Works
+
+### Login Flow
+1. User clicks "Login with GitHub" on the login page
+2. User is redirected to GitHub for authentication
+3. GitHub redirects back to `/mbkauthe/api/github/login/callback`
+4. System checks if the GitHub ID exists in `user_github` table
+5. If found and user is active/authorized:
+   - If 2FA is enabled, redirect to 2FA page
+   - If no 2FA, complete login and redirect to home
+6. If not found, redirect to login page with error
+
+### Account Linking
+Users must first link their GitHub account through your existing GitHub connection system (likely in user settings) before they can use GitHub login.
+
+## API Routes Added
+
+### `/mbkauthe/api/github/login`
+- **Method**: GET
+- **Description**: Initiates GitHub OAuth flow
+- **Redirects to**: GitHub authorization page
+
+### `/mbkauthe/api/github/login/callback`
+- **Method**: GET
+- **Description**: Handles GitHub OAuth callback
+- **Parameters**: `code` (from GitHub), `state` (optional)
+- **Success**: Redirects to home page or configured redirect URL
+- **Error**: Redirects to login page with error parameter
+
+## Error Handling
+
+The system handles various error cases:
+- `github_auth_failed`: GitHub OAuth failed
+- `user_not_found`: GitHub account not linked to any user
+- `session_error`: Session save failed
+- `internal_error`: General server error
+
+## Testing
+
+1. Create a test user in your `Users` table
+2. Link a GitHub account to that user using your existing connection system
+3. Try logging in with GitHub using the new login button
+4. Check console logs for debugging information
+
+## Login Page Updates
+
+The login page now includes:
+- A "Continue with GitHub" button
+- A divider ("or") between regular and GitHub login
+- Proper styling that matches your existing design
+
+## Security Notes
+
+- Only users with active accounts can log in
+- App authorization is checked (same as regular login)
+- 2FA is respected if enabled
+- Session management is handled the same way as regular login
+- GitHub access tokens are stored securely
+
+## Troubleshooting
+
+1. **GitHub OAuth errors**: Check your GitHub OAuth app configuration
+2. **Database errors**: Ensure `user_github` table exists and has proper relationships
+3. **Session errors**: Check your session configuration
+4. **2FA issues**: Verify 2FA table structure and configuration
+
+## Environment Variables Summary
+
+```env
+# Required for GitHub Login
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_LOGIN_CALLBACK_URL=https://yourdomain.com/mbkauthe/api/github/login/callback
+
+# Optional (used as fallback)
+BASE_URL=https://yourdomain.com
+```
+
+The GitHub login feature is now fully integrated into your mbkauthe system and ready to use!
+
+
+
+
+
+
 ## Database structure
 
 [<- Back](README.md)

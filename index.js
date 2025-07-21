@@ -44,8 +44,8 @@ if (process.env.test === "true") {
 }
 
 app.set("views", [
-  path.join(__dirname, "views"),
-  path.join(__dirname, "node_modules/mbkauthe/views")
+    path.join(__dirname, "views"),
+    path.join(__dirname, "node_modules/mbkauthe/views")
 ]);
 
 app.engine("handlebars", engine({
@@ -55,6 +55,28 @@ app.engine("handlebars", engine({
         path.join(__dirname, "node_modules/mbkauthe/views"),
         path.join(__dirname, "node_modules/mbkauthe/views/Error"),
     ],
+    helpers: {
+        eq: function (a, b) {
+            return a === b;
+        },
+        encodeURIComponent: function (str) {
+            return encodeURIComponent(str);
+        },
+        formatTimestamp: function (timestamp) {
+            return new Date(timestamp).toLocaleString();
+        },
+        jsonStringify: function (context) {
+            return JSON.stringify(context);
+        },
+        json: (obj) => JSON.stringify(obj, null, 2),
+        objectEntries: function (obj) {
+            if (!obj || typeof obj !== 'object') {
+                return []; // Return an empty array if obj is undefined, null, or not an object
+            }
+            return Object.entries(obj).map(([key, value]) => ({ key, value }));
+        }
+    }
+
 }));
 
 app.set("view engine", "handlebars");
@@ -63,10 +85,10 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const packageJson = require("./package.json");
 const latestVersion = await getLatestVersion();
-if(latestVersion !== packageJson.version) {
+if (latestVersion !== packageJson.version) {
     console.warn(`[mbkauthe] Warning: The current version (${packageJson.version}) is not the latest version (${latestVersion}). Please update mbkauthe.`);
 }
 
-export { validateSession, checkRolePermission, validateSessionAndRole, getUserData, authenticate, authapi } from "./lib/validateSessionAndRole.js";
+export { validateSession, checkRolePermission, validateSessionAndRole, authenticate, authapi } from "./lib/validateSessionAndRole.js";
 export { dblogin } from "./lib/pool.js";
 export default router;

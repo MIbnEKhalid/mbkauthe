@@ -663,7 +663,7 @@
                 })
             })
                 .then(response => response.json())
-                .then data => {
+                .then(data => {
                     if (data.success) {
                         if (data.twoFactorRequired) {
                             // Redirect to 2FA page

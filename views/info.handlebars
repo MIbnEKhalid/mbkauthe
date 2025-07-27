@@ -96,46 +96,6 @@
             color: var(--text-color);
         }
 
-        .json-container {
-            background: #252525;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 10px;
-            max-height: 400px;
-            overflow: auto;
-            font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
-            font-size: 0.85em;
-            white-space: pre-wrap;
-            position: relative;
-        }
-
-        .json-container pre {
-            margin: 0;
-            font-family: inherit;
-        }
-
-        .json-container .key {
-            color: var(--key-color);
-        }
-
-        .json-container .string {
-            color: var(--string-color);
-        }
-
-        .json-container .number {
-            color: var(--number-color);
-        }
-
-        .json-container .boolean {
-            color: var(--boolean-color);
-        }
-
-        .json-container .null {
-            color: var(--boolean-color);
-            opacity: 0.7;
-        }
-
         .version-status {
             display: inline-block;
             padding: 3px 10px;
@@ -163,30 +123,6 @@
             border: 1px solid var(--warning);
         }
 
-        .copy-btn {
-            background: var(--primary-dark);
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .copy-btn:hover {
-            background: var(--primary);
-            transform: translateY(-1px);
-        }
-
-        .copy-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -293,86 +229,8 @@
             </div>
         </div>
 
-        <div class="info-section">
-            <h2>
-                Package Information
-                <button class="copy-btn tooltip" onclick="copyToClipboard('package-json')">
-                    <span class="tooltiptext">Copy to clipboard</span>
-                    Copy JSON
-                </button>
-            </h2>
-            <div id="package-json" class="json-container">
-                <pre>{{packageJson}}</pre>
-            </div>
-        </div>
-
-        <div class="info-section">
-            <h2>
-                Package Lock
-                <button class="copy-btn tooltip" onclick="copyToClipboard('package-lock')">
-                    <span class="tooltiptext">Copy to clipboard</span>
-                    Copy JSON
-                </button>
-            </h2>
-            <div id="package-lock" class="json-container">
-                <pre>{{packageLockJson}}</pre>
-            </div>
-        </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Apply syntax highlighting to all JSON containers
-            const jsonContainers = document.querySelectorAll('.json-container pre');
-            jsonContainers.forEach(container => {
-                container.innerHTML = syntaxHighlight(container.textContent);
-            });
-        });
-
-        function syntaxHighlight(json) {
-            if (typeof json !== 'string') {
-                json = JSON.stringify(json, null, 2);
-            }
-
-            // Escape HTML
-            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-            // Apply syntax highlighting
-            return json.replace(
-                /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-                function (match) {
-                    let cls = 'number';
-                    if (/^"/.test(match)) {
-                        if (/:$/.test(match)) {
-                            cls = 'key';
-                        } else {
-                            cls = 'string';
-                        }
-                    } else if (/true|false/.test(match)) {
-                        cls = 'boolean';
-                    } else if (/null/.test(match)) {
-                        cls = 'null';
-                    }
-                    return '<span class="' + cls + '">' + match + '</span>';
-                }
-            );
-        }
-
-        function copyToClipboard(elementId) {
-            const element = document.getElementById(elementId);
-            const text = element.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = element.parentElement.querySelector('.copy-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<span class="tooltiptext">Copied!</span>✓ Copied';
-                setTimeout(() => {
-                    btn.innerHTML = '<span class="tooltiptext">Copy to clipboard</span>' + originalText.replace('✓ Copied', 'Copy JSON');
-                }, 2000);
-            }).catch(err => {
-                console.error('[mbkauthe] Failed to copy text: ', err);
-            });
-        }
-    </script>
 </body>
 
 </html>

@@ -443,13 +443,11 @@
 
     .status-box:hover {
       box-shadow: var(--shadow-lg);
-      transform: scale(1.05);
     }
 
     .status-code {
       text-align: center;
-      margin-bottom: 1rem;
-      font-size: 2.5rem;
+      font-size: 4rem;
       font-weight: 700;
       color: var(--success);
       position: relative;
@@ -465,7 +463,7 @@
     .status-code::after {
       content: '';
       position: absolute;
-      bottom: -10px;
+      bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
       width: 100px;
@@ -502,7 +500,7 @@
 
     .status-link:hover {
       text-decoration: underline;
-      color: var(--primary-dark);
+      color: #4057be;
     }
 
     .details-wrapper {
@@ -628,6 +626,35 @@
         transform: translateY(-20px) rotate(5deg);
       }
     }
+
+    @media (max-width: 768px) {
+
+      .version-info {
+        bottom: 10px;
+        right: 10px;
+        font-size: 0.7rem;
+        padding: 6px 10px;
+      }
+    }
+
+    .version-info {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--dark-light);
+      color: var(--gray);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      border: 1px solid var(--glass-border);
+      z-index: 999;
+      transition: var(--transition);
+    }
+
+    .version-info:hover {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
   </style>
 </head>
 
@@ -637,7 +664,7 @@
       <div class="navbar">
         <a class="logo">
           <img src="https://mbktechstudio.com/Assets/Images/Icon/dgicon.svg" alt="MBK Tech Studio Logo">
-          <span class="logo-text">MBK Authe</span>
+          <span class="logo-text">{{#if app}}{{app}}{{else}}MBK Authe{{/if}}</span>
         </a>
       </div>
     </nav>
@@ -683,6 +710,10 @@
 
     </div>
   </section>
+  <!-- Version Info -->
+  <div class="version-info">
+    v{{version}}
+  </div>
   <script>
     function toggleDetailsDropdown(element) {
       const errorDetailsWrapper = element.querySelector('.error-details-wrapper');

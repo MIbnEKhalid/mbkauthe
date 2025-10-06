@@ -28,12 +28,12 @@ Ensure your `user_github` table exists with these columns:
 ```sql
 CREATE TABLE user_github (
     id SERIAL PRIMARY KEY,
-    user_name VARCHAR(255) REFERENCES "Users"("UserName"),
-    github_id VARCHAR(255) UNIQUE NOT NULL,
+    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
+    github_id VARCHAR(255) UNIQUE,
     github_username VARCHAR(255),
-    access_token TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    access_token VARCHAR(255),
+    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
+    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -149,18 +149,32 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
   - `AllowedApps`(JSONB): 
 
 - **Schema:**
-  ```sql
-  CREATE TABLE "Users" (
-      id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-      "UserName" TEXT NOT NULL,
-      "Password" TEXT NOT NULL,
-      "Role" TEXT CHECK("Role" IN ('SuperAdmin', 'NormalUser', 'Guest')) NOT NULL DEFAULT 'NormalUser'::text,
-      "Active" BOOLEAN NOT NULL DEFAULT true,
-      "HaveMailAccount" BOOLEAN NOT NULL DEFAULT false,
-      "SessionId" TEXT,
-      "AllowedApps" JSONB DEFAULT '["mbkauthe"]'::jsonb
-  );
-  ```
+```sql
+CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
+
+CREATE TABLE "Users" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    "UserName" VARCHAR(50) NOT NULL UNIQUE,
+    "Password" VARCHAR(61) NOT NULL, -- For bcrypt hash
+    "Role" role DEFAULT 'NormalUser' NOT NULL,
+    "Active" BOOLEAN DEFAULT FALSE,
+    "HaveMailAccount" BOOLEAN DEFAULT FALSE,
+    "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
+    "SessionId" VARCHAR(213),
+    "IsOnline" BOOLEAN DEFAULT FALSE,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "last_login" TIMESTAMP WITH TIME ZONE
+);
+
+-- Add indexes for Users table
+CREATE INDEX IF NOT EXISTS idx_users_session_id ON "Users" ("SessionId")
+CREATE INDEX idx_users_username ON "Users" USING BTREE ("UserName");
+CREATE INDEX idx_users_role ON "Users" USING BTREE ("Role");
+CREATE INDEX idx_users_active ON "Users" USING BTREE ("Active");
+CREATE INDEX idx_users_isonline ON "Users" USING BTREE ("IsOnline");
+CREATE INDEX idx_users_last_login ON "Users" USING BTREE (last_login);
+```
 
 ### Session Table
 
@@ -171,13 +185,20 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
   - `expire` (TIMESTAMP): Expiration timestamp for the session.
 
 - **Schema:**
-  ```sql
-  CREATE TABLE session (
-          sid VARCHAR PRIMARY KEY,
-          sess JSON NOT NULL,
-          expire TIMESTAMP NOT NULL
-  );
-  ```
+```sql
+CREATE TABLE "session" (
+    sid VARCHAR(33) PRIMARY KEY NOT NULL,
+    sess JSONB NOT NULL,
+    expire TimeStamp WITH TIME ZONE Not Null,
+    "UserName" VARCHAR(50) REFERENCES "Users"("UserName"),
+    last_activity TimeStamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add indexes for session table
+CREATE INDEX idx_session_expire ON "session" USING BTREE (expire);
+CREATE INDEX idx_session_username ON "session" USING BTREE ("UserName");
+CREATE INDEX idx_session_last_activity ON "session" USING BTREE (last_activity);
+```
 
 ### Two-Factor Authentication Table
 
@@ -188,13 +209,15 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
   - `TwoFASecret` (TEXT): The secret key used for two-factor authentication.
 
 - **Schema:**
-  ```sql
-  CREATE TABLE "TwoFA" (
-          "UserName" TEXT NOT NULL PRIMARY KEY,
-          "TwoFAStatus" TEXT NOT NULL DEFAULT false,
-          "TwoFASecret" TEXT NOT NULL
-  );
-  ```
+```sql
+CREATE TABLE "TwoFA" (
+    "UserName" VARCHAR(50) primary key REFERENCES "Users"("UserName"),
+    "TwoFAStatus" boolean NOT NULL,
+    "TwoFASecret" TEXT
+    );
+
+CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" ("UserName")
+```
 
 ### Query to Add a User
 

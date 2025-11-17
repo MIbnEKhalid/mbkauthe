@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -25,6 +25,9 @@
     "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"
   },
   "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cheerio": "^1.0.0",

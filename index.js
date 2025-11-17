@@ -34,10 +34,21 @@ if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
 }
 
 const app = express();
-if (process.env.test === "true") {
-    console.log("[mbkauthe] Test mode is enabled. Starting server in test mode.");
+if (process.env.test === "dev") {
+    console.log("[mbkauthe] Dev mode is enabled. Starting server in dev mode.");
     const port = 5555;
     app.use(router);
+    app.use((req, res) => {
+        console.log(`Path not found: ${req.method} ${req.url}`);
+        return res.status(404).render("Error/dError.handlebars", {
+            layout: false,
+            code: 404,
+            error: "Not Found",
+            message: "The requested page was not found.",
+            pagename: "Home",
+            page: "/mbkauthe/login",
+        });
+    });
     app.listen(port, () => {
         console.log(`[mbkauthe] Server running on http://localhost:${port}`);
     });

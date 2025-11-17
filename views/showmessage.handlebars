@@ -2,9 +2,8 @@
     <div class="showmessageWindow">
         <h1></h1>
         <p></p>
-        <a href="" target="_blank" class="error-code"></a>
-        <button class="btn btn-save full" style="font-size: 20px; margin-top: 10px;"
-            onclick="hideMessage()">Okay</button>
+        <!--a href="" target="_blank" class="error-code"></a-->
+        <button class="btn btn-save full" onclick="hideMessage()">Okay</button>
     </div>
 </div>
 <script>
@@ -12,13 +11,17 @@
     function showMessage(message, heading, errorCode) {
         document.querySelector(".showmessageWindow h1").innerText = heading;
         document.querySelector(".showmessageWindow p").innerHTML = message;
+
+        /* Disable for now
         if (errorCode) {
             document.querySelector(".showmessageWindow .error-code").style.display = "block";
             document.querySelector(".showmessageWindow .error-code").innerText = `Error Code: ${errorCode}`;
         } else {
             document.querySelector(".showmessageWindow .error-code").style.display = "none";
         }
+        
         document.querySelector(".showmessageWindow .error-code").href = `https://mbktechstudio.com/ErrorCode/#${errorCode}`;
+       */
         document
             .querySelector(".showMessageblurWindow")
             .classList
@@ -47,20 +50,21 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.7);
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 10000;
         backdrop-filter: blur(10px);
     }
 
     .showMessageblurWindow.active {
         display: flex;
+        animation: fadeIn 0.3s ease-in-out;
     }
 
     .showMessageblurWindow.fade-out {
-        animation: fadeOut 0.5s ease-in-out forwards;
+        animation: fadeOut 0.3s ease-in-out forwards;
     }
 
     body.blur-active {
@@ -72,99 +76,130 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-family: 'Roboto', sans-serif;
-        background: rgba(0, 0, 0, 0.6);
-        padding: 20px 30px;
-        border-radius: 15px;
+        background: rgba(10, 20, 20, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 2rem 2.5rem;
+        border-radius: 8px;
         max-width: 90%;
         width: 600px;
         position: relative;
-        color: #fff;
-        border: 2px solid #007bff;
-        animation: fadeIn 0.5s ease-in-out;
+        color: #e0f7fa;
+        border: 1px solid rgba(0, 184, 148, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        animation: slideIn 0.3s ease-out;
     }
 
     .showmessageWindow h1 {
-        font-family: 'Roboto', sans-serif;
         margin-top: 0;
-        font-size: 30px;
+        font-size: 1.8rem;
         text-align: center;
-        color: #fff;
-        text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        margin-bottom: 10px;
+        color: #eaf6fb;
+        margin-bottom: 1rem;
+        font-weight: 700;
     }
 
     .showmessageWindow p {
-        font-family: 'Roboto', sans-serif;
-        font-size: 18px;
+        font-size: 1.1rem;
         text-align: center;
-        color: #ddd;
+        color: #b2dfdb;
+        margin-bottom: 1rem;
+        line-height: 1.6;
     }
 
-    .showmessageWindow .close-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: none;
-        border: none;
-        font-size: 30px;
+    .showmessageWindow .error-code {
+        font-size: 0.95rem;
+        text-align: center;
+        color: #ffd166;
+        font-weight: 600;
+        margin: 0.75rem auto;
+        padding: 0.5rem 1rem;
+        background: rgba(255, 209, 102, 0.1);
+        border: 1px solid #ffd166;
+        border-radius: 8px;
+        display: inline-block;
+        transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
+        text-decoration: none;
+    }
+
+    .showmessageWindow .error-code:hover {
+        background: rgba(255, 209, 102, 0.2);
+        color: #ffd166;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(255, 209, 102, 0.2);
+    }
+
+    .showmessageWindow .btn-save {
+        width: 100%;
+        padding: 8px;
+        border-radius: 8px;
+        background: #00b894;
+        color: #101c1c;
+        font-weight: 700;
+        font-size: 1.2rem;
+        border: .1rem solid #00b894;
         cursor: pointer;
-        color: #bbb;
-        transition: color 0.3s;
+        transition: all 0.4s cubic-bezier(.4, 0, .2, 1);
+        box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
     }
 
-    .showmessageWindow .close-btn:hover {
-        color: #fff;
+    .showmessageWindow .btn-save:hover {
+        background: #101c1c;
+        color: #00b894;
+        box-shadow: 0 6px 20px rgba(0, 184, 148, 0.3);
     }
+
 
     @keyframes fadeIn {
         from {
             opacity: 0;
-            transform: scale(0.9);
         }
-
         to {
             opacity: 1;
-            transform: scale(1);
         }
-    }
-
-    .showmessageWindow .error-code {
-        font-family: 'Roboto', sans-serif;
-        font-size: 16px;
-        text-align: center;
-        color: #ff4d4d;
-        font-weight: 700;
-        margin: 10px auto;
-        padding: 5px 10px;
-        background: rgba(255, 77, 77, 0.1);
-        border: 1px solid #ff4d4d;
-        border-radius: 5px;
-        display: inline-block;
-        transition: all 0.3s ease-in;
-    }
-
-    .showmessageWindow .error-code:hover {
-        background: rgba(255, 77, 77, 0.2);
-        color: #007bff;
-        text-decoration: none;
-        transition: all 0.3s ease-out;
-    }
-
-
-    .showmessageWindow .btn-save {
-        width: 100%;
     }
 
     @keyframes fadeOut {
         from {
             opacity: 1;
-            transform: scale(1);
         }
-
         to {
             opacity: 0;
-            transform: scale(0.9);
+        }
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .showmessageWindow {
+            padding: 1.5rem 2rem;
+            width: 90%;
+        }
+
+        .showmessageWindow h1 {
+            font-size: 1.5rem;
+        }
+
+        .showmessageWindow p {
+            font-size: 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .showmessageWindow {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .showmessageWindow h1 {
+            font-size: 1.3rem;
         }
     }
 </style>

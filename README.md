@@ -1,258 +1,320 @@
-# mbkauthe
+# MBKAuthe - Authentication System for Node.js
 
-[![Publish to npm](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml) [![CodeQL Advanced](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml)
+[![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
+[![License](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Publish to npm](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
+[![CodeQL Advanced](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml)
 
-## Table of Contents
+**MBKAuth** is a reusable, production-ready authentication system for Node.js applications built by MBKTechStudio. It provides secure session management, two-factor authentication (2FA), role-based access control, and multi-application support out of the box.
 
-- [mbkauthe](#mbkauthe)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Implementation in a Project](#implementation-in-a-project)
-    - [Basic Setup](#basic-setup)
-  - [Middleware Function Documentation](#middleware-function-documentation)
-    - [validateSession(session)](#validatesessionsession)
-    - [checkRolePermission(userRole, requiredRoles)](#checkrolepermissionuserrole-requiredroles)
-    - [validateSessionAndRole(session, userRole, requiredRoles)]
-  - [API Endpoints](#api-endpoints)
-    - [Login](#login)
-    - [Logout](#logout)
-    - [Terminate All Sessions](#terminate-all-sessions)
-    - [Package Information](#package-information)
-    - [Version Information](#version-information)
-    - [Package Lock Information](#package-lock-information)
-  - [Database Structure](#database-structure)
-  - [License](#license)
-  - [Contact \& Support](#contact--support)
+## ✨ Features
 
-`mbkAuthe` is a reusable authentication system for Node.js applications, designed to simplify session management, user authentication, and role-based access control. It integrates seamlessly with PostgreSQL and supports features like Two-Factor Authentication (2FA) and session restoration.
+- 🔐 **Secure Authentication** - Password hashing with bcrypt
+- 🔑 **Session Management** - PostgreSQL-backed session storage
+- 📱 **Two-Factor Authentication (2FA)** - Optional TOTP-based 2FA with speakeasy
+- 👥 **Role-Based Access Control** - SuperAdmin, NormalUser, and Guest roles
+- 🎯 **Multi-Application Support** - Control user access across multiple apps
+- 🛡️ **Security Features** - CSRF protection, rate limiting, secure cookies
+- 🌐 **Subdomain Session Sharing** - Sessions work across all subdomains
+- 🚀 **Easy Integration** - Drop-in authentication for Express.js apps
+- 📊 **Database-Driven** - PostgreSQL for user and session management
+- 🎨 **Customizable Views** - Handlebars templates for login/2FA pages
 
-## Features
-
-- **Session Management:** Simplifies session handling with secure session restoration and expiration mechanisms.
-- **User Authentication:** Provides robust authentication, including support for username/password and Two-Factor Authentication (2FA).
-- **Role-Based Access Control (RBAC):** Enables fine-grained access control by validating user roles and permissions.
-- **Integration with PostgreSQL:** Seamlessly integrates with PostgreSQL for user and session data storage.
-- **Middleware Functions:** Includes reusable middleware for session validation, role checking, and user authentication.
-- **API Endpoints:** Offers a set of RESTful APIs for login, logout, session termination, and package information retrieval.
-- **Environment Configuration:** Supports flexible configuration through .env files for deployment-specific settings.
-- **Demo Account:** Provides a demo account for hands-on exploration of the authentication system.
-- **Database Schema:** Predefined database structure for user, session, and 2FA data management.
-- **Extensibility:** Designed to be easily integrated into existing Node.js applications.
-- **Secure Cookies:** Ensures secure session handling with cookie expiration and domain-specific settings
-
-## Installation
-
-Install the package via npm:
+## 📦 Installation
 
 ```bash
 npm install mbkauthe
 ```
 
-## Usage
+## 🚀 Quick Start
 
-### Implementation in a Project
+### 1. Set Up Environment Variables
 
-For a practical example of how to use this package, check out the [ProjectImplementation branch](https://github.com/MIbnEKhalid/mbkauthe/tree/ProjectImplementation) of the repository. This branch demonstrates the integration of the package, including a login page, a protected page, and logout functionality.
+Create a `.env` file in your project root:
 
-You can explore the functionality of `mbkAuthe` using the following demo account on [mbkauthe.mbktechstudio.com](https://mbkauthe.mbktechstudio.com):
+```env
+# Application Configuration
+APP_NAME=your-app-name
+SESSION_SECRET_KEY=your-secure-random-secret-key
+IS_DEPLOYED=false
+DOMAIN=localhost
 
-- **Username**: `demo`
-- **Password**: `demo`
+# Database Configuration
+LOGIN_DB=postgresql://username:password@localhost:5432/database_name
 
-This demo provides a hands-on experience with the authentication system, including login, session management, and other features.
+# Optional Features
+MBKAUTH_TWO_FA_ENABLE=false
+COOKIE_EXPIRE_TIME=2
+```
 
-### Basic Setup
-1. Import and configure the router in your Express application:
+For detailed environment configuration, see [Environment Configuration Guide](env.md).
+
+### 2. Set Up Database
+
+Create the required tables in your PostgreSQL database. See [Database Structure Documentation](docs/db.md) for complete schemas.
+
+```sql
+-- Users table
+CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
+
+CREATE TABLE "Users" (
+    id SERIAL PRIMARY KEY,
+    "UserName" VARCHAR(50) NOT NULL UNIQUE,
+    "Password" VARCHAR(61) NOT NULL,
+    "Role" role DEFAULT 'NormalUser' NOT NULL,
+    "Active" BOOLEAN DEFAULT FALSE,
+    "AllowedApps" JSONB DEFAULT '["mbkauthe"]',
+    "SessionId" VARCHAR(213),
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Session table (created automatically by connect-pg-simple)
+-- TwoFA table (optional, if 2FA is enabled)
+```
+
+### 3. Integrate with Your Express App
+
 ```javascript
-import express from "express";
-import mbkAuthRouter from "mbkauthe";
+import express from 'express';
+import mbkauthe from 'mbkauthe';
+import { validateSession, checkRolePermission } from 'mbkauthe';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Set mbkauthe configuration
+process.env.mbkautheVar = JSON.stringify({
+    APP_NAME: process.env.APP_NAME,
+    SESSION_SECRET_KEY: process.env.SESSION_SECRET_KEY,
+    IS_DEPLOYED: process.env.IS_DEPLOYED,
+    DOMAIN: process.env.DOMAIN,
+    LOGIN_DB: process.env.LOGIN_DB,
+    MBKAUTH_TWO_FA_ENABLE: process.env.MBKAUTH_TWO_FA_ENABLE,
+    COOKIE_EXPIRE_TIME: process.env.COOKIE_EXPIRE_TIME || 2,
+    loginRedirectURL: '/dashboard' // Redirect after successful login
+});
 
 const app = express();
 
-app.use(mbkAuthRouter);
+// Mount MBKAuth routes
+app.use(mbkauthe);
+
+// Protected route example
+app.get('/dashboard', validateSession, (req, res) => {
+    res.send(`Welcome ${req.session.user.username}!`);
+});
+
+// Role-based route protection
+app.get('/admin', validateSession, checkRolePermission(['SuperAdmin']), (req, res) => {
+    res.send('Admin panel');
+});
 
 app.listen(3000, () => {
-  console.log("[mbkauthe] Server is running on port 3000");
+    console.log('Server running on http://localhost:3000');
 });
 ```
-2. Ensure your `.env` file is properly configured. Refer to the [Configuration Guide(env.md)](env.md) for details.
 
-Example `.env` file:
-```code
-mbkautheVar='{
-    "APP_NAME": "MBKAUTH",
-    "SESSION_SECRET_KEY": "your-session-secret-key",
-    "IS_DEPLOYED": "true",
-    "LOGIN_DB": "postgres://username:password@host:port/database",
-    "MBKAUTH_TWO_FA_ENABLE": "false",
-    "COOKIE_EXPIRE_TIME": 2,
-    "DOMAIN": "yourdomain.com",
-    "loginRedirectURL": "/admin"
-}'
-```
+## 🔧 API Reference
 
-## Middleware Function Documentation
+### Middleware Functions
 
-### `validateSession(session)`
-Validates the user's session to ensure it is active and not expired.
+#### `validateSession`
+Validates that a user has an active session. Redirects to login if not authenticated.
 
-- **Parameters:**
-  - `session` (Object): The session object to validate.
-
-- **Returns:**
-  - `boolean`: Returns `true` if the session is valid, otherwise `false`.
-
-Usage
-```
-// Require vaild session or to be login to access this page
-router.get(["/home"], validateSession, (req, res) => {
-  // Restricted Code
+```javascript
+app.get('/protected', validateSession, (req, res) => {
+    // User is authenticated
+    console.log(req.session.user); // { id, username, role, sessionId }
 });
 ```
+
+#### `checkRolePermission(allowedRoles)`
+Checks if the authenticated user has one of the allowed roles.
+
+```javascript
+app.get('/admin', validateSession, checkRolePermission(['SuperAdmin']), (req, res) => {
+    // Only SuperAdmin can access
+});
+```
+
+#### `validateSessionAndRole(allowedRoles)`
+Combined middleware for session validation and role checking.
+
+```javascript
+app.get('/moderator', validateSessionAndRole(['SuperAdmin', 'NormalUser']), (req, res) => {
+    // SuperAdmin or NormalUser can access
+});
+```
+
+#### `authenticate(token)`
+API authentication middleware using a secret token.
+
+```javascript
+app.post('/api/data', authenticate(process.env.API_TOKEN), (req, res) => {
+    // Authenticated API request
+});
+```
+
+### Routes Provided
+
+MBKAuth automatically adds these routes to your app:
+
+- `GET /mbkauthe/login` - Login page
+- `POST /mbkauthe/api/login` - Login endpoint
+- `POST /mbkauthe/api/logout` - Logout endpoint
+- `GET /mbkauthe/2fa` - Two-factor authentication page (if enabled)
+- `POST /mbkauthe/api/verify-2fa` - 2FA verification endpoint
+- `GET /mbkauthe/info` - MBKAuth version and configuration info
+- `POST /mbkauthe/api/terminateAllSessions` - Terminate all active sessions (authenticated)
+
+## 🔐 Security Features
+
+### Rate Limiting
+- **Login attempts**: 8 attempts per minute
+- **Logout attempts**: 10 attempts per minute
+- **2FA attempts**: 5 attempts per minute
+
+### CSRF Protection
+All POST routes are protected with CSRF tokens. CSRF tokens are automatically included in rendered forms.
+
+### Password Hashing
+Passwords are hashed using bcrypt with a secure salt. Set `EncryptedPassword: "true"` in `mbkautheVar` to enable.
+
+### Secure Cookies
+- `httpOnly` flag prevents XSS attacks
+- `sameSite: 'lax'` prevents CSRF attacks
+- `secure` flag in production ensures HTTPS-only cookies
+- Configurable expiration time
+
+### Session Management
+- PostgreSQL-backed persistent sessions
+- Automatic session cleanup
+- Session restoration from cookies
+- Cross-subdomain session sharing (when deployed)
+
+## 📱 Two-Factor Authentication
+
+Enable 2FA by setting `MBKAUTH_TWO_FA_ENABLE=true` in your environment:
+
+1. User logs in with username/password
+2. If 2FA is enabled for the user, they're prompted for a 6-digit code
+3. Code is verified using TOTP (Time-based One-Time Password)
+4. Session is established after successful 2FA
+
+### Database Setup for 2FA
+
+```sql
+CREATE TABLE "TwoFA" (
+    "UserName" VARCHAR(50) PRIMARY KEY REFERENCES "Users"("UserName"),
+    "TwoFAStatus" BOOLEAN NOT NULL,
+    "TwoFASecret" TEXT
+);
+```
+
+## 🎨 Customization
+
+### Custom Login Redirect
+Set `loginRedirectURL` in `mbkautheVar`:
+
+```javascript
+process.env.mbkautheVar = JSON.stringify({
+    // ... other config
+    loginRedirectURL: '/dashboard' // Redirect after login
+});
+```
+
+### Custom Views
+Override default views by creating files in your project's `views` directory:
+- `views/loginmbkauthe.handlebars` - Login page
+- `views/2fa.handlebars` - 2FA page
+- `views/Error/dError.handlebars` - Error page
+
+### Database Pool Access
+Access the database pool for custom queries:
+
+```javascript
+import { dblogin } from 'mbkauthe';
+
+const result = await dblogin.query('SELECT * FROM "Users" WHERE "UserName" = $1', [username]);
+```
+
+## 🚢 Deployment
+
+### Vercel Deployment
+
+Add `vercel.json`:
+
+```json
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "index.js",
+            "use": "@vercel/node"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/index.js"
+        }
+    ]
+}
+```
+
+### Production Checklist
+
+- [ ] Set `IS_DEPLOYED=true`
+- [ ] Use a strong `SESSION_SECRET_KEY`
+- [ ] Enable HTTPS
+- [ ] Set correct `DOMAIN`
+- [ ] Enable 2FA for sensitive applications
+- [ ] Use environment variables for secrets
+- [ ] Set appropriate `COOKIE_EXPIRE_TIME`
+- [ ] Configure PostgreSQL with proper security
+- [ ] Enable password hashing with bcrypt
+
+## 📚 Documentation
+
+- [API Documentation](docs/api.md) - Complete API reference and examples
+- [Environment Configuration Guide](env.md) - Environment variables and setup
+- [Database Structure](docs/db.md) - Database schemas and tables
+
+## 🔄 Version Check
+
+MBKAuth automatically checks for updates on startup and warns if a newer version is available. Keep your package updated for security patches.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the Mozilla Public License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+**Muhammad Bin Khalid**  
+Email: [support@mbktechstudio.com](support@mbktechstudio.com) or [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)
+GitHub: [@MIbnEKhalid](https://github.com/MIbnEKhalid)
+
+## 🐛 Issues & Support
+
+Found a bug or need help? Please [open an issue](https://github.com/MIbnEKhalid/mbkauthe/issues) on GitHub.
+
+## 🔗 Links
+
+- [npm Package](https://www.npmjs.com/package/mbkauthe)
+- [GitHub Repository](https://github.com/MIbnEKhalid/mbkauthe)
+- [MBKTechStudio](https://mbktechstudio.com)
 
 ---
 
-### `checkRolePermission(userRole, requiredRoles)`
-Checks if the user has the required role permissions.
-
-- **Parameters:**
-  - `userRole` (string): The role of the user.
-  - `requiredRoles`(optional) (string[]): An array of roles that are allowed access.
-
-- **Returns:**
-  - `boolean`: Returns `true` if the user has the required permissions, otherwise `false`.
-
-Usage
-```
-// Require vaild session or to be login to access this page
-router.get(["/admin"], validateSession, checkRolePermission("SuperAdmin"), (req, res) => {
-  // Restricted Code
-});
-```
----
-
-### `validateSessionAndRole(session, userRole, requiredRoles)`
-Validates both the session and the user's role permissions.
-
-- **Parameters:**
-  - `session` (Object): The session object to validate.
-  - `userRole` (string): The role of the user.
-  - `requiredRoles` (optional) (string[]): An array of roles that are allowed access.
-
-- **Returns:**
-  - `boolean`: Returns `true` if both the session and role permissions are valid, otherwise `false`.
-
-Usage
-```
-// Require vaild session or to be login to access this page
-router.get(["/admin"], validateSessionAndRole("SuperAdmin"), (req, res) => {
-  // Restricted Code
-});
-```
----
-
-### `authenticate(session)`
-Authenticates the user by validating the session and retrieving user data.
-
-- **Parameters:**
-  - `session` (Object): The session object to authenticate.
-
-- **Returns:**
-  - `Object|null`: Returns the authenticated user data if successful, otherwise `null`.
-
-Usage
-```
-// Require vaild session or to be login to access this page
-router.post(["/terminateAllSessions"], authenticate(mbkautheVar.Password), (req, res) => {
-  // Restricted Code
-});
-```
-
-
-
-## API Endpoints
-
-### Login
-
-**POST** `/mbkauth/api/login`
-- Request Body:
-  - `username`: User's username.
-  - `password`: User's password.
-  - `token`: (Optional) 2FA token.
-
-- Response:
-  - `200`: Login successful.
-  - `400`: Missing or invalid input.
-  - `401`: Unauthorized (e.g., invalid credentials or 2FA token).
-  - `500`: Internal server error.
-
-### Logout
-
-**POST** `/mbkauth/api/logout`
-- Response:
-  - `200`: Login successful.
-  - `400`: User not logged in.
-  - `500`: Internal server error.
-
-### Terminate All Sessions
-
-**POST** `/mbkauth/api/terminateAllSessions`
-- Authentication: Requires a valid `Main_SECRET_TOKEN` in the `Authorization` header.
-- Response:
-  - `200`: All sessions terminated successfully.
-  - `500`: Internal server error.
-
-### Package Information
-
-**GET** `/mbkauthe/package`
-
-- **Description**: Retrieves the `package.json` file of the `mbkauthe` package, which contains metadata about the package, such as its name, version, dependencies, and more.
-- **Response**:
-  - `200`: Successfully retrieved the `package.json` file.
-    - **Body**: JSON object containing the contents of the `package.json` file.
-  - `500`: Internal server error.
-
-
-### Version Information
-
-**GET** `/mbkauthe/version` or `/mbkauthe/v`
-
-- **Description**: Retrieves the current version of the `mbkauthe` package from the `package.json` file.
-- **Response**:
-  - `200`: Successfully retrieved the version information.
-    - **Body**: JSON object containing the version, e.g., `{ "version": "1.0.0" }`.
-  - `500`: Internal server error.
-
-
-### Package Lock Information
-
-**GET** `/mbkauthe/package-lock`
-
-- **Description**: Retrieves the `package-lock.json` file from the project where the `mbkauthe` package is installed. Filters and returns only the dependency information related to `mbkauthe`, including resolved versions and integrity hashes.
-- **Response**:
-  - `200`: Successfully retrieved the filtered `package-lock.json` data for `mbkauthe`.
-    - **Body**: JSON object containing the filtered dependency information for `mbkauthe`.
-  - `500`: Internal server error.
-
-## Database Structure
-
-This project utilizes three primary tables:
-
-1. **User**: Stores the main user information.
-2. **sess**: Contains session-related data for users.
-3. **TwoFA**: Saves the Two-Factor Authentication (2FA) secrets for users.
-
-For detailed information about table columns, schema, and queries to create these tables, refer to the [Database Guide (docs/db.md)](docs/db.md).
-
-## License
-This project is licensed under the `Mozilla Public License 2.0`. See the [LICENSE](./LICENSE) file for details.
-
-
-
-## Contact & Support
-
-For questions or contributions, please contact Muhammad Bin Khalid at [mbktechstudio.com/Support](https://mbktechstudio.com/Support/), [support@mbktechstudio.com](mailto:support@mbktechstudio.com) or [chmuhammadbinkhalid28.com](mailto:chmuhammadbinkhalid28.com). 
-
-**Developed by [Muhammad Bin Khalid](https://github.com/MIbnEKhalid)**
+Made with ❤️ by [MBKTechStudio](https://mbktechstudio.com)

@@ -1,4 +1,4 @@
-name: Publish to npm
+name: Publish to npm and GitHub Packages
 on:
   push:
     branches:
@@ -41,12 +41,15 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Modify package.json for GitHub Packages
+        run: |
+          node -e "const pkg = require('./package.json'); pkg.name = '@mibnekhalid/mbkauthe'; pkg.publishConfig = { registry: 'https://npm.pkg.github.com' }; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
       - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v3
         with:
           node-version: '18'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@MIbnEKhalid'
 
       - name: Publish to GitHub Packages
         run: npm publish

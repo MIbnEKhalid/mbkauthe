@@ -836,6 +836,6 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated:** November 17, 2025  
-**Version:** 1.4.1
+**Version:** 1.4.2
 
 [← Back to README](../README.md)

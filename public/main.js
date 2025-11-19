@@ -5,9 +5,7 @@ async function logout() {
   }
 
   try {
-    // Clear all caches before logging out (except rememberedUsername)
-    await nuclearCacheClear();
-
+    // First, logout from server
     const response = await fetch("/mbkauthe/api/logout", {
       method: "POST",
       headers: {
@@ -20,15 +18,15 @@ async function logout() {
     const result = await response.json();
 
     if (response.ok) {
-      alert(result.message);
-      // Force a full page reload with cache bypass
-      window.location.href = window.location.origin;
+      // Then clear all caches after successful logout (except rememberedUsername)
+      await nuclearCacheClear();
+      // nuclearCacheClear already redirects, so no need for additional redirect
     } else {
       alert(result.message);
     }
   } catch (error) {
     console.error("Error during logout:", error);
-    alert("Logout failed");
+    alert(`Logout failed: ${error.message}`);
   }
 }
 

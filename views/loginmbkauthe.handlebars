@@ -5,13 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="Log in to portal.mbktechstudio.com to access your resources and manage projects securely.">
+        content="Log in to portal.mbktech.org to access your resources and manage projects securely.">
     <meta name="keywords" content="MBK Tech Studio, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
     <meta property="og:title" content="Login | MBK Tech Studio" />
-    <meta property="og:image" content="https://www.mbktechstudio.com/Assets/Images/Icon/logo.png" />
+    <meta property="og:image" content="https://mbktech.org/Assets/Images/Icon/logo.png" />
     <meta property="og:url" content="/mbkauthe/login">
     <title>Login | MBK Tech Studio Portal</title>
-    <link rel="icon" type="image/x-icon" href="https://mbktechstudio.com/Assets/Images/Icon/dgicon.svg">
+    <link rel="icon" type="image/x-icon" href="https://mbktech.org/Assets/Images/Icon/dgicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {{> sharedStyles}}
 </head>
@@ -28,7 +28,7 @@
                         </path>
                     </g>
                 </svg>
-                <span class="logo-text">{{appName}} <span class="logo-comp">MBKTECHStudio</span></span>
+                <span class="logo-text">{{appName}} <span class="logo-comp">mbktech</span></span>
             </a>
         </div>
     </header>
@@ -68,17 +68,16 @@
                 <button type="submit" class="btn-login" id="loginButton">
                     <span id="loginButtonText">Login</span>
                 </button>
-                {{#if githubLoginEnabled }}
                 <div class="social-login">
                     <div class="divider">
                         <span>or</span>
                     </div>
-                    <a href="/mbkauthe/api/github/login" class="btn-github">
+                    <!-- Use JS to initiate GitHub login and pass redirect param to backend -->
+                    <a type="button" id="githubLoginBtn" class="btn-github">
                         <i class="fab fa-github"></i>
                         <span>Continue with GitHub</span>
                     </a>
                 </div>
-                {{/if }}
 
                 <div class="remember-me">
                     <input type="checkbox" id="rememberMe" name="rememberMe">
@@ -94,16 +93,16 @@
                 {{/if }}
 
                 <div class="login-links">
-                    <a href="https://portal.mbktechstudio.com/forgot-password" class="login-link">Forgot Password?</a>
-                    <a href="https://www.mbktechstudio.com/Support" target="_blank" class="login-link">Need Help?</a>
+                    <a href="https://portal.mbktech.org/forgot-password" class="login-link">Forgot Password?</a>
+                    <a href="https://mbktech.org/Support" target="_blank" class="login-link">Need Help?</a>
                 </div>
 
                 <p class="terms-info">
                     By logging in, you agree to our
-                    <a href="https://portal.mbktechstudio.com/info/Terms&Conditions" target="_blank"
+                    <a href="https://portal.mbktech.org/info/Terms&Conditions" target="_blank"
                         class="terms-link">Terms & Conditions</a>
                     and
-                    <a href="https://portal.mbktechstudio.com/info/PrivacyPolicy" target="_blank"
+                    <a href="https://portal.mbktech.org/info/PrivacyPolicy" target="_blank"
                         class="terms-link">Privacy Policy</a>.
                 </p>
             </form>
@@ -128,13 +127,13 @@
         });
 
         function fpass() {
-            showMessage(`If you have forgotten your password, please contact support at <a href="https://www.mbktechstudio.com/Support" target="_blank">https://www.mbktechstudio.com/Support</a> to reset it.`, `Forgot Password`);
+            showMessage(`If you have forgotten your password, please contact support at <a href="https://mbktech.org/Support" target="_blank">https://mbktech.org/Support</a> to reset it.`, `Forgot Password`);
         }
 
         // Info dialogs
         function usernameinfo() {
-            showMessage(`Your username is the part of your MBK Tech Studio email before the @ (e.g., abc.xyz@mbktechstudio.com
- → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktechstudio.com/Support">Support</a>.`, `What is my username?`);
+            showMessage(`Your username is the part of your MBK Tech Studio email before the @ (e.g., abc.xyz@mbktech.org
+ → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support">Support</a>.`, `What is my username?`);
         }
 
         function tokeninfo() {
@@ -272,6 +271,45 @@
                 document.getElementById('loginPassword').focus();
             }
         });
+
+        // GitHub login: Attempt to POST redirect to backend, fallback to direct navigation
+        async function startGithubLogin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirect = urlParams.get('redirect') || '{{customURL}}';
+
+            try {
+                // Try POSTing to the backend so it can establish any session state
+                const resp = await fetch('/mbkauthe/api/github/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ redirect })
+                });
+
+                // If backend responds with a JSON containing redirectUrl, navigate there
+                if (resp.ok) {
+                    // If server redirected directly (resp.redirected), follow the final URL
+                    if (resp.redirected) {
+                        window.location.href = resp.url;
+                        return;
+                    }
+                    const data = await resp.json().catch(() => null);
+                    if (data && data.redirectUrl) {
+                        window.location.href = data.redirectUrl;
+                        return;
+                    }
+                }
+            } catch (error) {
+                // swallow and fallback to direct navigation
+                console.warn('[mbkauthe] GitHub login POST failed, falling back to direct redirect', error);
+            }
+
+            // Fallback: navigate to the backend GET endpoint with redirect query
+            window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
+        }
+
+        const githubBtn = document.getElementById('githubLoginBtn');
+        if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
     </script>
 </body>
 

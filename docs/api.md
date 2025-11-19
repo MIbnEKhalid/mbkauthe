@@ -328,9 +328,76 @@ Displays MBKAuthe version information and configuration.
 
 #### `GET /mbkauthe/main.js`
 
-Serves the client-side JavaScript file.
+Serves the client-side JavaScript file containing helper functions for authentication operations.
+
+**Purpose:** Provides frontend JavaScript utilities including:
+- `logout()` - Logout function with confirmation dialog and cache clearing
+- `logoutuser()` - Alias for logout function
+- `nuclearCacheClear()` - Comprehensive cache and storage clearing (preserves rememberedUsername)
+- `getCookieValue(cookieName)` - Cookie retrieval helper
+- `loadpage(url)` - Page navigation helper
+- `formatDate(date)` - Date formatting utility
+- `reloadPage()` - Page reload helper
+- `checkSession()` - Session validity checker
 
 **Response:** JavaScript file (Content-Type: application/javascript)
+
+**Usage:**
+```html
+<script src="/mbkauthe/main.js"></script>
+<button onclick="logout()">Logout</button>
+```
+
+**Main Functions:**
+
+**`logout()`**
+- Shows confirmation dialog before logout
+- Clears all caches except rememberedUsername
+- Calls `/mbkauthe/api/logout` endpoint
+- Redirects to home page on success
+
+**`nuclearCacheClear()`**
+- Clears service workers and cache storage
+- Clears localStorage and sessionStorage (preserves rememberedUsername)
+- Clears IndexedDB
+- Clears cookies
+- Forces page reload
+
+
+---
+
+#### `GET /mbkauthe/test`
+
+Test endpoint to verify authentication and display user session information.
+
+**Authentication:** Session required
+
+**Rate Limit:** 8 requests per minute
+
+**Response:** HTML page displaying:
+- Current username
+- User role
+- Logout button
+- Quick links to info and login pages
+
+**Example Response:**
+```html
+<head> 
+  <script src="/mbkauthe/main.js"></script> 
+</head>
+<p>if you are seeing this page than User is logged in.</p>
+<p>id: '${req.session.user.id}', UserName: '${req.session.user.username}', Role: '${req.session.user.role}', SessionId: '${req.session.user.sessionId}'</p>
+<button onclick="logout()">Logout</button><br>
+<a href="/mbkauthe/info">Info Page</a><br>
+<a href="/mbkauthe/login">Login Page</a><br>
+```
+
+**Usage:**
+```
+GET /mbkauthe/test
+```
+
+**Note:** This endpoint is primarily for testing and debugging authentication. It should not be used in production environments.
 
 ---
 
@@ -347,7 +414,7 @@ import { validateSession } from 'mbkauthe';
 app.get('/protected', validateSession, (req, res) => {
   // User is authenticated
   const user = req.session.user;
-  // user contains: { id, username, UserName, role, Role, sessionId, allowedApps }
+  // user contains: { id, username, UserName, role, Role, sessionId }
   res.send(`Welcome ${user.username}!`);
 });
 ```
@@ -369,7 +436,6 @@ req.session.user = {
   role: "NormalUser",       // User role
   Role: "NormalUser",       // User role (alias)
   sessionId: "abc123...",   // 64-char hex session ID
-  allowedApps: ["app1"]     // Array of allowed applications
 }
 ```
 

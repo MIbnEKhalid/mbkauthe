@@ -6,7 +6,7 @@
 [![Publish to npm](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
 [![CodeQL Advanced](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml)
 
-**MBKAuth** is a reusable, production-ready authentication system for Node.js applications built by MBKTechStudio. It provides secure session management, two-factor authentication (2FA), role-based access control, and multi-application support out of the box.
+**MBKAuth** is a reusable, production-ready authentication system for Node.js applications built by MBKTech.org. It provides secure session management, two-factor authentication (2FA), role-based access control, and multi-application support out of the box.
 
 ## ✨ Features
 
@@ -313,8 +313,8 @@ Found a bug or need help? Please [open an issue](https://github.com/MIbnEKhalid/
 
 - [npm Package](https://www.npmjs.com/package/mbkauthe)
 - [GitHub Repository](https://github.com/MIbnEKhalid/mbkauthe)
-- [MBKTechStudio](https://mbktechstudio.com)
+- [MBKTech.org](https://mbktech.org)
 
 ---
 
-Made with ❤️ by [MBKTechStudio](https://mbktechstudio.com)
+Made with ❤️ by [MBKTech.org](https://mbktech.org)

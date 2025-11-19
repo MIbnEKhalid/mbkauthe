@@ -1,11 +1,11 @@
 {
   "name": "mbkauthe",
-  "version": "1.4.2",
-  "description": "MBKTechStudio's reusable authentication system for Node.js applications.",
+  "version": "2.0.0",
+  "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "set test=dev&& nodemon index.js"
+    "dev": "cross-env test=dev nodemon index.js"
   },
   "repository": {
     "type": "git",
@@ -41,12 +41,15 @@
     "express-session": "^1.18.1",
     "marked": "^15.0.11",
     "node-fetch": "^3.3.2",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
     "path": "^0.12.7",
     "pg": "^8.14.1",
     "speakeasy": "^2.0.0",
     "url": "^0.11.4"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.11"
   }
 }

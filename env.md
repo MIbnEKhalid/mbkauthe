@@ -54,7 +54,7 @@ DOMAIN=localhost
 **Description:** Your application's domain name.
 
 **Configuration:**
-- **Production:** Set to your actual domain (e.g., `mbktechstudio.com`)
+- **Production:** Set to your actual domain (e.g., `mbktech.com`)
 - **Development:** Use `localhost` or set `IS_DEPLOYED=false`
 - **Subdomains:** When `IS_DEPLOYED=true`, sessions are shared across all subdomains
 

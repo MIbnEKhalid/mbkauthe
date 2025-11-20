@@ -138,6 +138,74 @@ COOKIE_EXPIRE_TIME=30  # 1 month (convenience)
 
 ---
 
+## 🐙 GitHub OAuth Authentication
+
+### GitHub Login Configuration
+```env
+GITHUB_LOGIN_ENABLED=false
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
+
+#### GITHUB_LOGIN_ENABLED
+**Description:** Enables or disables GitHub OAuth login functionality.
+
+**Values:**
+- `true` - Enable GitHub login (users can authenticate via GitHub)
+- `false` - Disable GitHub login (default)
+
+**Required:** Yes (if using GitHub authentication)
+
+#### GITHUB_CLIENT_ID
+**Description:** OAuth application client ID from GitHub.
+
+- **Purpose:** Identifies your application to GitHub's OAuth service
+- **Format:** Alphanumeric string provided by GitHub
+- **Setup:** Obtain from [GitHub Developer Settings](https://github.com/settings/developers)
+- **Required:** Yes (when `GITHUB_LOGIN_ENABLED=true`)
+
+**Example:** `GITHUB_CLIENT_ID=Iv1.a1b2c3d4e5f6g7h8`
+
+#### GITHUB_CLIENT_SECRET
+**Description:** OAuth application client secret from GitHub.
+
+- **Purpose:** Authenticates your application with GitHub's OAuth service
+- **Security:** Keep this secret secure and never commit to version control
+- **Format:** Alphanumeric string provided by GitHub
+- **Setup:** Generated when creating OAuth app in GitHub Developer Settings
+- **Required:** Yes (when `GITHUB_LOGIN_ENABLED=true`)
+
+**Example:** `GITHUB_CLIENT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0`
+
+### Setting Up GitHub OAuth
+
+1. **Create GitHub OAuth App:**
+   - Go to [GitHub Developer Settings](https://github.com/settings/developers)
+   - Click "New OAuth App"
+   - Fill in application details:
+     - **Application name:** Your app name
+     - **Homepage URL:** `https://yourdomain.com` (or `http://localhost:3000` for dev)
+     - **Authorization callback URL:** `https://yourdomain.com/auth/github/callback`
+   - Click "Register application"
+
+2. **Copy Credentials:**
+   - Copy the **Client ID**
+   - Generate and copy the **Client Secret**
+
+3. **Configure Environment:**
+   ```env
+   GITHUB_LOGIN_ENABLED=true
+   GITHUB_CLIENT_ID=your-copied-client-id
+   GITHUB_CLIENT_SECRET=your-copied-client-secret
+   ```
+
+**Security Notes:**
+- Use separate OAuth apps for development and production environments
+- Rotate client secrets periodically
+- Never expose client secrets in client-side code
+
+---
+
 ## 🚀 Quick Setup Examples
 
 ### Development Environment

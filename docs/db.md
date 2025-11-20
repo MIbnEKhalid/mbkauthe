@@ -12,8 +12,6 @@ Add these to your `.env` file:
 # GitHub OAuth App Configuration
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
-GITHUB_LOGIN_CALLBACK_URL=https://yourdomain.com/mbkauthe/api/github/login/callback
-BASE_URL=https://yourdomain.com
 ```
 
 ### 2. GitHub OAuth App Setup
@@ -109,10 +107,6 @@ The login page now includes:
 # Required for GitHub Login
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
-GITHUB_LOGIN_CALLBACK_URL=https://yourdomain.com/mbkauthe/api/github/login/callback
-
-# Optional (used as fallback)
-BASE_URL=https://yourdomain.com
 ```
 
 The GitHub login feature is now fully integrated into your mbkauthe system and ready to use!

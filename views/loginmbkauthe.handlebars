@@ -68,6 +68,7 @@
                 <button type="submit" class="btn-login" id="loginButton">
                     <span id="loginButtonText">Login</span>
                 </button>
+                {{#if githubLoginEnabled }}
                 <div class="social-login">
                     <div class="divider">
                         <span>or</span>
@@ -78,7 +79,7 @@
                         <span>Continue with GitHub</span>
                     </a>
                 </div>
-
+                {{/if }}
                 <div class="remember-me">
                     <input type="checkbox" id="rememberMe" name="rememberMe">
                     <label for="rememberMe">Remember me</label>
@@ -272,6 +273,8 @@
             }
         });
 
+        {{#if githubLoginEnabled }}
+
         // GitHub login: Attempt to POST redirect to backend, fallback to direct navigation
         async function startGithubLogin() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -310,6 +313,7 @@
 
         const githubBtn = document.getElementById('githubLoginBtn');
         if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
+        {{/if }}
     </script>
 </body>
 

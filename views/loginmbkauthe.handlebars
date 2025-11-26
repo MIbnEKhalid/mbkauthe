@@ -130,6 +130,8 @@
             loginButton.disabled = true;
             loginButtonText.textContent = 'Authenticating...';
 
+            // Pass redirect query param through to server so it can be used by 2FA flow
+            const pageRedirect = new URLSearchParams(window.location.search).get('redirect');
             fetch('/mbkauthe/api/login', {
                 method: 'POST',
                 headers: {
@@ -138,14 +140,17 @@
                 body: JSON.stringify({
                     username,
                     password
+                    , redirect: pageRedirect || null
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         if (data.twoFactorRequired) {
-                            // Redirect to 2FA page
-                            window.location.href = '/mbkauthe/2fa';
+                            // Redirect to 2FA page (= pass along redirect target)
+                            const redirectTarget = data.redirectUrl || pageRedirect;
+                            const redirectQuery = redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : '';
+                            window.location.href = `/mbkauthe/2fa${redirectQuery}`;
                         } else {
                             loginButtonText.textContent = 'Success! Redirecting...';
                             sessionStorage.setItem('sessionId', data.sessionId);

@@ -87,7 +87,7 @@
                 const data = await response.json();
                 if (data.success) {
                     loginButtonText.textContent = 'Success! Redirecting...';
-                    window.location.href = data.redirectUrl || '{{{ customURL }}}';
+                    window.location.href = data.redirectUrl || '{{ customURL }}';
                 } else {
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Verify';

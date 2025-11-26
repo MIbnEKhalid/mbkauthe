@@ -16,7 +16,7 @@ if (process.env.test === "dev") {
     app.use(router);
     app.use((req, res) => {
         console.log(`Path not found: ${req.method} ${req.url}`);
-        return res.status(404).render("Error/dError.handlebars", {
+        return renderError(res, {
             layout: false,
             code: 404,
             error: "Not Found",

@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -19,7 +19,7 @@
     "session",
     "security"
   ],
-  "author": "Muhammad Bin Khalid <support@mbktechstudio.com>",
+  "author": "Muhammad Bin Khalid <support@mbktech.org>",
   "license": "MPL-2.0",
   "bugs": {
     "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"

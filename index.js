@@ -2,36 +2,12 @@ import express from "express"; // Add this line
 import router from "./lib/main.js";
 import { getLatestVersion } from "./lib/main.js";
 import { engine } from "express-handlebars";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-
-dotenv.config();
+import { renderError, packageJson } from "./lib/config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-let mbkautheVar;
-
-try {
-    mbkautheVar = JSON.parse(process.env.mbkautheVar);
-} catch (error) {
-    throw new Error("Invalid JSON in process.env.mbkautheVar");
-}
-if (!mbkautheVar) {
-    throw new Error("mbkautheVar is not defined");
-}
-const requiredKeys = ["APP_NAME", "SESSION_SECRET_KEY", "IS_DEPLOYED", "LOGIN_DB", "MBKAUTH_TWO_FA_ENABLE", "DOMAIN"];
-requiredKeys.forEach(key => {
-    if (!mbkautheVar[key]) {
-        throw new Error(`mbkautheVar.${key} is required`);
-    }
-});
-if (mbkautheVar.COOKIE_EXPIRE_TIME !== undefined) {
-    const expireTime = parseFloat(mbkautheVar.COOKIE_EXPIRE_TIME);
-    if (isNaN(expireTime) || expireTime <= 0) {
-        throw new Error("mbkautheVar.COOKIE_EXPIRE_TIME must be a valid positive number");
-    }
-}
 
 const app = express();
 if (process.env.test === "dev") {
@@ -61,12 +37,18 @@ app.set("views", [
 
 app.engine("handlebars", engine({
     defaultLayout: false,
+    cache: true,
     partialsDir: [
         path.join(__dirname, "views"),
         path.join(__dirname, "node_modules/mbkauthe/views"),
         path.join(__dirname, "node_modules/mbkauthe/views/Error"),
     ],
     helpers: {
+        concat: function (...args) {
+            // Remove the handlebars options object from args
+            args.pop();
+            return args.join('');
+        },
         eq: function (a, b) {
             return a === b;
         },
@@ -92,14 +74,12 @@ app.engine("handlebars", engine({
 
 app.set("view engine", "handlebars");
 
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const packageJson = require("./package.json");
 const latestVersion = await getLatestVersion();
 if (latestVersion !== packageJson.version) {
     console.warn(`[mbkauthe] Warning: The current version (${packageJson.version}) is not the latest version (${latestVersion}). Please update mbkauthe.`);
 }
 
-export { validateSession, checkRolePermission, validateSessionAndRole, authenticate, authapi } from "./lib/validateSessionAndRole.js";
+export { validateSession, checkRolePermission, validateSessionAndRole, authenticate } from "./lib/validateSessionAndRole.js";
+export { renderError } from "./lib/config.js";
 export { dblogin } from "./lib/pool.js";
 export default router;

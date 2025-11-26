@@ -98,7 +98,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: url(/mbkauthe/bg.avif) center/cover no-repeat;
+            background: url(/mbkauthe/bg.webp) center/cover no-repeat;
             opacity: .1;
             z-index: 0;
         }
@@ -142,6 +142,15 @@
             border-radius: 2px;
         }
 
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-top: -1rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
         .form-group {
             position: relative;
             margin-bottom: 1.5rem;
@@ -163,6 +172,14 @@
             background: rgba(0, 0, 0, .4);
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.2);
+        }
+
+        .form-input[type="text"][name="token"] {
+            font-size: 1.5rem;
+            letter-spacing: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
         }
 
         .form-label {
@@ -430,6 +447,100 @@
 
         .remember-me label:hover {
             color: var(--light);
+        }
+
+        .trust-device-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(0, 184, 148, 0.05);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .trust-device-container:hover {
+            background: rgba(0, 184, 148, 0.08);
+            border-color: rgba(0, 184, 148, 0.3);
+        }
+
+        .trust-device-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            flex: 1;
+            gap: 12px;
+        }
+
+        .trust-device-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, .3);
+            border: 2px solid rgba(0, 184, 148, 0.4);
+            border-radius: 5px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .trust-device-checkbox:hover {
+            border-color: var(--accent);
+            background: rgba(0, 184, 148, 0.1);
+        }
+
+        .trust-device-checkbox:checked {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .trust-device-checkbox:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--dark);
+            font-size: 11px;
+        }
+
+        .checkbox-custom {
+            display: none;
+        }
+
+        .checkbox-text {
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .trust-device-label:hover .checkbox-text {
+            color: var(--light);
+        }
+
+        .trust-device-info {
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            padding: 0.5rem;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .trust-device-info:hover {
+            color: var(--light);
+            background: rgba(0, 184, 148, 0.15);
+            transform: scale(1.1);
         }
 
         .WarningboxInfo {

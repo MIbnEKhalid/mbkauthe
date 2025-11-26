@@ -13,6 +13,8 @@
 - 🔐 **Secure Authentication** - Password hashing with bcrypt
 - 🔑 **Session Management** - PostgreSQL-backed session storage
 - 📱 **Two-Factor Authentication (2FA)** - Optional TOTP-based 2FA with speakeasy
+- 🔄 **GitHub OAuth Integration** - Login with GitHub accounts (passport-github2)
+- 🖥️ **Trusted Devices** - Remember devices to skip 2FA on trusted devices
 - 👥 **Role-Based Access Control** - SuperAdmin, NormalUser, and Guest roles
 - 🎯 **Multi-Application Support** - Control user access across multiple apps
 - 🛡️ **Security Features** - CSRF protection, rate limiting, secure cookies
@@ -37,6 +39,7 @@ Create a `.env` file in your project root:
 # Application Configuration
 APP_NAME=your-app-name
 SESSION_SECRET_KEY=your-secure-random-secret-key
+MAIN_SECRET_TOKEN=your-api-secret-token
 IS_DEPLOYED=false
 DOMAIN=localhost
 
@@ -46,9 +49,15 @@ LOGIN_DB=postgresql://username:password@localhost:5432/database_name
 # Optional Features
 MBKAUTH_TWO_FA_ENABLE=false
 COOKIE_EXPIRE_TIME=2
+DEVICE_TRUST_DURATION_DAYS=7
+
+# GitHub OAuth (Optional)
+GITHUB_LOGIN_ENABLED=false
+GITHUB_CLIENT_ID=your-github-oauth-client-id
+GITHUB_CLIENT_SECRET=your-github-oauth-client-secret
 ```
 
-For detailed environment configuration, see [Environment Configuration Guide](env.md).
+For detailed environment configuration, see [Environment Configuration Guide](docs/env.md).
 
 ### 2. Set Up Database
 
@@ -66,11 +75,15 @@ CREATE TABLE "Users" (
     "Active" BOOLEAN DEFAULT FALSE,
     "AllowedApps" JSONB DEFAULT '["mbkauthe"]',
     "SessionId" VARCHAR(213),
-    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "last_login" TIMESTAMP WITH TIME ZONE
 );
 
 -- Session table (created automatically by connect-pg-simple)
 -- TwoFA table (optional, if 2FA is enabled)
+-- TrustedDevices table (optional, for "Remember this device" feature)
+-- user_github table (optional, for GitHub OAuth integration)
 ```
 
 ### 3. Integrate with Your Express App
@@ -87,11 +100,16 @@ dotenv.config();
 process.env.mbkautheVar = JSON.stringify({
     APP_NAME: process.env.APP_NAME,
     SESSION_SECRET_KEY: process.env.SESSION_SECRET_KEY,
+    Main_SECRET_TOKEN: process.env.MAIN_SECRET_TOKEN,
     IS_DEPLOYED: process.env.IS_DEPLOYED,
     DOMAIN: process.env.DOMAIN,
     LOGIN_DB: process.env.LOGIN_DB,
     MBKAUTH_TWO_FA_ENABLE: process.env.MBKAUTH_TWO_FA_ENABLE,
     COOKIE_EXPIRE_TIME: process.env.COOKIE_EXPIRE_TIME || 2,
+    DEVICE_TRUST_DURATION_DAYS: process.env.DEVICE_TRUST_DURATION_DAYS || 7,
+    GITHUB_LOGIN_ENABLED: process.env.GITHUB_LOGIN_ENABLED,
+    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
     loginRedirectURL: '/dashboard' // Redirect after successful login
 });
 
@@ -165,6 +183,8 @@ MBKAuth automatically adds these routes to your app:
 - `POST /mbkauthe/api/logout` - Logout endpoint
 - `GET /mbkauthe/2fa` - Two-factor authentication page (if enabled)
 - `POST /mbkauthe/api/verify-2fa` - 2FA verification endpoint
+- `GET /mbkauthe/api/github/login` - Initiate GitHub OAuth login
+- `GET /mbkauthe/api/github/login/callback` - GitHub OAuth callback
 - `GET /mbkauthe/info` - MBKAuth version and configuration info
 - `POST /mbkauthe/api/terminateAllSessions` - Terminate all active sessions (authenticated)
 
@@ -174,6 +194,7 @@ MBKAuth automatically adds these routes to your app:
 - **Login attempts**: 8 attempts per minute
 - **Logout attempts**: 10 attempts per minute
 - **2FA attempts**: 5 attempts per minute
+- **GitHub OAuth attempts**: 10 attempts per 5 minutes
 
 ### CSRF Protection
 All POST routes are protected with CSRF tokens. CSRF tokens are automatically included in rendered forms.
@@ -211,6 +232,103 @@ CREATE TABLE "TwoFA" (
     "TwoFASecret" TEXT
 );
 ```
+
+## 🔄 GitHub OAuth Integration
+
+### Overview
+Users can log in using their GitHub accounts if they have previously linked their GitHub account to their MBKAuth account.
+
+### Setup
+
+1. **Create GitHub OAuth App**:
+   - Go to GitHub Settings > Developer settings > OAuth Apps
+   - Create a new OAuth App
+   - Set callback URL: `https://yourdomain.com/mbkauthe/api/github/login/callback`
+   - Copy Client ID and Client Secret
+
+2. **Configure Environment**:
+```env
+GITHUB_LOGIN_ENABLED=true
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+```
+
+3. **Database Setup**:
+```sql
+CREATE TABLE user_github (
+    id SERIAL PRIMARY KEY,
+    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
+    github_id VARCHAR(255) UNIQUE,
+    github_username VARCHAR(255),
+    access_token VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_github_github_id ON user_github (github_id);
+CREATE INDEX idx_user_github_user_name ON user_github (user_name);
+```
+
+### How It Works
+
+1. User clicks "Login with GitHub" on the login page
+2. User authenticates with GitHub
+3. System verifies the GitHub account is linked to an active user
+4. If 2FA is enabled, user is prompted for 2FA code
+5. Session is established upon successful authentication
+
+### Routes
+
+- `GET /mbkauthe/api/github/login` - Initiates GitHub OAuth flow
+- `GET /mbkauthe/api/github/login/callback` - Handles OAuth callback
+
+## 🖥️ Trusted Devices (Remember Device)
+
+### Overview
+The "Remember this device" feature allows users to skip 2FA verification on trusted devices for a configurable duration.
+
+### Configuration
+
+```env
+# Duration in days before device trust expires (default: 7 days)
+DEVICE_TRUST_DURATION_DAYS=7
+```
+
+### Database Setup
+
+```sql
+CREATE TABLE "TrustedDevices" (
+    "id" SERIAL PRIMARY KEY,
+    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
+    "DeviceToken" VARCHAR(64) UNIQUE NOT NULL,
+    "DeviceName" VARCHAR(255),
+    "UserAgent" TEXT,
+    "IpAddress" VARCHAR(45),
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "LastUsed" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_trusted_devices_token ON "TrustedDevices"("DeviceToken");
+CREATE INDEX idx_trusted_devices_username ON "TrustedDevices"("UserName");
+CREATE INDEX idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
+```
+
+### How It Works
+
+1. After successful login and 2FA verification, user can check "Remember this device"
+2. A secure device token is generated and stored in cookies
+3. On subsequent logins from the same device, 2FA is skipped
+4. Device trust expires after configured duration
+5. Users can manage trusted devices through their account settings
+
+### Security Notes
+
+- Device tokens are cryptographically secure (64-byte random tokens)
+- Tokens automatically expire after the configured duration
+- Last used timestamp is tracked for auditing
+- IP address and user agent are stored for security monitoring
+- Devices can be manually revoked by users
 
 ## 🎨 Customization
 
@@ -266,19 +384,22 @@ Add `vercel.json`:
 ### Production Checklist
 
 - [ ] Set `IS_DEPLOYED=true`
-- [ ] Use a strong `SESSION_SECRET_KEY`
+- [ ] Use a strong `SESSION_SECRET_KEY` and `Main_SECRET_TOKEN`
 - [ ] Enable HTTPS
 - [ ] Set correct `DOMAIN`
 - [ ] Enable 2FA for sensitive applications
-- [ ] Use environment variables for secrets
+- [ ] Configure `DEVICE_TRUST_DURATION_DAYS` appropriately
+- [ ] Set up GitHub OAuth if using GitHub login
+- [ ] Use environment variables for all secrets
 - [ ] Set appropriate `COOKIE_EXPIRE_TIME`
-- [ ] Configure PostgreSQL with proper security
+- [ ] Configure PostgreSQL with proper security and indexes
 - [ ] Enable password hashing with bcrypt
+- [ ] Regularly audit and clean up expired trusted devices
 
 ## 📚 Documentation
 
 - [API Documentation](docs/api.md) - Complete API reference and examples
-- [Environment Configuration Guide](env.md) - Environment variables and setup
+- [Environment Configuration Guide](docs/env.md) - Environment variables and setup
 - [Database Structure](docs/db.md) - Database schemas and tables
 
 ## 🔄 Version Check
@@ -302,7 +423,7 @@ This project is licensed under the Mozilla Public License 2.0 - see the [LICENSE
 ## 👨‍💻 Author
 
 **Muhammad Bin Khalid**  
-Email: [support@mbktechstudio.com](support@mbktechstudio.com) or [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)
+Email: [support@mbktech.org](support@mbktech.org) or [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)
 GitHub: [@MIbnEKhalid](https://github.com/MIbnEKhalid)
 
 ## 🐛 Issues & Support

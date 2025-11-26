@@ -33,6 +33,10 @@ CREATE TABLE user_github (
     created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
     updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github (github_id);
+CREATE INDEX IF NOT EXISTS idx_user_github_user_name ON user_github (user_name);
 ```
 
 ## How It Works
@@ -155,19 +159,18 @@ CREATE TABLE "Users" (
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
     "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
     "SessionId" VARCHAR(213),
-    "IsOnline" BOOLEAN DEFAULT FALSE,
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "last_login" TIMESTAMP WITH TIME ZONE
 );
 
--- Add indexes for Users table
-CREATE INDEX IF NOT EXISTS idx_users_session_id ON "Users" ("SessionId")
-CREATE INDEX idx_users_username ON "Users" USING BTREE ("UserName");
-CREATE INDEX idx_users_role ON "Users" USING BTREE ("Role");
-CREATE INDEX idx_users_active ON "Users" USING BTREE ("Active");
-CREATE INDEX idx_users_isonline ON "Users" USING BTREE ("IsOnline");
-CREATE INDEX idx_users_last_login ON "Users" USING BTREE (last_login);
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_users_sessionid ON "Users" (LOWER("SessionId"));
+CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" ("UserName");
+CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" ("Active");
+CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" ("Role");
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" (last_login);
+CREATE INDEX IF NOT EXISTS idx_users_id_sessionid_active_role ON "Users" ("id", LOWER("SessionId"), "Active", "Role");
 ```
 
 ### Session Table
@@ -184,14 +187,13 @@ CREATE TABLE "session" (
     sid VARCHAR(33) PRIMARY KEY NOT NULL,
     sess JSONB NOT NULL,
     expire TimeStamp WITH TIME ZONE Not Null,
-    "UserName" VARCHAR(50) REFERENCES "Users"("UserName"),
     last_activity TimeStamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add indexes for session table
-CREATE INDEX idx_session_expire ON "session" USING BTREE (expire);
-CREATE INDEX idx_session_username ON "session" USING BTREE ("UserName");
-CREATE INDEX idx_session_last_activity ON "session" USING BTREE (last_activity);
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_session_expire ON "session" ("expire");
+CREATE INDEX IF NOT EXISTS idx_session_last_activity ON "session" (last_activity);
+CREATE INDEX IF NOT EXISTS idx_session_user_id ON "session" ((sess->'user'->>'id'));
 ```
 
 ### Two-Factor Authentication Table
@@ -208,9 +210,45 @@ CREATE TABLE "TwoFA" (
     "UserName" VARCHAR(50) primary key REFERENCES "Users"("UserName"),
     "TwoFAStatus" boolean NOT NULL,
     "TwoFASecret" TEXT
-    );
+);
 
-CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" ("UserName")
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" ("UserName");
+CREATE INDEX IF NOT EXISTS idx_twofa_username_status ON "TwoFA" ("UserName", "TwoFAStatus");
+```
+
+### Trusted Devices Table (Remember 2FA Device)
+
+- **Columns:**
+
+  - `id` (INTEGER, auto-increment, primary key): Unique identifier for each trusted device.
+  - `UserName` (VARCHAR): The username of the device owner (foreign key to Users).
+  - `DeviceToken` (VARCHAR): Unique token identifying the trusted device.
+  - `DeviceName` (VARCHAR): Optional friendly name for the device.
+  - `UserAgent` (TEXT): Browser/client user agent string.
+  - `IpAddress` (VARCHAR): IP address when device was trusted.
+  - `CreatedAt` (TIMESTAMP): When the device was first trusted.
+  - `ExpiresAt` (TIMESTAMP): When the device trust expires.
+  - `LastUsed` (TIMESTAMP): Last time this device was used for login.
+
+- **Schema:**
+```sql
+CREATE TABLE "TrustedDevices" (
+    "id" SERIAL PRIMARY KEY,
+    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
+    "DeviceToken" VARCHAR(64) UNIQUE NOT NULL,
+    "DeviceName" VARCHAR(255),
+    "UserAgent" TEXT,
+    "IpAddress" VARCHAR(45),
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "LastUsed" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON "TrustedDevices"("DeviceToken");
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices"("UserName");
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
 ```
 
 ### Query to Add a User

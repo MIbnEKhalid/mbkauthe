@@ -1,14 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Version and Configuration Information</title>
-    <link rel="icon" type="image/x-icon" href="https://mbktech.org/Assets/Images/Icon/dgicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {{> sharedStyles}}
-    <style>
+{{> head pageTitle="Version and Configuration Information" ogUrl="/mbkauthe/info" extraStyles="<style>
         .info-box {
             background: rgba(10, 20, 20, 0.95);
             backdrop-filter: blur(10px);
@@ -169,25 +162,10 @@
                 padding: 1rem;
             }
         }
-    </style>
-</head>
+    </style>"}}
 
 <body>
-    <header>
-        <div class="header-container">
-            <a class="logo">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" class="iconAboveSlogan">
-                    <g id="8db2a7f9-6efc-4f7e-ae5b-8ba33875da43" transform="matrix(2.8125,0,0,2.8125,0,0)" stroke="none"
-                        fill="#00b894">
-                        <path
-                            d="M0 32h32V0H0v32zm19.377-19.492l6.936-6.936v20.855h-6.936V12.508zM5.688 5.572l6.936 6.936v13.919H5.688V5.572z">
-                        </path>
-                    </g>
-                </svg>
-                <span class="logo-text">{{mbkautheVar.APP_NAME}} <span class="logo-comp">mbktech</span></span>
-            </a>
-        </div>
-    </header>
+    {{> header appName=mbkautheVar.APP_NAME}}
 
     <section class="login-container">
         <i class="fas fa-info-circle ai-element"></i>
@@ -228,6 +206,10 @@
                     <div class="info-value">{{mbkautheVar.DOMAIN}}</div>
                 </div>
                 <div class="info-row">
+                    <div class="info-label">IS_DEPLOYED:</div>
+                    <div class="info-value">{{mbkautheVar.IS_DEPLOYED}}</div>
+                </div>
+                <div class="info-row">
                     <div class="info-label">Login Redirect URL:</div>
                     <div class="info-value">{{mbkautheVar.loginRedirectURL}}</div>
                 </div>
@@ -250,10 +232,7 @@
         </div>
     </section>
 
-    <!-- Version Info -->
-    <div class="version-info">
-        v{{version}}
-    </div>
+    {{> versionInfo}}
 </body>
 
 </html>

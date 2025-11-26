@@ -366,6 +366,53 @@ Serves the client-side JavaScript file containing helper functions for authentic
 
 ---
 
+#### `GET /icon.svg`
+
+Serves the application's SVG icon file.
+
+**Response:** SVG image file (Content-Type: image/svg+xml)
+
+**Cache:** Cached for 1 year (max-age=31536000)
+
+**Usage:**
+```html
+<img src="/icon.svg" alt="App Icon">
+```
+
+---
+
+#### `GET /favicon.ico`
+
+Serves the application's favicon.
+
+**Aliases:** `/icon.ico`
+
+**Response:** ICO image file (Content-Type: image/x-icon)
+
+**Cache:** Cached for 1 year (max-age=31536000)
+
+**Usage:**
+```html
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+```
+
+---
+
+#### `GET /mbkauthe/bg.webp`
+
+Serves the background image for authentication pages.
+
+**Response:** WEBP image file (Content-Type: image/webp)
+
+**Cache:** Cached for 1 year (max-age=31536000)
+
+**Usage:**
+```css
+background-image: url('/mbkauthe/bg.webp');
+```
+
+---
+
 #### `GET /mbkauthe/test`
 
 Test endpoint to verify authentication and display user session information.
@@ -896,7 +943,7 @@ Rate limits are applied per IP address.
 For issues, questions, or contributions:
 
 - **GitHub Issues:** [https://github.com/MIbnEKhalid/mbkauthe/issues](https://github.com/MIbnEKhalid/mbkauthe/issues)
-- **Email:** support@mbktechstudio.com
+- **Email:** support@mbktech.org
 - **Documentation:** [https://github.com/MIbnEKhalid/mbkauthe](https://github.com/MIbnEKhalid/mbkauthe)
 
 ---

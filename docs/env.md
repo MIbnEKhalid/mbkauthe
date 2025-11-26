@@ -25,10 +25,21 @@ APP_NAME=mbkauthe
 
 ### Session Configuration
 ```env
+Main_SECRET_TOKEN=your-secure-token-number
 SESSION_SECRET_KEY=your-secure-random-key-here
 IS_DEPLOYED=false
 DOMAIN=localhost
 ```
+
+#### Main_SECRET_TOKEN
+**Description:** Primary authentication token for secure operations.
+
+- **Security:** Use a secure numeric or alphanumeric token
+- **Purpose:** Used for internal authentication and validation processes
+- **Format:** Numeric or string value
+- **Required:** Yes
+
+**Example:** `Main_SECRET_TOKEN=123456789`
 
 #### SESSION_SECRET_KEY
 **Description:** Cryptographic key for session security.
@@ -115,6 +126,37 @@ MBKAUTH_TWO_FA_ENABLE=false
 
 ---
 
+## 🔄 Redirect Configuration
+
+### Login Redirect URL
+```env
+loginRedirectURL=/mbkauthe/test
+```
+
+**Description:** Specifies the URL path where users are redirected after successful authentication.
+
+- **Purpose:** Controls post-login navigation flow
+- **Format:** URL path (relative or absolute)
+- **Default:** `/` (root path if not specified)
+- **Required:** No (optional configuration)
+
+**Examples:**
+```env
+# Redirect to dashboard
+loginRedirectURL=/dashboard
+
+# Redirect to specific app section
+loginRedirectURL=/mbkauthe/test
+
+# Redirect to home page
+loginRedirectURL=/
+
+# Redirect to external URL (if supported)
+loginRedirectURL=https://example.com/app
+```
+
+---
+
 ## 🍪 Cookie Settings
 
 ### Cookie Expiration
@@ -132,8 +174,28 @@ COOKIE_EXPIRE_TIME=2
 **Examples:**
 ```env
 COOKIE_EXPIRE_TIME=1   # 1 day (high security)
-COOKIE_EXPIRE_TIME=7   # 1 week (balanced)
-COOKIE_EXPIRE_TIME=30  # 1 month (convenience)
+COOKIE_EXPIRE_TIME=7   # 7 days (balanced)
+COOKIE_EXPIRE_TIME=30  # 30 days (convenience)
+```
+
+### Device Trust Duration
+```env
+DEVICE_TRUST_DURATION_DAYS=7
+```
+
+**Description:** Sets how long a device remains trusted after successful authentication.
+
+- **Unit:** Days
+- **Default:** `7` days
+- **Purpose:** Controls device recognition and trust persistence
+- **Range:** 1-365 days (recommended)
+- **Behavior:** Trusted devices may skip certain authentication steps (like 2FA) during this period
+
+**Examples:**
+```env
+DEVICE_TRUST_DURATION_DAYS=1   # 1 day (high security)
+DEVICE_TRUST_DURATION_DAYS=7   # 1 week (balanced)
+DEVICE_TRUST_DURATION_DAYS=30  # 30 days (convenience)
 ```
 
 ---
@@ -212,24 +274,36 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 ```env
 # .env file for local development
 APP_NAME=mbkauthe
+Main_SECRET_TOKEN=dev-token-123
 SESSION_SECRET_KEY=dev-secret-key-change-in-production
 IS_DEPLOYED=false
 DOMAIN=localhost
 LOGIN_DB=postgresql://admin:password@localhost:5432/mbkauth_dev
 MBKAUTH_TWO_FA_ENABLE=false
 COOKIE_EXPIRE_TIME=7
+DEVICE_TRUST_DURATION_DAYS=7
+loginRedirectURL=/dashboard
+GITHUB_LOGIN_ENABLED=false
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 ```
 
 ### Production Environment
 ```env
 # .env file for production deployment
 APP_NAME=mbkauthe
+Main_SECRET_TOKEN=your-secure-production-token
 SESSION_SECRET_KEY=your-super-secure-production-key-here
 IS_DEPLOYED=true
 DOMAIN=yourdomain.com
 LOGIN_DB=postgresql://dbuser:securepass@prod-db.example.com:5432/mbkauth_prod
 MBKAUTH_TWO_FA_ENABLE=true
 COOKIE_EXPIRE_TIME=2
+DEVICE_TRUST_DURATION_DAYS=7
+loginRedirectURL=/dashboard
+GITHUB_LOGIN_ENABLED=false
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 ```
 
 ---

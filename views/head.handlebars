@@ -1,0 +1,14 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{#if description}}{{description}}{{else}}Log in to portal.mbktech.org to access your resources and manage projects securely.{{/if}}">
+    <meta name="keywords" content="MBK Tech, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
+    <meta property="og:title" content="{{#if pageTitle}}{{pageTitle}}{{else}}{{#if pageCode}}{{pageCode}}{{/if}}{{#if pageError}} - {{pageError}}{{/if}}{{/if}} | MBK Tech" />
+    <meta property="og:image" content="https://mbktech.org/Assets/Images/Icon/logo.png" />
+    <meta property="og:url" content="{{ogUrl}}">
+    <title>{{#if pageTitle}}{{pageTitle}}{{else}}{{#if pageCode}}{{pageCode}}{{/if}}{{#if pageError}} - {{pageError}}{{/if}}{{/if}} | MBK Tech Portal</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{> sharedStyles}}
+    {{#if extraStyles}}{{{extraStyles}}}{{/if}}
+</head>

@@ -1,48 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Log in to portal.mbktech.org to access your resources and manage projects securely.">
-    <meta name="keywords" content="MBK Tech Studio, Web-Portal, Web, Portal, Admin-Panel, Admin, login">
-    <meta property="og:title" content="Login | MBK Tech Studio" />
-    <meta property="og:image" content="https://mbktech.org/Assets/Images/Icon/logo.png" />
-    <meta property="og:url" content="/mbkauthe/login">
-    <title>Login | MBK Tech Studio Portal</title>
-    <link rel="icon" type="image/x-icon" href="https://mbktech.org/Assets/Images/Icon/dgicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {{> sharedStyles}}
-</head>
+{{> head pageTitle="Login" ogUrl="/mbkauthe/login"}}
 
 <body>
-    <header>
-        <div class="header-container">
-            <a class="logo">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" class="iconAboveSlogan">
-                    <g id="8db2a7f9-6efc-4f7e-ae5b-8ba33875da43" transform="matrix(2.8125,0,0,2.8125,0,0)" stroke="none"
-                        fill="#00b894">
-                        <path
-                            d="M0 32h32V0H0v32zm19.377-19.492l6.936-6.936v20.855h-6.936V12.508zM5.688 5.572l6.936 6.936v13.919H5.688V5.572z">
-                        </path>
-                    </g>
-                </svg>
-                <span class="logo-text">{{appName}} <span class="logo-comp">mbktech</span></span>
-            </a>
-        </div>
-    </header>
+    {{> header}}
 
     {{> showmessage}}
 
     <section class="login-container">
 
-        <i class="fas fa-robot ai-element"></i>
-        <i class="fas fa-microchip ai-element"></i>
-        <i class="fas fa-user-astronaut ai-element"></i>
-        <i class="fas fa-satellite-dish ai-element"></i>
-        <i class="fas fa-cloud ai-element"></i>
-        <i class="fas fa-shield-alt ai-element"></i>
+        {{> backgroundElements}}
 
         <div class="login-box">
             <h1 class="login-title">Login</h1>
@@ -110,10 +78,7 @@
         </div>
     </section>
 
-    <!-- Version Info -->
-    <div class="version-info">
-        v{{version}}
-    </div>
+    {{> versionInfo}}
 
     <script>
         // Toggle password visibility
@@ -133,7 +98,7 @@
 
         // Info dialogs
         function usernameinfo() {
-            showMessage(`Your username is the part of your MBK Tech Studio email before the @ (e.g., abc.xyz@mbktech.org
+            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org
  → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support">Support</a>.`, `What is my username?`);
         }
 

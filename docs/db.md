@@ -138,13 +138,14 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
 
   - `id` (INTEGER, auto-increment, primary key): Unique identifier for each user.
   - `UserName` (TEXT): The username of the user.
-  - `Password` (TEXT): The hashed password of the user.
+  - `Password` (TEXT): The raw password of the user (used when EncPass=false).
+  - `PasswordEnc` (TEXT): The encrypted/hashed password of the user (used when EncPass=true).
   - `Role` (ENUM): The role of the user. Possible values: `SuperAdmin`, `NormalUser`, `Guest`.
   - `Active` (BOOLEAN): Indicates whether the user account is active.
   - `HaveMailAccount` (BOOLEAN)(optional): Indicates if the user has a linked mail account.
   - `SessionId` (TEXT): The session ID associated with the user.
   - `GuestRole` (JSONB): Stores additional guest-specific role information in binary JSON format.
-  - `AllowedApps`(JSONB): 
+  - `AllowedApps`(JSONB): Array of applications the user is authorized to access.
 
 - **Schema:**
 ```sql
@@ -153,7 +154,8 @@ CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
 CREATE TABLE "Users" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Password" VARCHAR(61) NOT NULL, -- For bcrypt hash
+    "Password" VARCHAR(61), -- For raw passwords (when EncPass=false)
+    "PasswordEnc" VARCHAR(128), -- For encrypted passwords (when EncPass=true)
     "Role" role DEFAULT 'NormalUser' NOT NULL,
     "Active" BOOLEAN DEFAULT FALSE,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
@@ -172,6 +174,12 @@ CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" ("Role");
 CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" (last_login);
 CREATE INDEX IF NOT EXISTS idx_users_id_sessionid_active_role ON "Users" ("id", LOWER("SessionId"), "Active", "Role");
 ```
+
+**Password Storage Notes:**
+- When `EncPass=false` (default): The system uses the `Password` column to store and validate raw passwords
+- When `EncPass=true` (recommended for production): The system uses the `PasswordEnc` column to store hashed passwords using PBKDF2 with the username as salt
+- Only one password column should be populated based on your EncPass configuration
+- The PasswordEnc field stores 128-character hex strings when using PBKDF2 hashing
 
 ### Session Table
 
@@ -255,6 +263,7 @@ CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("Expi
 
 To add new users to the `Users` table, use the following SQL queries:
 
+**For Raw Password Storage (EncPass=false):**
 ```sql
         INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
         VALUES ('support', '12345678', 'SuperAdmin', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
@@ -263,8 +272,29 @@ To add new users to the `Users` table, use the following SQL queries:
         VALUES ('test', '12345678', 'NormalUser', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
 ```
 
+**For Encrypted Password Storage (EncPass=true):**
+```sql
+        -- Note: You'll need to hash the password using the hashPassword function
+        -- Example with pre-hashed password (PBKDF2 with username as salt)
+        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
+        VALUES ('support', 'your_hashed_password_here', 'SuperAdmin', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+
+        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
+        VALUES ('test', 'your_hashed_password_here', 'NormalUser', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+```
+
+**Configuration Notes:**
 - Replace `support` and `test` with the desired usernames.
-- Replace `12345678` with the actual passwords.
+- For raw passwords: Replace `12345678` with the actual plain text passwords.
+- For encrypted passwords: Use the hashPassword function to generate the hash before inserting.
 - Adjust the `Role` values as needed (`SuperAdmin`, `NormalUser`, or `Guest`).
 - Modify the `Active` and `HaveMailAccount` values as required.
-- Update the `GuestRole` JSON object if specific permissions are required(this functionality is under construction).
+- Update the `GuestRole` JSON object if specific permissions are required (this functionality is under construction).
+
+**Generating Encrypted Passwords:**
+If you're using `EncPass=true`, you can generate encrypted passwords using the hashPassword function:
+```javascript
+import { hashPassword } from './lib/config.js';
+const encryptedPassword = hashPassword('12345678', 'support');
+console.log(encryptedPassword); // Use this value for PasswordEnc column
+```

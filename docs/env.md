@@ -29,6 +29,7 @@ Main_SECRET_TOKEN=your-secure-token-number
 SESSION_SECRET_KEY=your-secure-random-key-here
 IS_DEPLOYED=false
 DOMAIN=localhost
+EncPass=false
 ```
 
 #### Main_SECRET_TOKEN
@@ -79,6 +80,35 @@ IS_DEPLOYED=true
 DOMAIN=localhost
 IS_DEPLOYED=false
 ```
+
+#### EncPass
+**Description:** Controls whether passwords are stored and validated in encrypted format.
+
+**Values:**
+- `true` - Use encrypted password validation
+  - Passwords are hashed using PBKDF2 with the username as salt
+  - Compares against `PasswordEnc` column in Users table
+- `false` - Use raw password validation (default)
+  - Passwords are stored and compared in plain text
+  - Compares against `Password` column in Users table
+
+**Default:** `false`
+
+**Security Note:** Setting `EncPass=true` is recommended for production environments as it provides better security by storing hashed passwords instead of plain text.
+
+**Examples:**
+```env
+# Production (recommended)
+EncPass=true
+
+# Development
+EncPass=false
+```
+
+**Database Implications:**
+- When `EncPass=true`: The system uses the `PasswordEnc` column
+- When `EncPass=false`: The system uses the `Password` column
+- Ensure your database schema includes the appropriate column based on your configuration
 
 ---
 
@@ -278,6 +308,7 @@ Main_SECRET_TOKEN=dev-token-123
 SESSION_SECRET_KEY=dev-secret-key-change-in-production
 IS_DEPLOYED=false
 DOMAIN=localhost
+EncPass=false
 LOGIN_DB=postgresql://admin:password@localhost:5432/mbkauth_dev
 MBKAUTH_TWO_FA_ENABLE=false
 COOKIE_EXPIRE_TIME=7
@@ -296,6 +327,7 @@ Main_SECRET_TOKEN=your-secure-production-token
 SESSION_SECRET_KEY=your-super-secure-production-key-here
 IS_DEPLOYED=true
 DOMAIN=yourdomain.com
+EncPass=true
 LOGIN_DB=postgresql://dbuser:securepass@prod-db.example.com:5432/mbkauth_prod
 MBKAUTH_TWO_FA_ENABLE=true
 COOKIE_EXPIRE_TIME=2

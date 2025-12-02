@@ -6,11 +6,21 @@
 [![Publish to npm](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
 [![CodeQL Advanced](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/codeql.yml)
 
+
+<p align="center">
+  <img height="64px" src="./public/icon.svg" alt="MBK Chat Platform" />
+</p>
+
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=nodejs,express,postgres" />
+  <img height="48px" src="https://handlebarsjs.com/handlebars-icon.svg" alt="Handlebars" />
+</p>
+
 **MBKAuth** is a reusable, production-ready authentication system for Node.js applications built by MBKTech.org. It provides secure session management, two-factor authentication (2FA), role-based access control, and multi-application support out of the box.
 
 ## ✨ Features
 
-- 🔐 **Secure Authentication** - Password hashing with bcrypt
+- 🔐 **Secure Authentication** - Configurable password encryption (PBKDF2) or raw password support
 - 🔑 **Session Management** - PostgreSQL-backed session storage
 - 📱 **Two-Factor Authentication (2FA)** - Optional TOTP-based 2FA with speakeasy
 - 🔄 **GitHub OAuth Integration** - Login with GitHub accounts (passport-github2)
@@ -198,9 +208,6 @@ MBKAuth automatically adds these routes to your app:
 
 ### CSRF Protection
 All POST routes are protected with CSRF tokens. CSRF tokens are automatically included in rendered forms.
-
-### Password Hashing
-Passwords are hashed using bcrypt with a secure salt. Set `EncryptedPassword: "true"` in `mbkautheVar` to enable.
 
 ### Secure Cookies
 - `httpOnly` flag prevents XSS attacks

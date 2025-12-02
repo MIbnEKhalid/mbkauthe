@@ -98,8 +98,7 @@
 
         // Info dialogs
         function usernameinfo() {
-            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org
- → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support">Support</a>.`, `What is my username?`);
+            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support">Support</a>.`, `What is my username?`);
         }
 
         function tokeninfo() {
@@ -245,39 +244,12 @@
 
         {{#if githubLoginEnabled }}
 
-        // GitHub login: Attempt to POST redirect to backend, fallback to direct navigation
+        // GitHub login: Navigate directly to GitHub OAuth flow
         async function startGithubLogin() {
             const urlParams = new URLSearchParams(window.location.search);
             const redirect = urlParams.get('redirect') || '{{customURL}}';
 
-            try {
-                // Try POSTing to the backend so it can establish any session state
-                const resp = await fetch('/mbkauthe/api/github/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ redirect })
-                });
-
-                // If backend responds with a JSON containing redirectUrl, navigate there
-                if (resp.ok) {
-                    // If server redirected directly (resp.redirected), follow the final URL
-                    if (resp.redirected) {
-                        window.location.href = resp.url;
-                        return;
-                    }
-                    const data = await resp.json().catch(() => null);
-                    if (data && data.redirectUrl) {
-                        window.location.href = data.redirectUrl;
-                        return;
-                    }
-                }
-            } catch (error) {
-                // swallow and fallback to direct navigation
-                console.warn('[mbkauthe] GitHub login POST failed, falling back to direct redirect', error);
-            }
-
-            // Fallback: navigate to the backend GET endpoint with redirect query
+            // Navigate directly to the backend GET endpoint with redirect query
             window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
         }
 

@@ -22,24 +22,15 @@
         
         document.querySelector(".showmessageWindow .error-code").href = `https://mbktech.org/ErrorCode/#${errorCode}`;
        */
-        document
-            .querySelector(".showMessageblurWindow")
-            .classList
-            .add("active");
-        document
-            .body
-            .classList
-            .add("blur-active");
+        document.querySelector(".showMessageblurWindow").classList.add("active");
+        document.body.classList.add("blur-active");
     }
     function hideMessage() {
         const blurWindow = document.querySelector(".showMessageblurWindow");
         blurWindow.classList.add("fade-out");
         setTimeout(() => {
             blurWindow.classList.remove("active", "fade-out");
-            document
-                .body
-                .classList
-                .remove("blur-active");
+            document.body.classList.remove("blur-active");
         }, 500);
     }
 </script>

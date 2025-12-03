@@ -11,6 +11,10 @@ This document provides comprehensive API documentation for MBKAuthe authenticati
 - [Authentication](#authentication)
 - [Session Management](#session-management)
 - [API Endpoints](#api-endpoints)
+  - [Public Endpoints](#public-endpoints)
+  - [Protected Endpoints](#protected-endpoints)
+  - [OAuth Endpoints](#oauth-endpoints)
+  - [Information Endpoints](#information-endpoints)
 - [Middleware Reference](#middleware-reference)
 - [Code Examples](#code-examples)
 
@@ -326,6 +330,35 @@ Displays MBKAuthe version information and configuration.
 
 ---
 
+#### `GET /mbkauthe/ErrorCode`
+
+Displays comprehensive error code documentation with descriptions and user messages.
+
+**Response:** HTML page showing:
+- All error codes organized by category
+- Error code ranges (Authentication, 2FA, Session, Authorization, etc.)
+- User-friendly messages and hints for each error
+- Dynamically generated from `lib/utils/errors.js`
+
+**Categories:**
+- **600-699**: Authentication Errors
+- **700-799**: Two-Factor Authentication Errors
+- **800-899**: Session Management Errors
+- **900-999**: Authorization Errors
+- **1000-1099**: Input Validation Errors
+- **1100-1199**: Rate Limiting Errors
+- **1200-1299**: Server Errors
+- **1300-1399**: OAuth Errors
+
+**Note:** This page is automatically synchronized with the error definitions in the codebase. Adding new errors only requires updating `lib/utils/errors.js` and the category code array.
+
+**Usage:**
+```
+GET /mbkauthe/ErrorCode
+```
+
+---
+
 #### `GET /mbkauthe/main.js`
 
 Serves the client-side JavaScript file containing helper functions for authentication operations.
@@ -363,6 +396,35 @@ Serves the client-side JavaScript file containing helper functions for authentic
 - Clears cookies
 - Forces page reload
 
+
+---
+
+#### `GET /mbkauthe/ErrorCode`
+
+Displays comprehensive error code documentation with descriptions and user messages.
+
+**Response:** HTML page showing:
+- All error codes organized by category
+- Error code ranges (Authentication, 2FA, Session, Authorization, etc.)
+- User-friendly messages and hints for each error
+- Dynamically generated from `lib/utils/errors.js`
+
+**Categories:**
+- **600-699**: Authentication Errors
+- **700-799**: Two-Factor Authentication Errors
+- **800-899**: Session Management Errors
+- **900-999**: Authorization Errors
+- **1000-1099**: Input Validation Errors
+- **1100-1199**: Rate Limiting Errors
+- **1200-1299**: Server Errors
+- **1300-1399**: OAuth Errors
+
+**Note:** This page is automatically synchronized with the error definitions in the codebase. Adding new errors only requires updating `lib/utils/errors.js` and the category code array.
+
+**Usage:**
+```
+GET /mbkauthe/ErrorCode
+```
 
 ---
 
@@ -445,6 +507,79 @@ GET /mbkauthe/test
 ```
 
 **Note:** This endpoint is primarily for testing and debugging authentication. It should not be used in production environments.
+
+---
+
+### OAuth Endpoints
+
+#### `GET /mbkauthe/api/github/login`
+
+Initiates the GitHub OAuth authentication flow.
+
+**Rate Limit:** 10 requests per 5 minutes
+
+**Query Parameters:**
+- `redirect` (optional) - Relative URL to redirect after successful authentication (must start with `/` to prevent open redirect attacks)
+
+**Response:** Redirects to GitHub OAuth authorization page
+
+**Prerequisites:**
+- `GITHUB_LOGIN_ENABLED=true` in environment
+- Valid `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` configured
+- User's GitHub account must be linked to an MBKAuth account in `user_github` table
+
+**Example:**
+```
+GET /mbkauthe/api/github/login?redirect=/dashboard
+```
+
+**Workflow:**
+1. User clicks "Login with GitHub"
+2. Redirects to GitHub for authorization
+3. GitHub redirects back to callback URL
+4. System verifies GitHub account is linked
+5. If 2FA enabled, prompts for 2FA
+6. Creates session and redirects to specified URL
+
+---
+
+#### `GET /mbkauthe/api/github/login/callback`
+
+Handles the OAuth callback from GitHub after user authorization.
+
+**Rate Limit:** Inherited from OAuth rate limiter (10 requests per 5 minutes)
+
+**Query Parameters:**
+- `code` - Authorization code from GitHub (automatically provided)
+- `state` - State parameter for CSRF protection (automatically provided)
+
+**Response:** 
+- Redirects to 2FA page if 2FA is enabled for the user
+- Redirects to `loginRedirectURL` or stored redirect URL if 2FA is not required
+- Renders error page if authentication fails
+
+**Error Handling:**
+- **GitHub Not Linked**: Returns error if GitHub account is not in `user_github` table
+- **Account Inactive**: Returns error if user account is deactivated
+- **Not Authorized**: Returns error if user is not allowed to access the application
+- **GitHub Auth Error**: Returns error for any OAuth-related failures
+
+**Success Flow:**
+```
+GitHub → /api/github/login/callback 
+  → (If 2FA enabled) → /mbkauthe/2fa 
+  → (If no 2FA) → loginRedirectURL or stored redirect
+```
+
+**Database Query:**
+```sql
+SELECT ug.*, u."UserName", u."Role", u."Active", u."AllowedApps", u."id" 
+FROM user_github ug 
+JOIN "Users" u ON ug.user_name = u."UserName" 
+WHERE ug.github_id = $1
+```
+
+**Note:** This endpoint is automatically called by GitHub and should not be accessed directly by users.
 
 ---
 
@@ -931,10 +1066,13 @@ app.use((req, res) => {
 | `/mbkauthe/api/login` | 8 requests | 1 minute |
 | `/mbkauthe/api/logout` | 10 requests | 1 minute |
 | `/mbkauthe/api/verify-2fa` | 5 requests | 1 minute |
+| `/mbkauthe/api/github/login` | 10 requests | 5 minutes |
+| `/mbkauthe/api/github/login/callback` | 10 requests | 5 minutes |
 | `/mbkauthe/login` | 8 requests | 1 minute |
 | `/mbkauthe/info` | 8 requests | 1 minute |
+| `/mbkauthe/test` | 8 requests | 1 minute |
 
-Rate limits are applied per IP address.
+Rate limits are applied per IP address. Logged-in users are exempt from some rate limits (e.g., login page rate limit).
 
 ---
 

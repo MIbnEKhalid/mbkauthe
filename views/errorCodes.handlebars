@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{> head}}
+
+<body>
+    {{> header}}
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            padding-top: 100px;
+        }
+
+        .page-header {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            border-bottom: 2px solid rgba(0, 184, 148, 0.3);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+        }
+
+        .search-box {
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 70px;
+            background: transparent;
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(0, 184, 148, 0.2);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 184, 148, 0.3);
+            border-radius: 8px;
+            color: #e0f7fa;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #00b894;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .search-input::placeholder {
+            color: #b2dfdb;
+            opacity: 0.6;
+        }
+
+        .category {
+            margin-bottom: 3rem;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(0, 184, 148, 0.1);
+            border-left: 4px solid #00b894;
+            border-radius: 4px;
+        }
+
+        .category-header h2 {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .category-header .range {
+            font-size: 1rem;
+            color: var(--text-light);
+            font-weight: normal;
+        }
+
+        .error-card {
+            background: rgba(10, 20, 20, 0.8);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            scroll-margin-top: 100px;
+        }
+
+        .error-card:hover {
+            border-color: #00b894;
+            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .error-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-code {
+            background: var(--warning);
+            color: var(--darker);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .error-name {
+            color: var(--accent);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .error-message {
+            color: var(--text);
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            padding-left: 1rem;
+            border-left: 3px solid rgba(0, 184, 148, 0.3);
+        }
+
+        .error-hint {
+            background: rgba(255, 209, 102, 0.1);
+            color: var(--warning);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            border-left: 3px solid var(--warning);
+            font-size: 0.95rem;
+            margin-top: 0.75rem;
+        }
+
+
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+            font-size: 1.2rem;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--accent);
+            color: var(--darker);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3);
+            transition: all 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(0, 184, 148, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+
+            .category-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .error-card {
+                padding: 1rem;
+            }
+
+            .error-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🔐 MBKAuthe Error Codes</h1>
+            <p>Complete reference guide for all error codes and their solutions</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search by error code, name, or description...">
+        </div>
+
+        <div id="errorContainer">
+            {{#each errorCategories}}
+            <div class="category" data-category="{{this.category}}">
+                <div class="category-header">
+                    <h2>{{this.icon}} {{this.name}}</h2>
+                    <span class="range">{{this.range}}</span>
+                </div>
+
+                {{#each this.errors}}
+                <div class="error-card" id="error-{{this.code}}" data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
+                    <div class="error-header">
+                        <span class="error-code">{{this.code}}</span>
+                        <span class="error-name">{{this.name}}</span>
+                    </div>
+                    <div class="error-message">
+                        {{this.userMessage}}
+                    </div>
+                    <div class="error-hint">
+                        💡 {{this.hint}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            {{/each}}
+        </div>
+
+        <div class="no-results" id="noResults" style="display: none;">
+            No error codes found matching your search.
+        </div>
+    </div>
+
+    <div class="back-to-top" id="backToTop">↑</div>
+
+    <script>
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const errorCards = document.querySelectorAll('.error-card');
+        const categories = document.querySelectorAll('.category');
+        const noResults = document.getElementById('noResults');
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            let hasResults = false;
+
+            if (!searchTerm) {
+                // Show all cards and categories
+                errorCards.forEach(card => card.style.display = 'block');
+                categories.forEach(cat => cat.style.display = 'block');
+                noResults.style.display = 'none';
+                return;
+            }
+
+            // Search through error cards
+            errorCards.forEach(card => {
+                const searchData = card.getAttribute('data-search').toLowerCase();
+                if (searchData.includes(searchTerm)) {
+                    card.style.display = 'block';
+                    hasResults = true;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Hide/show categories based on visible cards
+            categories.forEach(category => {
+                const visibleCards = category.querySelectorAll('.error-card[style="display: block;"]');
+                if (visibleCards.length > 0) {
+                    category.style.display = 'block';
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+
+            noResults.style.display = hasResults ? 'none' : 'block';
+        });
+
+        // Back to top button
+        const backToTop = document.getElementById('backToTop');
+
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+
+        backToTop.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Handle hash navigation
+        function scrollToError() {
+            if (window.location.hash) {
+                let targetId = window.location.hash.substring(1);
+                
+                // If hash doesn't start with "error-", add it
+                if (!targetId.startsWith('error-') && /^\d+$/.test(targetId)) {
+                    targetId = 'error-' + targetId;
+                }
+                
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    setTimeout(() => {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetElement.style.background = 'rgba(0, 184, 148, 0.2)';
+                        targetElement.style.transition = 'background 0.3s ease';
+                        setTimeout(() => {
+                            targetElement.style.background = '';
+                        }, 2000);
+                    }, 100);
+                }
+            }
+        }
+
+        // Scroll on page load
+        scrollToError();
+
+        // Scroll when hash changes
+        window.addEventListener('hashchange', scrollToError);
+    </script>
+</body>
+
+</html>

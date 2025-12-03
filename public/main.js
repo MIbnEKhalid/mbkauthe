@@ -25,7 +25,7 @@ async function logout() {
       alert(result.message);
     }
   } catch (error) {
-    console.error("Error during logout:", error);
+    console.error("[mbkauthe] Error during logout:", error);
     alert(`Logout failed: ${error.message}`);
   }
 }
@@ -64,7 +64,7 @@ async function nuclearCacheClear() {
           return Promise.resolve();
         }));
       } catch (error) {
-        console.error("Error clearing IndexedDB:", error);
+        console.error("[mbkauthe] Error clearing IndexedDB:", error);
       }
     }
 
@@ -84,7 +84,7 @@ async function nuclearCacheClear() {
     window.location.reload();
 
   } catch (error) {
-    console.error('Nuclear cache clear failed:', error);
+    console.error('[mbkauthe] Nuclear cache clear failed:', error);
     window.location.reload(true);
   }
 }
@@ -103,7 +103,7 @@ function checkSession() {
         window.location.reload(); // Reload the page to update the session status
       }
     })
-    .catch((error) => console.error("Error checking session:", error));
+    .catch((error) => console.error("[mbkauthe] Error checking session:", error));
 }
 // Call validateSession every 2 minutes (120000 milliseconds)
 // setInterval(checkSession, validateSessionInterval);

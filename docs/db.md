@@ -294,7 +294,7 @@ To add new users to the `Users` table, use the following SQL queries:
 **Generating Encrypted Passwords:**
 If you're using `EncPass=true`, you can generate encrypted passwords using the hashPassword function:
 ```javascript
-import { hashPassword } from './lib/config.js';
+import { hashPassword } from 'mbkauthe';
 const encryptedPassword = hashPassword('12345678', 'support');
 console.log(encryptedPassword); // Use this value for PasswordEnc column
 ```

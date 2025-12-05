@@ -5,6 +5,43 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import { Pool } from 'pg';
 
+// Global augmentations must be at the top level, outside any declare module blocks
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        username: string;
+        UserName: string;
+        role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        Role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+      };
+      userRole?: 'SuperAdmin' | 'NormalUser' | 'Guest';
+    }
+
+    interface Session {
+      user?: {
+        id: number;
+        username: string;
+        UserName: string;
+        role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        Role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        sessionId: string;
+        allowedApps?: string[];
+      };
+      preAuthUser?: {
+        id: number;
+        username: string;
+        UserName?: string;
+        role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        Role?: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        loginMethod?: 'password' | 'github';
+        redirectUrl?: string | null;
+      };
+      oauthRedirect?: string;
+    }
+  }
+}
+
 declare module 'mbkauthe' {
   // Configuration Types
   export interface MBKAuthConfig {
@@ -90,26 +127,6 @@ declare module 'mbkauthe' {
     updated_at: Date;
   }
 
-  // Request Extensions
-  declare global {
-    namespace Express {
-      interface Request {
-        user?: {
-          username: string;
-          UserName: string;
-          role: UserRole;
-          Role: UserRole;
-        };
-      }
-
-      interface Session {
-        user?: SessionUser;
-        preAuthUser?: PreAuthUser;
-        oauthRedirect?: string;
-      }
-    }
-  }
-
   // API Response Types
   export interface LoginResponse {
     success: boolean;
@@ -176,8 +193,6 @@ declare module 'mbkauthe' {
   ): AuthMiddleware;
 
   export function authenticate(token: string): AuthMiddleware;
-
-  export function authapi(requiredRole?: UserRole[]): AuthMiddleware;
 
   // Utility Functions
   export function renderError(

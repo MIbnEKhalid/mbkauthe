@@ -1,12 +1,14 @@
 {
   "name": "mbkauthe",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
   "types": "index.d.ts",
   "scripts": {
-    "dev": "cross-env test=dev nodemon index.js"
+    "dev": "cross-env test=dev nodemon index.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
   },
   "repository": {
     "type": "git",
@@ -30,8 +32,6 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "cheerio": "^1.0.0",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "csurf": "^1.2.2",
@@ -40,19 +40,26 @@
     "express-handlebars": "^8.0.1",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
-    "marked": "^15.0.11",
     "node-fetch": "^3.3.2",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
-    "path": "^0.12.7",
     "pg": "^8.14.1",
-    "speakeasy": "^2.0.0",
-    "url": "^0.11.4"
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/node": "^22.19.1",
     "cross-env": "^7.0.3",
-    "nodemon": "^3.1.11"
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.spec.js",
+      "**/*.test.js"
+    ],
+    "testTimeout": 10000,
+    "transform": {}
   }
 }

@@ -55,14 +55,65 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 
 ### Public Endpoints
 
+#### `GET /login`
+
+Redirect route that forwards to the main login page.
+
+**Rate Limit:** No rate limiting applied
+
+**Query Parameters:**
+- All query parameters are preserved and forwarded
+
+**Response:** 302 redirect to `/mbkauthe/login`
+
+**Example:**
+```
+GET /login?redirect=/dashboard
+→ Redirects to: /mbkauthe/login?redirect=/dashboard
+```
+
+---
+
+#### `GET /signin`
+
+Alias redirect route that forwards to the main login page.
+
+**Rate Limit:** No rate limiting applied
+
+**Query Parameters:**
+- All query parameters are preserved and forwarded
+
+**Response:** 302 redirect to `/mbkauthe/login`
+
+**Example:**
+```
+GET /signin
+→ Redirects to: /mbkauthe/login
+```
+
+---
+
 #### `GET /mbkauthe/login`
 
-Renders the login page.
+Renders the main login page.
+
+**Rate Limit:** 8 requests per minute (exempt for logged-in users)
+
+**CSRF Protection:** Required (token included in form)
 
 **Query Parameters:**
 - `redirect` (optional) - URL to redirect after successful login
 
-**Response:** HTML page
+**Response:** HTML page with login form
+
+**Template Variables:**
+- `githubLoginEnabled` - Whether GitHub OAuth is enabled
+- `customURL` - Redirect URL after login
+- `userLoggedIn` - Whether user is already authenticated
+- `username` - Current username if logged in
+- `version` - MBKAuthe version
+- `appName` - Application name
+- `csrfToken` - CSRF protection token
 
 **Example:**
 ```
@@ -275,12 +326,16 @@ fetch('/mbkauthe/api/logout', {
 
 Terminates all active sessions across all users (admin only).
 
-**Authentication:** API token required
+**Authentication:** API token required (via `authenticate` middleware)
+
+**Rate Limit:** No explicit rate limiting applied
 
 **Headers:**
 ```
-Authorization: your-api-token
+Authorization: your-main-secret-token
 ```
+
+**Request Body:** None required
 
 **Success Response (200 OK):**
 ```json
@@ -298,16 +353,28 @@ Authorization: your-api-token
 | 500 | Failed to terminate sessions |
 | 500 | Internal Server Error |
 
+**Implementation Details:**
+- Clears all user session IDs in the database (`Users` table)
+- Deletes all session records from the `session` table  
+- Destroys the current request session
+- Clears session cookies
+- Runs database operations in parallel for better performance
+
 **Example Request:**
 ```javascript
 fetch('/mbkauthe/api/terminateAllSessions', {
   method: 'POST',
   headers: {
-    'Authorization': 'your-secret-token',
+    'Authorization': process.env.MAIN_SECRET_TOKEN,
+    'Content-Type': 'application/json'
   }
 })
 .then(response => response.json())
-.then(data => console.log(data));
+.then(data => {
+  if (data.success) {
+    console.log('All sessions terminated successfully');
+  }
+});
 ```
 
 ---
@@ -363,6 +430,10 @@ GET /mbkauthe/ErrorCode
 
 Serves the client-side JavaScript file containing helper functions for authentication operations.
 
+**Rate Limit:** No rate limiting applied
+
+**Cache:** Cached for 1 year (max-age=31536000)
+
 **Purpose:** Provides frontend JavaScript utilities including:
 - `logout()` - Logout function with confirmation dialog and cache clearing
 - `logoutuser()` - Alias for logout function
@@ -396,45 +467,19 @@ Serves the client-side JavaScript file containing helper functions for authentic
 - Clears cookies
 - Forces page reload
 
-
----
-
-#### `GET /mbkauthe/ErrorCode`
-
-Displays comprehensive error code documentation with descriptions and user messages.
-
-**Response:** HTML page showing:
-- All error codes organized by category
-- Error code ranges (Authentication, 2FA, Session, Authorization, etc.)
-- User-friendly messages and hints for each error
-- Dynamically generated from `lib/utils/errors.js`
-
-**Categories:**
-- **600-699**: Authentication Errors
-- **700-799**: Two-Factor Authentication Errors
-- **800-899**: Session Management Errors
-- **900-999**: Authorization Errors
-- **1000-1099**: Input Validation Errors
-- **1100-1199**: Rate Limiting Errors
-- **1200-1299**: Server Errors
-- **1300-1399**: OAuth Errors
-
-**Note:** This page is automatically synchronized with the error definitions in the codebase. Adding new errors only requires updating `lib/utils/errors.js` and the category code array.
-
-**Usage:**
-```
-GET /mbkauthe/ErrorCode
-```
-
 ---
 
 #### `GET /icon.svg`
 
-Serves the application's SVG icon file.
+Serves the application's SVG icon file from the root level.
+
+**Rate Limit:** No rate limiting applied
 
 **Response:** SVG image file (Content-Type: image/svg+xml)
 
 **Cache:** Cached for 1 year (max-age=31536000)
+
+**Note:** This route is mounted at the root level (not under `/mbkauthe`)
 
 **Usage:**
 ```html
@@ -710,64 +755,6 @@ Authorization: your-secret-token
 
 ---
 
-### `authapi(requiredRole)`
-
-Advanced API authentication with role-based access control.
-
-**Parameters:**
-- `requiredRole` (array, optional) - Array of allowed roles
-
-**Usage:**
-```javascript
-import { authapi } from 'mbkauthe';
-
-// Any authenticated API user
-app.get('/api/data', authapi(), (req, res) => {
-  console.log(req.user); // { username, UserName, role, Role }
-  res.json({ data: 'API data' });
-});
-
-// Only SuperAdmin via API
-app.post('/api/admin/action', authapi(['SuperAdmin']), (req, res) => {
-  res.json({ success: true });
-});
-```
-
-**Headers Required:**
-```
-Authorization: user-api-key-64-char-hex
-```
-
-**Behavior:**
-- Validates API key from `Authorization` header
-- Looks up user associated with API key
-- Checks if user account is active
-- Verifies user role if `requiredRole` is specified
-- Blocks demo users from accessing endpoints
-- Populates `req.user` with user information
-- Returns 401 if unauthorized, 403 if insufficient permissions
-
-**req.user Object:**
-```javascript
-req.user = {
-  username: "john.doe",
-  UserName: "john.doe",
-  role: "NormalUser",
-  Role: "NormalUser"
-}
-```
-
-**Database Requirement:**
-Requires `UserAuthApiKey` table:
-```sql
-CREATE TABLE "UserAuthApiKey" (
-    username VARCHAR(50) PRIMARY KEY REFERENCES "Users"("UserName"),
-    "key" VARCHAR(64) UNIQUE NOT NULL
-);
-```
-
----
-
 ## Error Codes
 
 ### HTTP Status Codes
@@ -876,7 +863,7 @@ app.get('/moderator',
 ### API Authentication
 
 ```javascript
-import { authenticate, authapi } from 'mbkauthe';
+import { authenticate } from 'mbkauthe';
 
 // Simple token authentication
 app.post('/api/webhook', 
@@ -887,22 +874,25 @@ app.post('/api/webhook',
   }
 );
 
-// API key with user validation
-app.get('/api/user/profile', authapi(), async (req, res) => {
-  const { username } = req.user;
-  
-  // Fetch user profile
-  const profile = await getUserProfile(username);
-  
-  res.json({ success: true, profile });
-});
-
-// API key with role requirement
-app.delete('/api/admin/users/:id', 
-  authapi(['SuperAdmin']), 
+// Admin API with token authentication
+app.post('/api/admin/terminate-sessions', 
+  authenticate(process.env.MAIN_SECRET_TOKEN), 
   async (req, res) => {
-    await deleteUser(req.params.id);
+    // Terminate all sessions
     res.json({ success: true });
+  }
+);
+
+// Protected API endpoint (requires session)
+app.get('/api/user/profile', 
+  validateSession,
+  async (req, res) => {
+    const { username } = req.session.user;
+    
+    // Fetch user profile
+    const profile = await getUserProfile(username);
+    
+    res.json({ success: true, profile });
   }
 );
 ```

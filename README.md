@@ -110,6 +110,30 @@ app.get('/admin', validateSession, checkRolePermission(['SuperAdmin']), (req, re
 app.listen(3000);
 ```
 
+## 🧪 Testing
+
+MBKAuthe includes comprehensive test coverage for all authentication features:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (auto-rerun on changes)
+npm run test:watch
+
+# Run with development flags
+npm run dev
+```
+
+**Test Coverage:**
+- ✅ Authentication flows (login, 2FA, logout)
+- ✅ OAuth integration (GitHub)  
+- ✅ Session management and security
+- ✅ Role-based access control
+- ✅ API endpoints and error handling
+- ✅ CSRF protection and rate limiting
+- ✅ Static asset serving
+
 ## 📂 Architecture (v3.0)
 
 ```
@@ -148,14 +172,31 @@ app.post('/api/data', authenticate(process.env.API_TOKEN), handler);
 
 ### Built-in Routes
 
-- `GET /mbkauthe/login` - Login page
+**Authentication Routes:**
+- `GET /login`, `/signin` - Redirect to main login page
+- `GET /mbkauthe/login` - Login page (8/min rate limit)
 - `POST /mbkauthe/api/login` - Login endpoint (8/min rate limit)
 - `POST /mbkauthe/api/logout` - Logout endpoint (10/min rate limit)
-- `GET /mbkauthe/2fa` - 2FA page (if enabled)
-- `POST /mbkauthe/api/verify-2fa` - 2FA verification (5/min rate limit)
-- `GET /mbkauthe/api/github/login` - GitHub OAuth
-- `GET /mbkauthe/info` - Version & config info
-- `GET /mbkauthe/ErrorCode` - Error documentation
+- `GET /mbkauthe/2fa` - 2FA verification page (if enabled)
+- `POST /mbkauthe/api/verify-2fa` - 2FA verification API (5/min rate limit)
+
+**OAuth Routes:**
+- `GET /mbkauthe/api/github/login` - GitHub OAuth initiation (10/5min rate limit)
+- `GET /mbkauthe/api/github/login/callback` - GitHub OAuth callback
+
+**Information & Utility Routes:**
+- `GET /mbkauthe/info`, `/mbkauthe/i` - Version & config info (8/min rate limit)
+- `GET /mbkauthe/ErrorCode` - Error code documentation
+- `GET /mbkauthe/test` - Test authentication status (8/min rate limit)
+
+**Static Asset Routes:**
+- `GET /mbkauthe/main.js` - Client-side JavaScript utilities
+- `GET /mbkauthe/bg.webp` - Background image for auth pages
+- `GET /icon.svg` - Application SVG icon (root level)
+- `GET /favicon.ico`, `/icon.ico` - Application favicon
+
+**Admin API Routes:**
+- `POST /mbkauthe/api/terminateAllSessions` - Terminate all sessions (admin only)
 
 ## 🔐 Security Features
 
@@ -245,8 +286,9 @@ const result = await dblogin.query('SELECT * FROM "Users"');
 ## 📚 Documentation
 
 - [API Documentation](docs/api.md) - Complete API reference
-- [Database Guide](docs/db.md) - Schema details
+- [Database Guide](docs/db.md) - Schema details  
 - [Environment Config](docs/env.md) - Configuration options
+- [Error Messages](docs/error-messages.md) - Error code reference
 
 ## 📝 License
 

@@ -8,9 +8,35 @@
 </div>
 <script>
     // showMessage("Failed to load the page. Please try again later.", "Error", "404");
+    
+    // Sanitize HTML to prevent XSS while allowing safe HTML tags
+    function sanitizeHTML(html) {
+        const temp = document.createElement('div');
+        temp.textContent = html;
+        let sanitized = temp.innerHTML;
+        
+        // Allow only safe HTML tags (no script, iframe, object, embed, etc.)
+        const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'span', 'div'];
+        const tagRegex = /<(\/)?([\w]+)([^>]*)>/gi;
+        
+        sanitized = sanitized.replace(tagRegex, (match, closing, tagName, attributes) => {
+            tagName = tagName.toLowerCase();
+            if (allowedTags.includes(tagName)) {
+                // Remove event handlers and javascript: from attributes
+                const safeAttrs = attributes.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+                                           .replace(/javascript:/gi, '');
+                return `<${closing || ''}${tagName}${safeAttrs}>`;
+            }
+            return ''; // Remove disallowed tags
+        });
+        
+        return sanitized;
+    }
+    
     function showMessage(message, heading, errorCode) {
         document.querySelector(".showmessageWindow h1").innerText = heading;
-        document.querySelector(".showmessageWindow p").innerHTML = message;
+        // Sanitize and set innerHTML to allow safe HTML formatting
+        document.querySelector(".showmessageWindow p").innerHTML = sanitizeHTML(message);
 
         if (errorCode) {
             document.querySelector(".showmessageWindow .error-code").style.display = "block";

@@ -33,6 +33,11 @@
                     <i class="fas fa-eye input-icon" id="togglePassword"></i>
                 </div>
 
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+
                 <button type="submit" class="btn-login" id="loginButton">
                     <span id="loginButtonText">Login</span>
                 </button>
@@ -48,10 +53,20 @@
                     </a>
                 </div>
                 {{/if }}
-                <div class="remember-me">
-                    <input type="checkbox" id="rememberMe" name="rememberMe">
-                    <label for="rememberMe">Remember me</label>
+                {{#if googleLoginEnabled }}
+                <div class="social-login">
+                    {{#unless githubLoginEnabled }}
+                    <div class="divider">
+                        <span>or</span>
+                    </div>
+                    {{/unless}}
+                    <!-- Use JS to initiate Google login and pass redirect param to backend -->
+                    <a type="button" id="googleLoginBtn" class="btn-github">
+                        <i class="fab fa-google"></i>
+                        <span>Continue with Google</span>
+                    </a>
                 </div>
+                {{/if }}
 
                 {{#if userLoggedIn }}
                 <div class="WarningboxInfo">
@@ -68,10 +83,10 @@
 
                 <p class="terms-info">
                     By logging in, you agree to our
-                    <a href="https://portal.mbktech.org/info/Terms&Conditions" target="_blank"
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
                         class="terms-link">Terms & Conditions</a>
                     and
-                    <a href="https://portal.mbktech.org/info/PrivacyPolicy" target="_blank"
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
                         class="terms-link">Privacy Policy</a>.
                 </p>
             </form>
@@ -255,6 +270,21 @@
 
         const githubBtn = document.getElementById('githubLoginBtn');
         if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
+        {{/if }}
+
+        {{#if googleLoginEnabled }}
+
+        // Google login: Navigate directly to Google OAuth flow
+        async function startGoogleLogin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirect = urlParams.get('redirect') || '{{customURL}}';
+
+            // Navigate directly to the backend GET endpoint with redirect query
+            window.location.href = `/mbkauthe/api/google/login?redirect=${encodeURIComponent(redirect)}`;
+        }
+
+        const googleBtn = document.getElementById('googleLoginBtn');
+        if (googleBtn) googleBtn.addEventListener('click', startGoogleLogin);
         {{/if }}
     </script>
 </body>

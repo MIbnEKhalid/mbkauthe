@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -28,6 +28,18 @@
     "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"
   },
   "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "README.md",
+    "test.spec.js",
+    "docs/",
+    "lib/",
+    "public/",
+    "views/",
+    "vercel.json"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -43,6 +55,7 @@
     "node-fetch": "^3.3.2",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0",
     "pg": "^8.14.1",
     "speakeasy": "^2.0.0"
   },

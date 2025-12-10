@@ -34,10 +34,11 @@ declare global {
         UserName?: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
         Role?: 'SuperAdmin' | 'NormalUser' | 'Guest';
-        loginMethod?: 'password' | 'github';
+        loginMethod?: 'password' | 'github' | 'google';
         redirectUrl?: string | null;
       };
       oauthRedirect?: string;
+      oauthCsrfToken?: string;
     }
   }
 }
@@ -57,8 +58,20 @@ declare module 'mbkauthe' {
     GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
+    GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
     loginRedirectURL?: string;
     EncPass?: 'true' | 'false' | 'f';
+  }
+
+  export interface OAuthConfig {
+    GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
+    GITHUB_CLIENT_ID?: string;
+    GITHUB_CLIENT_SECRET?: string;
+    GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
   }
 
   // User Types
@@ -80,7 +93,7 @@ declare module 'mbkauthe' {
     UserName?: string;
     role: UserRole;
     Role?: UserRole;
-    loginMethod?: 'password' | 'github';
+    loginMethod?: 'password' | 'github' | 'google';
     redirectUrl?: string | null;
   }
 
@@ -122,6 +135,16 @@ declare module 'mbkauthe' {
     user_name: string;
     github_id: string;
     github_username: string;
+    access_token: string;
+    created_at: Date;
+    updated_at: Date;
+  }
+
+  export interface GoogleUser {
+    id: number;
+    user_name: string;
+    google_id: string;
+    google_email: string;
     access_token: string;
     created_at: Date;
     updated_at: Date;

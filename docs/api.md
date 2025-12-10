@@ -108,6 +108,7 @@ Renders the main login page.
 
 **Template Variables:**
 - `githubLoginEnabled` - Whether GitHub OAuth is enabled
+- `googleLoginEnabled` - Whether Google OAuth is enabled
 - `customURL` - Redirect URL after login
 - `userLoggedIn` - Whether user is already authenticated
 - `username` - Current username if logged in
@@ -328,7 +329,7 @@ Terminates all active sessions across all users (admin only).
 
 **Authentication:** API token required (via `authenticate` middleware)
 
-**Rate Limit:** No explicit rate limiting applied
+**Rate Limit:** 3 requests per 5 minutes
 
 **Headers:**
 ```
@@ -354,11 +355,12 @@ Authorization: your-main-secret-token
 | 500 | Internal Server Error |
 
 **Implementation Details:**
-- Clears all user session IDs in the database (`Users` table)
-- Deletes all session records from the `session` table  
+- Clears all user session IDs in the database (`Users` table) where sessions exist
+- Deletes all active session records from the `session` table  
 - Destroys the current request session
 - Clears session cookies
 - Runs database operations in parallel for better performance
+- Uses optimized queries with WHERE clauses to avoid unnecessary updates
 
 **Example Request:**
 ```javascript
@@ -557,11 +559,15 @@ GET /mbkauthe/test
 
 ### OAuth Endpoints
 
-#### `GET /mbkauthe/api/github/login`
+#### GitHub OAuth
+
+##### `GET /mbkauthe/api/github/login`
 
 Initiates the GitHub OAuth authentication flow.
 
 **Rate Limit:** 10 requests per 5 minutes
+
+**CSRF Protection:** Required (state parameter used for validation)
 
 **Query Parameters:**
 - `redirect` (optional) - Relative URL to redirect after successful authentication (must start with `/` to prevent open redirect attacks)
@@ -580,15 +586,16 @@ GET /mbkauthe/api/github/login?redirect=/dashboard
 
 **Workflow:**
 1. User clicks "Login with GitHub"
-2. Redirects to GitHub for authorization
-3. GitHub redirects back to callback URL
-4. System verifies GitHub account is linked
-5. If 2FA enabled, prompts for 2FA
-6. Creates session and redirects to specified URL
+2. CSRF token generated and stored in session
+3. Redirects to GitHub for authorization
+4. GitHub redirects back to callback URL
+5. System verifies GitHub account is linked
+6. If 2FA enabled, prompts for 2FA
+7. Creates session and redirects to specified URL
 
 ---
 
-#### `GET /mbkauthe/api/github/login/callback`
+##### `GET /mbkauthe/api/github/login/callback`
 
 Handles the OAuth callback from GitHub after user authorization.
 
@@ -625,6 +632,104 @@ WHERE ug.github_id = $1
 ```
 
 **Note:** This endpoint is automatically called by GitHub and should not be accessed directly by users.
+
+---
+
+#### Google OAuth
+
+##### `GET /mbkauthe/api/google/login`
+
+Initiates the Google OAuth 2.0 authentication flow.
+
+**Rate Limit:** 10 requests per 5 minutes
+
+**CSRF Protection:** Required (state parameter used for validation)
+
+**Query Parameters:**
+- `redirect` (optional) - Relative URL to redirect after successful authentication (must start with `/` to prevent open redirect attacks)
+
+**Response:** Redirects to Google OAuth authorization page
+
+**Prerequisites:**
+- `GOOGLE_LOGIN_ENABLED=true` in environment
+- Valid `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` configured
+- User's Google account must be linked to an MBKAuth account in `user_google` table
+
+**Example:**
+```
+GET /mbkauthe/api/google/login?redirect=/dashboard
+```
+
+**Workflow:**
+1. User clicks "Login with Google"
+2. CSRF token generated and stored in session
+3. Redirects to Google for authorization
+4. Google redirects back to callback URL
+5. System verifies Google account is linked
+6. If 2FA enabled, prompts for 2FA
+7. Creates session and redirects to specified URL
+
+**Error Responses:**
+- **Configuration Error**: Returns 500 if Google OAuth credentials are not properly configured
+- **Disabled**: Returns 403 if `GOOGLE_LOGIN_ENABLED` is false
+
+---
+
+##### `GET /mbkauthe/api/google/login/callback`
+
+Handles the OAuth callback from Google after user authorization.
+
+**Rate Limit:** Inherited from OAuth rate limiter (10 requests per 5 minutes)
+
+**Query Parameters:**
+- `code` - Authorization code from Google (automatically provided)
+- `state` - State parameter for CSRF protection (automatically provided)
+
+**Response:** 
+- Redirects to 2FA page if 2FA is enabled for the user
+- Redirects to `loginRedirectURL` or stored redirect URL if 2FA is not required
+- Renders error page if authentication fails
+
+**Error Handling:**
+- **Google Not Linked**: Returns error if Google account is not in `user_google` table
+- **Account Inactive**: Returns error if user account is deactivated
+- **Not Authorized**: Returns error if user is not allowed to access the application
+- **Google Auth Error**: Returns error for any OAuth-related failures
+- **Token Error**: Handles expired or invalid OAuth tokens with user-friendly message
+- **CSRF Validation Failed**: Returns 403 if state parameter doesn't match
+
+**Success Flow:**
+```
+Google → /api/google/login/callback 
+  → (CSRF Validation)
+  → (If 2FA enabled) → /mbkauthe/2fa 
+  → (If no 2FA) → loginRedirectURL or stored redirect
+```
+
+**Database Query:**
+```sql
+SELECT ug.*, u."UserName", u."Role", u."Active", u."AllowedApps", u."id" 
+FROM user_google ug 
+JOIN "Users" u ON ug.user_name = u."UserName" 
+WHERE ug.google_id = $1
+```
+
+**Note:** This endpoint is automatically called by Google and should not be accessed directly by users.
+
+---
+
+#### OAuth Security Features
+
+Both GitHub and Google OAuth implementations include:
+
+- **CSRF Protection**: State parameter validation to prevent cross-site request forgery
+- **Session Security**: OAuth state tokens stored in session and validated on callback
+- **Rate Limiting**: 10 requests per 5 minutes to prevent abuse
+- **Token Validation**: Proper handling of expired or invalid OAuth tokens
+- **Redirect Validation**: Only allows relative URLs to prevent open redirect attacks
+- **Account Linking**: Users must pre-link OAuth accounts before login
+- **2FA Integration**: Respects 2FA settings and trusted device configuration
+- **Comprehensive Error Handling**: User-friendly error messages for all failure scenarios
 
 ---
 

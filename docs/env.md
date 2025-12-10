@@ -230,16 +230,18 @@ DEVICE_TRUST_DURATION_DAYS=30  # 30 days (convenience)
 
 ---
 
-## 🐙 GitHub OAuth Authentication
+## 🔐 OAuth Authentication
 
-### GitHub Login Configuration
+### GitHub OAuth Authentication
+
+#### GitHub Login Configuration
 ```env
 GITHUB_LOGIN_ENABLED=false
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 ```
 
-#### GITHUB_LOGIN_ENABLED
+##### GITHUB_LOGIN_ENABLED
 **Description:** Enables or disables GitHub OAuth login functionality.
 
 **Values:**
@@ -248,7 +250,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 
 **Required:** Yes (if using GitHub authentication)
 
-#### GITHUB_CLIENT_ID
+##### GITHUB_CLIENT_ID
 **Description:** OAuth application client ID from GitHub.
 
 - **Purpose:** Identifies your application to GitHub's OAuth service
@@ -258,7 +260,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 
 **Example:** `GITHUB_CLIENT_ID=Iv1.a1b2c3d4e5f6g7h8`
 
-#### GITHUB_CLIENT_SECRET
+##### GITHUB_CLIENT_SECRET
 **Description:** OAuth application client secret from GitHub.
 
 - **Purpose:** Authenticates your application with GitHub's OAuth service
@@ -269,7 +271,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 
 **Example:** `GITHUB_CLIENT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0`
 
-### Setting Up GitHub OAuth
+#### Setting Up GitHub OAuth
 
 1. **Create GitHub OAuth App:**
    - Go to [GitHub Developer Settings](https://github.com/settings/developers)
@@ -277,7 +279,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
    - Fill in application details:
      - **Application name:** Your app name
      - **Homepage URL:** `https://yourdomain.com` (or `http://localhost:3000` for dev)
-     - **Authorization callback URL:** `https://yourdomain.com/auth/github/callback`
+     - **Authorization callback URL:** `https://yourdomain.com/mbkauthe/api/github/login/callback`
    - Click "Register application"
 
 2. **Copy Credentials:**
@@ -291,10 +293,91 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
    GITHUB_CLIENT_SECRET=your-copied-client-secret
    ```
 
-**Security Notes:**
+---
+
+### Google OAuth Authentication
+
+#### Google Login Configuration
+```env
+GOOGLE_LOGIN_ENABLED=false
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+##### GOOGLE_LOGIN_ENABLED
+**Description:** Enables or disables Google OAuth login functionality.
+
+**Values:**
+- `true` - Enable Google login (users can authenticate via Google)
+- `false` - Disable Google login (default)
+
+**Required:** Yes (if using Google authentication)
+
+##### GOOGLE_CLIENT_ID
+**Description:** OAuth 2.0 client ID from Google Cloud Console.
+
+- **Purpose:** Identifies your application to Google's OAuth service
+- **Format:** String ending in `.apps.googleusercontent.com`
+- **Setup:** Obtain from [Google Cloud Console](https://console.cloud.google.com/)
+- **Required:** Yes (when `GOOGLE_LOGIN_ENABLED=true`)
+
+**Example:** `GOOGLE_CLIENT_ID=123456789-abc123def456.apps.googleusercontent.com`
+
+##### GOOGLE_CLIENT_SECRET
+**Description:** OAuth 2.0 client secret from Google Cloud Console.
+
+- **Purpose:** Authenticates your application with Google's OAuth service
+- **Security:** Keep this secret secure and never commit to version control
+- **Format:** Alphanumeric string provided by Google
+- **Setup:** Generated when creating OAuth credentials in Google Cloud Console
+- **Required:** Yes (when `GOOGLE_LOGIN_ENABLED=true`)
+
+**Example:** `GOOGLE_CLIENT_SECRET=GOCSPX-abc123def456ghi789jkl012mno`
+
+#### Setting Up Google OAuth
+
+1. **Create Google Cloud Project:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the Google+ API (or People API)
+
+2. **Configure OAuth Consent Screen:**
+   - Navigate to "OAuth consent screen" in the sidebar
+   - Choose "External" user type (or "Internal" for Google Workspace)
+   - Fill in required app information
+   - Add your domain to authorized domains
+   - Save and continue
+
+3. **Create OAuth Credentials:**
+   - Navigate to "Credentials" in the sidebar
+   - Click "Create Credentials" > "OAuth 2.0 Client ID"
+   - Choose "Web application" as application type
+   - Add authorized JavaScript origins:
+     - `https://yourdomain.com`
+     - `http://localhost:3000` (for development)
+   - Add authorized redirect URIs:
+     - `https://yourdomain.com/mbkauthe/api/google/login/callback`
+     - `http://localhost:3000/mbkauthe/api/google/login/callback` (for development)
+   - Click "Create"
+
+4. **Copy Credentials:**
+   - Copy the **Client ID**
+   - Copy the **Client Secret**
+
+5. **Configure Environment:**
+   ```env
+   GOOGLE_LOGIN_ENABLED=true
+   GOOGLE_CLIENT_ID=your-copied-client-id
+   GOOGLE_CLIENT_SECRET=your-copied-client-secret
+   ```
+
+### OAuth Security Notes
+
 - Use separate OAuth apps for development and production environments
 - Rotate client secrets periodically
 - Never expose client secrets in client-side code
+- Ensure callback URLs match exactly with OAuth provider configuration
+- Users must link their OAuth accounts before they can use OAuth login
 
 ---
 

@@ -1,7 +1,7 @@
-# GitHub Login Setup Guide
+# OAuth Login Setup Guide
 
 ## Overview
-This GitHub login feature allows users to authenticate using their GitHub account if it's already linked to their account in the system. Users must first connect their GitHub account through the regular account linking process, then they can use GitHub to log in directly.
+This OAuth login feature allows users to authenticate using their GitHub or Google account if it's already linked to their account in the system. Users must first connect their OAuth account through the regular account linking process, then they can use it to log in directly.
 
 ## Setup Instructions
 
@@ -12,6 +12,10 @@ Add these to your `.env` file:
 # GitHub OAuth App Configuration
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Google OAuth App Configuration
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
 ### 2. GitHub OAuth App Setup
@@ -20,10 +24,20 @@ GITHUB_CLIENT_SECRET=your_github_client_secret
 3. Set the Authorization callback URL to: `https://yourdomain.com/mbkauthe/api/github/login/callback`
 4. Copy the Client ID and Client Secret to your `.env` file
 
-### 3. Database Schema
-Ensure your `user_github` table exists with these columns:
+### 3. Google OAuth App Setup
+1. Go to Google Cloud Console (https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google+ API
+4. Go to Credentials > Create Credentials > OAuth 2.0 Client ID
+5. Set the application type to "Web application"
+6. Add authorized redirect URI: `https://yourdomain.com/mbkauthe/api/google/login/callback`
+7. Copy the Client ID and Client Secret to your `.env` file
+
+### 4. Database Schema
+Ensure your OAuth tables exist with these columns:
 
 ```sql
+-- GitHub users table
 CREATE TABLE user_github (
     id SERIAL PRIMARY KEY,
     user_name VARCHAR(50) REFERENCES "Users"("UserName"),
@@ -37,57 +51,98 @@ CREATE TABLE user_github (
 -- Add indexes for performance optimization
 CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github (github_id);
 CREATE INDEX IF NOT EXISTS idx_user_github_user_name ON user_github (user_name);
+
+-- Google users table
+CREATE TABLE user_google (
+    id SERIAL PRIMARY KEY,
+    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
+    google_id VARCHAR(255) UNIQUE,
+    google_email VARCHAR(255),
+    access_token VARCHAR(255),
+    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
+    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_user_google_google_id ON user_google (google_id);
+CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google (user_name);
 ```
 
 ## How It Works
 
-### Login Flow
-1. User clicks "Login with GitHub" on the login page
-2. User is redirected to GitHub for authentication
-3. GitHub redirects back to `/mbkauthe/api/github/login/callback`
-4. System checks if the GitHub ID exists in `user_github` table
+### Login Flow (GitHub/Google)
+1. User clicks "Login with GitHub" or "Login with Google" on the login page
+2. User is redirected to the OAuth provider for authentication
+3. Provider redirects back to `/mbkauthe/api/{provider}/login/callback`
+4. System checks if the OAuth ID exists in the respective `user_{provider}` table
 5. If found and user is active/authorized:
    - If 2FA is enabled, redirect to 2FA page
    - If no 2FA, complete login and redirect to home
 6. If not found, redirect to login page with error
 
 ### Account Linking
-Users must first link their GitHub account through your existing GitHub connection system (likely in user settings) before they can use GitHub login.
+Users must first link their OAuth account through your existing connection system (likely in user settings) before they can use OAuth login.
 
 ## API Routes Added
 
-### `/mbkauthe/api/github/login`
+### GitHub Routes
+
+#### `/mbkauthe/api/github/login`
 - **Method**: GET
 - **Description**: Initiates GitHub OAuth flow
 - **Redirects to**: GitHub authorization page
 
-### `/mbkauthe/api/github/login/callback`
+#### `/mbkauthe/api/github/login/callback`
 - **Method**: GET
 - **Description**: Handles GitHub OAuth callback
 - **Parameters**: `code` (from GitHub), `state` (optional)
 - **Success**: Redirects to home page or configured redirect URL
 - **Error**: Redirects to login page with error parameter
 
+### Google Routes
+
+#### `/mbkauthe/api/google/login`
+- **Method**: GET
+- **Description**: Initiates Google OAuth flow
+- **Redirects to**: Google authorization page
+
+#### `/mbkauthe/api/google/login/callback`
+- **Method**: GET
+- **Description**: Handles Google OAuth callback
+- **Parameters**: `code` (from Google), `state` (optional)
+- **Success**: Redirects to home page or configured redirect URL
+- **Error**: Redirects to login page with error parameter
+
 ## Error Handling
 
 The system handles various error cases:
-- `github_auth_failed`: GitHub OAuth failed
-- `user_not_found`: GitHub account not linked to any user
+- `github_auth_failed` / `google_auth_failed`: OAuth authentication failed
+- `user_not_found`: OAuth account not linked to any user
+- `account_inactive`: User account is deactivated
+- `not_authorized`: User not authorized for this app
 - `session_error`: Session save failed
 - `internal_error`: General server error
 
 ## Testing
 
+### GitHub Login
 1. Create a test user in your `Users` table
 2. Link a GitHub account to that user using your existing connection system
 3. Try logging in with GitHub using the new login button
+4. Check console logs for debugging information
+
+### Google Login
+1. Create a test user in your `Users` table
+2. Link a Google account to that user using your existing connection system
+3. Try logging in with Google using the new login button
 4. Check console logs for debugging information
 
 ## Login Page Updates
 
 The login page now includes:
 - A "Continue with GitHub" button
-- A divider ("or") between regular and GitHub login
+- A "Continue with Google" button
+- A divider ("or") between regular and OAuth login
 - Proper styling that matches your existing design
 
 ## Security Notes
@@ -96,7 +151,7 @@ The login page now includes:
 - App authorization is checked (same as regular login)
 - 2FA is respected if enabled
 - Session management is handled the same way as regular login
-- GitHub access tokens are stored securely
+- OAuth access tokens are stored securely
 
 ## Troubleshooting
 

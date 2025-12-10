@@ -1,4 +1,4 @@
-# MBKAuthe v3.0 - Authentication System for Node.js
+# MBKAuthe v3.2 - Authentication System for Node.js
 
 [![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 [![License](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](LICENSE)
@@ -16,19 +16,20 @@
   <img height="48px" src="https://handlebarsjs.com/handlebars-icon.svg" alt="Handlebars" />
 </p>
 
-**MBKAuth v3.0** is a production-ready authentication system for Node.js applications. Built with Express and PostgreSQL, it provides secure authentication, 2FA, role-based access, and GitHub OAuth out of the box.
+**MBKAuth v3.2** is a production-ready authentication system for Node.js applications. Built with Express and PostgreSQL, it provides secure authentication, 2FA, role-based access, and OAuth integration (GitHub & Google) out of the box.
 
 ## ✨ Key Features
 
 - 🔐 Secure password authentication with PBKDF2 hashing
 - 🔑 PostgreSQL session management with cross-subdomain support
 - 📱 Optional TOTP-based 2FA with trusted device memory
-- 🔄 GitHub OAuth integration
+- 🔄 OAuth integration (GitHub & Google)
 - 👥 Role-based access control (SuperAdmin, NormalUser, Guest)
 - 🎯 Multi-application user management
-- 🛡️ CSRF protection & rate limiting
+- 🛡️ CSRF protection & advanced rate limiting
 - 🚀 Easy Express.js integration
 - 🎨 Customizable Handlebars templates
+- 🔒 Enhanced security with session fixation prevention
 
 ## 📦 Installation
 
@@ -48,10 +49,18 @@ IS_DEPLOYED=false
 DOMAIN=localhost
 LOGIN_DB=postgresql://user:pass@localhost:5432/db
 
-# Optional
+# Optional Features
 MBKAUTH_TWO_FA_ENABLE=false
 COOKIE_EXPIRE_TIME=2
+
+# OAuth Configuration (Optional)
 GITHUB_LOGIN_ENABLED=false
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+GOOGLE_LOGIN_ENABLED=false
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ```
 
 **2. Set Up Database**
@@ -183,6 +192,8 @@ app.post('/api/data', authenticate(process.env.API_TOKEN), handler);
 **OAuth Routes:**
 - `GET /mbkauthe/api/github/login` - GitHub OAuth initiation (10/5min rate limit)
 - `GET /mbkauthe/api/github/login/callback` - GitHub OAuth callback
+- `GET /mbkauthe/api/google/login` - Google OAuth initiation (10/5min rate limit)
+- `GET /mbkauthe/api/google/login/callback` - Google OAuth callback
 
 **Information & Utility Routes:**
 - `GET /mbkauthe/info`, `/mbkauthe/i` - Version & config info (8/min rate limit)
@@ -200,11 +211,12 @@ app.post('/api/data', authenticate(process.env.API_TOKEN), handler);
 
 ## 🔐 Security Features
 
-- **Rate Limiting**: Login (8/min), Logout (10/min), 2FA (5/min), OAuth (10/5min)
-- **CSRF Protection**: All POST routes protected
+- **Rate Limiting**: Login (8/min), Logout (10/min), 2FA (5/min), OAuth (10/5min), Admin (3/5min)
+- **CSRF Protection**: All state-changing routes protected with token validation
 - **Secure Cookies**: httpOnly, sameSite, secure in production
 - **Password Hashing**: PBKDF2 with 100k iterations
-- **Session Security**: PostgreSQL-backed, automatic cleanup
+- **Session Security**: PostgreSQL-backed, automatic cleanup, session fixation prevention
+- **OAuth Security**: State validation, token expiry handling, secure callback validation
 
 ## 📱 Two-Factor Authentication
 
@@ -220,7 +232,9 @@ CREATE TABLE "TwoFA" (
 
 Users can mark devices as trusted to skip 2FA for configurable duration.
 
-## 🔄 GitHub OAuth
+## 🔄 OAuth Integration
+
+### GitHub OAuth
 
 **Setup:**
 
@@ -242,6 +256,32 @@ CREATE TABLE user_github (
     created_at TIMESTAMP DEFAULT NOW()
 );
 ```
+
+### Google OAuth
+
+**Setup:**
+
+1. Create Google OAuth 2.0 Client in [Google Cloud Console](https://console.cloud.google.com/)
+2. Add authorized redirect URI: `https://yourdomain.com/mbkauthe/api/google/login/callback`
+3. Configure environment:
+```env
+GOOGLE_LOGIN_ENABLED=true
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+```
+4. Create table:
+```sql
+CREATE TABLE user_google (
+    id SERIAL PRIMARY KEY,
+    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
+    google_id VARCHAR(255) UNIQUE,
+    google_email VARCHAR(255),
+    access_token VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Note:** Users must link their OAuth accounts before they can use OAuth login.
 
 ## 🎨 Customization
 

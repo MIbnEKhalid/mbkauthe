@@ -122,7 +122,7 @@ describe('mbkauthe Routes', () => {
         .get('/mbkauthe/api/github/login')
         .redirects(0);
       
-      expect([200, 302, 500, 429]).toContain(response.status);
+      expect([200, 302, 403, 500, 429]).toContain(response.status);
       
       if (response.status === 302) {
         const location = response.headers.location;
@@ -132,7 +132,25 @@ describe('mbkauthe Routes', () => {
 
     test('GET /mbkauthe/api/github/login/callback handles callback', async () => {
       const response = await request(BASE_URL).get('/mbkauthe/api/github/login/callback');
-      expect([200, 302, 400, 401, 429]).toContain(response.status);
+      expect([200, 302, 400, 401, 403, 429]).toContain(response.status);
+    });
+
+    test('GET /mbkauthe/api/google/login handles Google OAuth', async () => {
+      const response = await request(BASE_URL)
+        .get('/mbkauthe/api/google/login')
+        .redirects(0);
+      
+      expect([200, 302, 403, 500, 429]).toContain(response.status);
+      
+      if (response.status === 302) {
+        const location = response.headers.location;
+        expect(location).toMatch(/accounts\.google\.com|login/);
+      }
+    });
+
+    test('GET /mbkauthe/api/google/login/callback handles callback', async () => {
+      const response = await request(BASE_URL).get('/mbkauthe/api/google/login/callback');
+      expect([200, 302, 400, 401, 403, 429]).toContain(response.status);
     });
   });
 

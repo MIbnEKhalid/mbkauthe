@@ -43,7 +43,7 @@ CREATE TABLE user_github (
     user_name VARCHAR(50) REFERENCES "Users"("UserName"),
     github_id VARCHAR(255) UNIQUE,
     github_username VARCHAR(255),
-    access_token VARCHAR(255),
+    access_token TEXT,
     created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
     updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );
@@ -58,7 +58,7 @@ CREATE TABLE user_google (
     user_name VARCHAR(50) REFERENCES "Users"("UserName"),
     google_id VARCHAR(255) UNIQUE,
     google_email VARCHAR(255),
-    access_token VARCHAR(255),
+    access_token TEXT,
     created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
     updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );

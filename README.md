@@ -119,24 +119,44 @@ app.get('/admin', validateSession, checkRolePermission(['SuperAdmin']), (req, re
 app.listen(3000);
 ```
 
-## 🧪 Testing
 
-MBKAuthe includes comprehensive test coverage for all authentication features:
+## 🧪 Testing & Git Hooks
+
+MBKAuthe includes comprehensive test coverage for all authentication features. **A pre-commit hook is provided to ensure code quality:**
+
+### Pre-commit Hook (Automatic Test Runner)
+
+- Located at `scripts/pre-commit` and `scripts/pre-commit` (Node.js, cross-platform)
+- Starts the dev server, runs all tests, and blocks commits if any test fails
+- The dev server is automatically stopped after tests complete
+- Ensures you never commit code that breaks tests
+
+### Git Hook Setup
+
+Hooks are auto-configured every time you run `npm run dev`, `npm test`, or `npm run test:watch` (see `scripts/setup-hooks.js`).
+
+If you ever need to manually set up hooks:
 
 ```bash
-# Run all tests
+node scripts/setup-hooks.js
+```
+
+### Running Tests
+
+```bash
+# Run all tests (auto-configures hooks)
 npm test
 
-# Run tests in watch mode (auto-rerun on changes)
+# Run tests in watch mode (auto-configures hooks)
 npm run test:watch
 
-# Run with development flags
+# Run with development flags (auto-configures hooks)
 npm run dev
 ```
 
 **Test Coverage:**
 - ✅ Authentication flows (login, 2FA, logout)
-- ✅ OAuth integration (GitHub)  
+- ✅ OAuth integration (GitHub)
 - ✅ Session management and security
 - ✅ Role-based access control
 - ✅ API endpoints and error handling

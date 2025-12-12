@@ -1,14 +1,14 @@
 {
   "name": "mbkauthe",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
   "types": "index.d.ts",
   "scripts": {
-    "dev": "cross-env test=dev nodemon index.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
+    "dev": "node scripts/setup-hooks.js && cross-env test=dev nodemon index.js",
+    "test": "node scripts/setup-hooks.js && node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node scripts/setup-hooks.js && node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
   },
   "repository": {
     "type": "git",

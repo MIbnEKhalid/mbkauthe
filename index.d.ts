@@ -11,9 +11,7 @@ declare global {
     interface Request {
       user?: {
         username: string;
-        UserName: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
-        Role: 'SuperAdmin' | 'NormalUser' | 'Guest';
       };
       userRole?: 'SuperAdmin' | 'NormalUser' | 'Guest';
     }
@@ -22,20 +20,17 @@ declare global {
       user?: {
         id: number;
         username: string;
-        UserName: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
-        Role: 'SuperAdmin' | 'NormalUser' | 'Guest';
         sessionId: string;
         allowedApps?: string[];
       };
       preAuthUser?: {
         id: number;
         username: string;
-        UserName?: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
-        Role?: 'SuperAdmin' | 'NormalUser' | 'Guest';
         loginMethod?: 'password' | 'github' | 'google';
         redirectUrl?: string | null;
+        allowedApps?: string[];
       };
       oauthRedirect?: string;
       oauthCsrfToken?: string;
@@ -80,9 +75,7 @@ declare module 'mbkauthe' {
   export interface SessionUser {
     id: number;
     username: string;
-    UserName: string;
     role: UserRole;
-    Role: UserRole;
     sessionId: string;
     allowedApps?: string[];
   }
@@ -90,9 +83,7 @@ declare module 'mbkauthe' {
   export interface PreAuthUser {
     id: number;
     username: string;
-    UserName?: string;
     role: UserRole;
-    Role?: UserRole;
     allowedApps?: string[];
     loginMethod?: 'password' | 'github' | 'google';
     redirectUrl?: string | null;

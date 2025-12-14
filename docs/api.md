@@ -764,9 +764,7 @@ app.get('/protected', validateSession, (req, res) => {
 req.session.user = {
   id: 1,                    // User ID
   username: "john.doe",     // Username
-  UserName: "john.doe",     // Username (alias)
   role: "NormalUser",       // User role
-  Role: "NormalUser",       // User role (alias)
   sessionId: "abc123...",   // 64-char hex session ID
 }
 ```

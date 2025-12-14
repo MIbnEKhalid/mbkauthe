@@ -93,6 +93,7 @@ declare module 'mbkauthe' {
     UserName?: string;
     role: UserRole;
     Role?: UserRole;
+    allowedApps?: string[];
     loginMethod?: 'password' | 'github' | 'google';
     redirectUrl?: string | null;
   }

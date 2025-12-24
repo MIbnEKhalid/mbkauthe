@@ -1,4 +1,4 @@
-# MBKAuthe v3.2 - Authentication System for Node.js
+# MBKAuthe - Authentication System for Node.js
 
 [![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 [![License](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](LICENSE)
@@ -16,7 +16,7 @@
   <img height="48px" src="https://handlebarsjs.com/handlebars-icon.svg" alt="Handlebars" />
 </p>
 
-**MBKAuth v3.2** is a production-ready authentication system for Node.js applications. Built with Express and PostgreSQL, it provides secure authentication, 2FA, role-based access, and OAuth integration (GitHub & Google) out of the box.
+**MBKAuthe** is a production-ready authentication system for Node.js applications. Built with Express and PostgreSQL, it provides secure authentication, 2FA, role-based access, and OAuth integration (GitHub & Google) out of the box.
 
 ## ✨ Key Features
 
@@ -92,6 +92,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// App-specific configuration (as JSON string)
 process.env.mbkautheVar = JSON.stringify({
     APP_NAME: process.env.APP_NAME,
     SESSION_SECRET_KEY: process.env.SESSION_SECRET_KEY,
@@ -101,6 +102,16 @@ process.env.mbkautheVar = JSON.stringify({
     LOGIN_DB: process.env.LOGIN_DB,
     loginRedirectURL: '/dashboard'
 });
+
+// Optional shared configuration (useful for shared OAuth credentials across multiple projects)
+process.env.mbkauthShared = JSON.stringify({
+    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET
+});
+
+// MBKAuth prioritizes values in mbkautheVar, then mbkauthShared, then built-in defaults.
 
 const app = express();
 
@@ -335,6 +346,8 @@ const result = await dblogin.query('SELECT * FROM "Users"');
 - ✅ Use environment variables for all secrets
 
 **Vercel:**
+
+Tip: On Vercel you can set `mbkauthShared` at the project or team level to share common OAuth credentials across multiple deployments. MBKAuth will use values from `mbkautheVar` first and fall back to `mbkauthShared`.
 ```json
 {
     "version": 2,

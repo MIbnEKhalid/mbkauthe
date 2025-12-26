@@ -194,6 +194,39 @@ fetch('/mbkauthe/api/login', {
 
 ---
 
+#### `GET /mbkauthe/api/checkSession`
+
+Checks whether the current session (cookie-based) is valid. Returns a JSON response suitable for AJAX/SPA checks.
+
+**Authentication:** Requires a valid session cookie set by `/mbkauthe/api/login`.
+
+**Success Response (200 OK):**
+```json
+{
+  "sessionValid": true,
+  "expiry": "2025-12-27T12:34:56.000Z"
+}
+```
+
+**Error Responses (examples):**
+- 200 Session invalid ( { "sessionValid": false, "expiry": null } )
+- 500 Internal Server Error (rare)
+
+**Example Request:**
+```javascript
+fetch('/mbkauthe/api/checkSession')
+  .then(res => res.json())
+  .then(data => {
+    if (data.sessionValid) {
+      // session active, expiry available in data.expiry
+    } else {
+      // not authenticated
+    }
+  });
+```
+
+---
+
 #### `GET /mbkauthe/2fa`
 
 Renders the Two-Factor Authentication verification page.
@@ -759,16 +792,51 @@ app.get('/protected', validateSession, (req, res) => {
 - Verifies user is authorized for the current application
 - Redirects to login page if validation fails
 
+### reloadSessionUser(req, res)
+
+Use this helper when you need to refresh the values stored in `req.session.user` from the authoritative database record (for example, after a profile update that changes FullName, or when session expiration policies are updated).
+
+- Behavior:
+  - Validates the session against the database (sessionId, active)
+  - Updates `req.session.user` fields: `username`, `role`, `allowedApps`, `fullname`
+  - Uses cached `fullName` cookie if available; falls back to querying `profiledata`
+  - Syncs `username`, `fullName`, and `sessionId` cookies for client display
+  - If the session is invalid (sessionId mismatch, inactive account, or unauthorized), it destroys the session and clears cookies
+
+- Returns: `Promise<boolean>` — `true` if session was refreshed and still valid, `false` if session was invalidated or reload failed.
+
+- Example:
+```javascript
+import { reloadSessionUser } from 'mbkauthe';
+
+// After updating profile data
+app.post('/mbkauthe/api/update-profile', validateSession, async (req, res) => {
+  // ... update profiledata.FullName in DB ...
+  const refreshed = await reloadSessionUser(req, res);
+  if (!refreshed) {
+    return res.status(401).json({ success: false, message: 'Session invalidated' });
+  }
+  res.json({ success: true, fullname: req.session.user.fullname });
+});
+```
+
 **Session Object:**
 ```javascript
 req.session.user = {
   id: 1,                    // User ID
-  username: "john.doe",     // Username
+  username: "john.doe",     // Username (login name)
+  fullname: "John Doe",     // Optional display name fetched from profiledata
   role: "NormalUser",       // User role
   sessionId: "abc123...",   // 64-char hex session ID
 }
 ```
 
+**Session Cookie Sync:**
+- The middleware sets non-httpOnly cookies for client display:
+  - `username` — the login username (exposed for UI)
+  - `fullName` — the display name (falls back to username if not available)
+
+These cookies allow front-end UI to display a friendly name without making extra requests to the server.
 ---
 
 ### `checkRolePermission(requiredRole, notAllowed)`

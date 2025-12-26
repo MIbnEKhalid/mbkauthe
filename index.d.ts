@@ -12,6 +12,7 @@ declare global {
       user?: {
         username: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
+        fullname?: string;
       };
       userRole?: 'SuperAdmin' | 'NormalUser' | 'Guest';
     }
@@ -20,6 +21,7 @@ declare global {
       user?: {
         id: number;
         username: string;
+        fullname?: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
         sessionId: string;
         allowedApps?: string[];
@@ -75,6 +77,7 @@ declare module 'mbkauthe' {
   export interface SessionUser {
     id: number;
     username: string;
+    fullname?: string;
     role: UserRole;
     sessionId: string;
     allowedApps?: string[];
@@ -208,6 +211,10 @@ declare module 'mbkauthe' {
   ): AuthMiddleware;
 
   export function authenticate(token: string): AuthMiddleware;
+
+  // Reload session user values from DB and refresh cookies.
+  // Returns true when session is refreshed and valid, false if session invalidated.
+  export function reloadSessionUser(req: Request, res: Response): Promise<boolean>;
 
   // Utility Functions
   export function renderError(

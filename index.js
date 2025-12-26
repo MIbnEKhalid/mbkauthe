@@ -89,7 +89,10 @@ if (process.env.test !== "dev") {
     await checkVersion();
 }
 
-export { validateSession, checkRolePermission, validateSessionAndRole, authenticate } from "./lib/middleware/auth.js";
+export {
+    validateSession, validateApiSession, checkRolePermission,
+    validateSessionAndRole, authenticate, reloadSessionUser
+} from "./lib/middleware/auth.js";
 export { renderError } from "./lib/utils/response.js";
 export { dblogin } from "./lib/database/pool.js";
 export { ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError } from "./lib/utils/errors.js";

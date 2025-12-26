@@ -192,5 +192,20 @@ describe('mbkauthe Routes', () => {
         expect(response.headers['content-type']).toContain('application/json');
       }
     });
+
+    test('GET /mbkauthe/api/checkSession handles session check', async () => {
+      const response = await request(BASE_URL).get('/mbkauthe/api/checkSession');
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toContain('application/json');
+      expect(response.body).toHaveProperty('sessionValid');
+    });
+
+    test('POST /mbkauthe/api/logout handles logout', async () => {
+      const response = await request(BASE_URL).post('/mbkauthe/api/logout').send();
+      expect([200, 400, 401, 403, 429]).toContain(response.status);
+      if (response.status === 200) {
+        expect(response.headers['content-type']).toContain('application/json');
+      }
+    });
   });
 });

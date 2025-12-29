@@ -170,11 +170,6 @@ GITHUB_CLIENT_SECRET=your_github_client_secret
 
 The GitHub login feature is now fully integrated into your mbkauthe system and ready to use!
 
-
-
-
-
-
 ## Database structure
 
 [<- Back](README.md)
@@ -198,7 +193,7 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
   - `Role` (ENUM): The role of the user. Possible values: `SuperAdmin`, `NormalUser`, `Guest`.
   - `Active` (BOOLEAN): Indicates whether the user account is active.
   - `HaveMailAccount` (BOOLEAN)(optional): Indicates if the user has a linked mail account.
-  - `SessionId` (TEXT): The session ID associated with the user.
+  - (SessionId removed) The application now stores multiple concurrent sessions in the `Sessions` table.
   - `GuestRole` (JSONB): Stores additional guest-specific role information in binary JSON format.
   - `AllowedApps`(JSONB): Array of applications the user is authorized to access.
 
@@ -215,19 +210,32 @@ CREATE TABLE "Users" (
     "Active" BOOLEAN DEFAULT FALSE,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
     "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
-    "SessionId" VARCHAR(213),
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "last_login" TIMESTAMP WITH TIME ZONE
 );
 
 -- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_users_sessionid ON "Users" (LOWER("SessionId"));
 CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" ("UserName");
 CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" ("Active");
 CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" ("Role");
 CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" (last_login);
-CREATE INDEX IF NOT EXISTS idx_users_id_sessionid_active_role ON "Users" ("id", LOWER("SessionId"), "Active", "Role");
+
+-- Application Sessions table (stores multiple concurrent sessions per user)
+-- Note: this is separate from the express-session store table named "session"
+CREATE TABLE "Sessions" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- requires pgcrypto or uuid-ossp
+  "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  expires_at TIMESTAMP WITH TIME ZONE,
+    meta JSONB
+);
+
+-- Indexes optimized by username instead of numeric user id
+CREATE INDEX IF NOT EXISTS idx_sessions_username ON "Sessions" ("UserName");
+CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON "Sessions" ("UserName", created_at);
+
+**Multi-session behavior:** MBKAuthe supports multiple concurrent application sessions per user. The maximum number of concurrent sessions is controlled by `mbkautheVar.MAX_SESSIONS_PER_USER` (default: 5). When a new session would exceed that limit, the system prunes the oldest session(s) for that user (ordered by `created_at`) to keep the count within the configured maximum.
 ```
 
 **Password Storage Notes:**
@@ -250,12 +258,10 @@ CREATE TABLE "session" (
     sid VARCHAR(33) PRIMARY KEY NOT NULL,
     sess JSONB NOT NULL,
     expire TimeStamp WITH TIME ZONE Not Null,
-    last_activity TimeStamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Add indexes for performance optimization
 CREATE INDEX IF NOT EXISTS idx_session_expire ON "session" ("expire");
-CREATE INDEX IF NOT EXISTS idx_session_last_activity ON "session" (last_activity);
 CREATE INDEX IF NOT EXISTS idx_session_user_id ON "session" ((sess->'user'->>'id'));
 ```
 
@@ -286,7 +292,7 @@ CREATE INDEX IF NOT EXISTS idx_twofa_username_status ON "TwoFA" ("UserName", "Tw
 
   - `id` (INTEGER, auto-increment, primary key): Unique identifier for each trusted device.
   - `UserName` (VARCHAR): The username of the device owner (foreign key to Users).
-  - `DeviceToken` (VARCHAR): Unique token identifying the trusted device.
+  - `DeviceToken` (VARCHAR): **HMAC-SHA256 hash** of the device token (raw token is only sent to the client in an httpOnly cookie and **not** stored in plaintext).
   - `DeviceName` (VARCHAR): Optional friendly name for the device.
   - `UserAgent` (TEXT): Browser/client user agent string.
   - `IpAddress` (VARCHAR): IP address when device was trusted.
@@ -320,22 +326,22 @@ To add new users to the `Users` table, use the following SQL queries:
 
 **For Raw Password Storage (EncPass=false):**
 ```sql
-        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
-        VALUES ('support', '12345678', 'SuperAdmin', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "GuestRole")
+        VALUES ('support', '12345678', 'SuperAdmin', true, false, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
 
-        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
-        VALUES ('test', '12345678', 'NormalUser', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "GuestRole")
+        VALUES ('test', '12345678', 'NormalUser', true, false, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
 ```
 
 **For Encrypted Password Storage (EncPass=true):**
 ```sql
         -- Note: You'll need to hash the password using the hashPassword function
         -- Example with pre-hashed password (PBKDF2 with username as salt)
-        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
-        VALUES ('support', 'your_hashed_password_here', 'SuperAdmin', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "GuestRole")
+        VALUES ('support', 'your_hashed_password_here', 'SuperAdmin', true, false, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
 
-        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "SessionId", "GuestRole")
-        VALUES ('test', 'your_hashed_password_here', 'NormalUser', true, false, NULL, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "GuestRole")
+        VALUES ('test', 'your_hashed_password_here', 'NormalUser', true, false, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
 ```
 
 **Configuration Notes:**

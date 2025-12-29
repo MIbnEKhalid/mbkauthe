@@ -167,8 +167,6 @@
                             window.location.href = `/mbkauthe/2fa${redirectQuery}`;
                         } else {
                             loginButtonText.textContent = 'Success! Redirecting...';
-                            sessionStorage.setItem('sessionId', data.sessionId);
-
                             if (rememberMe) {
                                 setCookie('rememberedUsername', username, 30); // 30 days
                             } else {

@@ -38,7 +38,7 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 | Cookie Name | Description | HttpOnly | Secure | SameSite |
 |------------|-------------|----------|--------|----------|
 | `mbkauthe.sid` | Session identifier | ✓ | Auto* | lax |
-| `sessionId` | User session ID | ✓ | Auto* | lax |
+| `sessionId` | Opaque session token (backed by `Sessions` table) | ✓ | Auto* | lax |
 | `username` | Username | ✗ | Auto* | lax |
 
 \* `secure` flag is automatically set to `true` in production when `IS_DEPLOYED=true`
@@ -46,7 +46,7 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 ### Session Lifetime
 
 - Default: 2 days (configurable via `COOKIE_EXPIRE_TIME`)
-- Sessions are stored in PostgreSQL
+- Application sessions are stored in the `Sessions` table in PostgreSQL
 - Sessions persist across subdomains in production
 
 ---

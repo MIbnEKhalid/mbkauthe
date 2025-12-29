@@ -42,6 +42,7 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Description: PostgreSQL connection string for auth (must start with `postgresql://` or `postgres://`).
   - Example: `"LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth"`
   - Required: Yes
+  - Create free postgres db: https://neon.com/
 
 - MBKAUTH_TWO_FA_ENABLE
   - Description: Enable Two-Factor Authentication.
@@ -67,6 +68,13 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"DEVICE_TRUST_DURATION_DAYS":30`
   - Required: No
 
+- MAX_SESSIONS_PER_USER
+  - Description: Maximum number of concurrent application sessions allowed per user. When creating a new session that would exceed this number, the oldest session(s) for that user are pruned to make room for the new session.
+  - Default: `5`
+  - Example: `"MAX_SESSIONS_PER_USER": 10`
+  - Notes: Must be a positive integer. Validation is performed at startup by `lib/config/index.js`.
+  - Required: No
+
 - loginRedirectURL
   - Description: Post-login redirect path.
   - Default: `/dashboard`
@@ -81,6 +89,8 @@ This document describes the environment variables MBKAuth expects and keeps brie
 - GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
   - Description: OAuth credentials (put in `mbkautheVar` preferred, or `mbkauthShared`).
   - Required when provider enabled.
+  - Create Github OAuth App: https://github.com/settings/developers
+  - Create Google OAuth: https://console.cloud.google.com/
 
 ---
 

@@ -23,7 +23,7 @@ declare global {
         username: string;
         fullname?: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
-        sessionId: string;
+        sessionId?: string;
         allowedApps?: string[];
       };
       preAuthUser?: {
@@ -79,7 +79,7 @@ declare module 'mbkauthe' {
     username: string;
     fullname?: string;
     role: UserRole;
-    sessionId: string;
+    sessionId?: string;
     allowedApps?: string[];
   }
 
@@ -101,7 +101,7 @@ declare module 'mbkauthe' {
     Role: UserRole;
     Active: boolean;
     AllowedApps: string[];
-    SessionId?: string;
+
     created_at?: Date;
     updated_at?: Date;
     last_login?: Date;

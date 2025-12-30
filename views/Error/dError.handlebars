@@ -4,6 +4,7 @@
 {{> head pageCode=code pageError=error ogUrl="/error" extraStyles="<style>
     .login-box {
       max-width: 600px;
+      padding: 2.5rem;
     }
 
     .status-code {
@@ -35,7 +36,6 @@
     }
 
     .status-content {
-      margin-bottom: 1.5rem;
       text-align: center;
     }
 
@@ -43,12 +43,12 @@
       font-size: 1.2rem;
       margin: 0.5rem 0;
       color: var(--warning);
+      line-height: 1.4;
     }
 
     .status-links {
       display: flex;
       justify-content: center;
-      margin-top: 1rem;
     }
 
     .status-link {
@@ -57,90 +57,146 @@
       transition: var(--transition);
       margin: 0 auto;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--border-radius);
     }
 
     .status-link:hover {
-      text-decoration: underline;
+      text-decoration: none;
+      background: rgba(255,255,255,0.02);
       color: var(--secondary);
+      transform: translateY(-2px);
     }
 
+    /* Details wrapper: improved layout, accessibility and animation */
     .details-wrapper {
-      margin-top: 1.5rem;
-      background: rgba(255, 255, 255, .05);
+      margin-top: 1.25rem;
+      background: rgba(255, 255, 255, .03);
       border-radius: var(--border-radius);
-      padding: 1.5rem;
-      box-shadow: var(--box-shadow);
-      cursor: pointer;
-      transition: var(--transition);
-      border: 1px solid rgba(255, 255, 255, .1);
+      padding: 0;
+      transition: box-shadow .25s ease, transform .25s ease;
+      border: 1px solid rgba(255, 255, 255, .06);
+      overflow: visible;
     }
 
-    .details-wrapper:hover {
-      background: rgba(255, 255, 255, .08);
-    }
-
-    .details-header {
+    .details-toggle {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: transparent;
+      border: 0;
       color: var(--light);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
     }
 
-    .details-header i {
-      transition: var(--transition);
+    .details-toggle:focus {
+      outline: 3px solid rgba(100, 150, 255, .18);
+      outline-offset: 2px;
+      border-radius: var(--border-radius);
     }
 
-    .details-wrapper:hover .details-header i {
+    .details-toggle .chev {
+      transition: transform .25s ease, color .2s ease;
+      color: var(--muted);
+    }
+
+    .details-wrapper:hover .details-toggle .chev {
       color: var(--accent);
     }
 
     .error-details-wrapper {
-      display: none;
-      margin-top: 1rem;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height .33s cubic-bezier(.2,.9,.2,1), opacity .25s ease;
+      padding: 0 1rem;
     }
 
     .details-wrapper.active .error-details-wrapper {
-      display: block;
-    }
-
-    .details-wrapper.active .details-header i {
-      transform: rotate(180deg);
+      max-height: 480px; /* large enough for content */
+      opacity: 1;
+      padding: 0.9rem 1rem 1.25rem 1rem;
     }
 
     .error-details {
       width: 100%;
-      height: 150px;
-      background: rgba(0, 0, 0, .3);
-      border: 1px solid rgba(255, 255, 255, .2);
-      border-radius: var(--border-radius);
+      min-height: 140px;
+      background: rgba(0, 0, 0, .28);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: calc(var(--border-radius) - 2px);
       color: var(--text);
-      padding: 1rem;
-      resize: none;
+      padding: 0.9rem;
+      padding-right: 3.6rem; /* leave space for overlay button */
+      box-sizing: border-box;
+      resize: vertical;
       font-size: 0.9rem;
-      font-family: monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+      line-height: 1.45;
     }
 
+    .error-details-container {
+      position: relative;
+      width: 100%;
+    }
+
+    /* Overlay copy button positioned inside the details container */
     .copy-btn {
-      margin-top: 0.5rem;
-      background: var(--accent);
-      color: var(--dark);
-      border: none;
-      border-radius: var(--border-radius);
-      padding: 0.75rem 1.5rem;
+      position: absolute;
+      top: 0.6rem;
+      right: 0.65rem;
+      background: rgba(0,0,0,0.55);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
       cursor: pointer;
-      transition: var(--transition);
-      font-size: 1rem;
-      font-weight: 600;
-      box-shadow: var(--box-shadow);
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+      font-size: 0.95rem;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      display: inline-flex;
+      gap: 0.45rem;
+      align-items: center;
+      z-index: 6;
+      backdrop-filter: blur(4px);
     }
 
     .copy-btn:hover {
-      background: var(--secondary);
+      background: var(--accent);
+      color: var(--dark);
       transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    }
+
+    .copy-feedback {
+      position: absolute;
+      top: 2.4rem;
+      right: 0.6rem;
+      background: rgba(0,0,0,0.65);
+      color: var(--accent);
+      padding: 0.25rem 0.5rem;
+      font-weight: 700;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      display: none;
+      z-index: 6;
+    }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
     }
 
     @media (max-width: 768px) {
@@ -149,8 +205,10 @@
       }
 
       .status-title {
-        font-size: 1.3rem;
+        font-size: 1.25rem;
       }
+
+      .login-box { padding: 1.5rem; }
     }
 
     @media (max-width: 576px) {
@@ -186,17 +244,19 @@
       </div>
 
       {{#if details}}
-      <div class="details-wrapper" onclick="toggleDetailsDropdown(this)">
-        <div class="details-header">
-          <span>Show Error Details</span>
-          <i class="fas fa-chevron-down"></i>
-        </div>
-        <div class="error-details-wrapper">
-          <textarea class="error-details" id="errorDetails" readonly>{{details}}</textarea>
-          <button class="copy-btn" type="button" aria-label="Copy error details"
-            onclick="copyErrorDetails(this); event.stopPropagation();">
-            <i class="fas fa-copy"></i> Copy
-          </button>
+      <div class="details-wrapper">
+        <button class="details-toggle" type="button" aria-expanded="false" aria-controls="errorDetails">
+          <span>Show error details</span>
+          <i class="fas fa-chevron-down chev" aria-hidden="true"></i>
+        </button>
+        <div class="error-details-wrapper" id="errorDetails" hidden>
+          <div class="error-details-container">
+            <textarea class="error-details" readonly>{{details}}</textarea>
+            <button class="copy-btn" type="button" aria-label="Copy error details">
+              <i class="fas fa-copy" aria-hidden="true"></i><span class="sr-only"> Copy</span>
+            </button>
+            <span class="copy-feedback" aria-live="polite">Copied!</span>
+          </div>
         </div>
       </div>
       {{/if}}
@@ -207,36 +267,63 @@
   {{> versionInfo}}
   
   <script>
-    function toggleDetailsDropdown(element) {
-      const errorDetailsWrapper = element.querySelector('.error-details-wrapper');
-      const icon = element.querySelector('.details-header i');
-
-      if (errorDetailsWrapper.style.display === 'block') {
-        errorDetailsWrapper.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-      } else {
-        errorDetailsWrapper.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-      }
-    }
-
-    function copyErrorDetails(button) {
-      const details = button.previousElementSibling.value;
-      navigator.clipboard.writeText(details).then(() => {
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-          button.textContent = 'Copy';
-        }, 2000);
-      }).catch(err => {
-        console.error('[mbkauthe] Failed to copy: ', err);
-      });
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
-      const detailsWrappers = document.querySelectorAll('.details-wrapper');
-      detailsWrappers.forEach(wrapper => {
-        wrapper.addEventListener('click', () => {
-          wrapper.classList.toggle('active');
+      document.querySelectorAll('.details-wrapper').forEach(wrapper => {
+        const toggle = wrapper.querySelector('.details-toggle');
+        const details = wrapper.querySelector('.error-details-wrapper');
+        const icon = wrapper.querySelector('.chev');
+        const copyBtn = wrapper.querySelector('.copy-btn');
+        const feedback = wrapper.querySelector('.copy-feedback');
+
+        if (!toggle || !details) return;
+
+        // initialize hidden state and maxHeight for animation
+        details.style.maxHeight = details.hidden ? '0px' : details.scrollHeight + 'px';
+
+        toggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = wrapper.classList.toggle('active');
+          toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          details.hidden = !isOpen;
+
+          if (isOpen) {
+            details.style.maxHeight = details.scrollHeight + 'px';
+            if (icon) icon.style.transform = 'rotate(180deg)';
+          } else {
+            details.style.maxHeight = '0px';
+            if (icon) icon.style.transform = 'rotate(0deg)';
+          }
+        });
+
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const textarea = wrapper.querySelector('.error-details');
+            try {
+              await navigator.clipboard.writeText(textarea.value);
+              if (feedback) {
+                feedback.style.display = 'inline';
+                setTimeout(() => { feedback.style.display = 'none'; }, 2000);
+              } else {
+                const orig = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Copied';
+                setTimeout(() => { copyBtn.innerHTML = orig; }, 2000);
+              }
+            } catch (err) {
+              console.error('[mbkauthe] Failed to copy: ', err);
+            }
+          });
+        }
+
+        // close the details when user clicks outside
+        document.addEventListener('click', (e) => {
+          if (!wrapper.contains(e.target) && wrapper.classList.contains('active')) {
+            wrapper.classList.remove('active');
+            toggle.setAttribute('aria-expanded', 'false');
+            details.hidden = true;
+            if (icon) icon.style.transform = 'rotate(0deg)';
+            details.style.maxHeight = '0px';
+          }
         });
       });
     });

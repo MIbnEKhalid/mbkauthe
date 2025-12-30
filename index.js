@@ -95,5 +95,8 @@ export {
 } from "./lib/middleware/auth.js";
 export { renderError } from "./lib/utils/response.js";
 export { dblogin } from "./lib/database/pool.js";
-export { ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError } from "./lib/utils/errors.js";
+export {
+    ErrorCodes, ErrorMessages, getErrorByCode,
+    createErrorResponse, logError
+} from "./lib/utils/errors.js";
 export default router;

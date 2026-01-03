@@ -6,6 +6,14 @@
 <body>
     {{> header}}
 
+    <style>
+        .login-box {
+            max-width: 450px;
+            padding: 2.5rem;
+            overflow: hidden;
+        }
+    </style>
+
     {{> showmessage}}
 
     <section class="login-container">
@@ -20,7 +28,8 @@
                 <input type="hidden" name="_csrf" value="{{csrfToken}}">
                 <div class="form-group token-container" id="tokenCon">
                     <input id="token" class="form-input" type="text" name="token" placeholder=" " pattern="\d{6}"
-                        title="Token must be exactly 6 digits" maxlength="6" minlength="6" autocomplete="off" required />
+                        title="Token must be exactly 6 digits" maxlength="6" minlength="6" autocomplete="off"
+                        required />
                     <label class="form-label">2FA Token</label>
                     <i class="fas fa-info-circle input-icon" onclick="tokeninfo()"></i>
                 </div>
@@ -31,7 +40,8 @@
                         <span class="checkbox-custom"></span>
                         <span class="checkbox-text">Trust this device for {{DEVICE_TRUST_DURATION_DAYS}} days</span>
                     </label>
-                    <i class="fas fa-info-circle trust-device-info" onclick="trustDeviceInfo()" title="Learn more about trusted devices"></i>
+                    <i class="fas fa-info-circle trust-device-info" onclick="trustDeviceInfo()"
+                        title="Learn more about trusted devices"></i>
                 </div>
 
                 <button type="submit" class="btn-login" id="loginButton">
@@ -40,11 +50,10 @@
 
                 <p class="terms-info">
                     By logging in, you agree to our
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
-                        class="terms-link">Terms & Conditions</a>
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Terms &
+                        Conditions</a>
                     and
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
-                        class="terms-link">Privacy Policy</a>.
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Privacy Policy</a>.
                 </p>
             </form>
         </div>

@@ -212,7 +212,8 @@
         </div>
 
         <div class="search-box">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search by error code, name, or description...">
+            <input type="text" class="search-input" id="searchInput"
+                placeholder="Search by error code, name, or description...">
         </div>
 
         <div id="errorContainer">
@@ -224,7 +225,8 @@
                 </div>
 
                 {{#each this.errors}}
-                <div class="error-card" id="error-{{this.code}}" data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
+                <div class="error-card" id="error-{{this.code}}"
+                    data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
                     <div class="error-header">
                         <span class="error-code">{{this.code}}</span>
                         <span class="error-name">{{this.name}}</span>
@@ -255,7 +257,7 @@
         const categories = document.querySelectorAll('.category');
         const noResults = document.getElementById('noResults');
 
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('input', function () {
             const searchTerm = this.value.toLowerCase().trim();
             let hasResults = false;
 
@@ -294,7 +296,7 @@
         // Back to top button
         const backToTop = document.getElementById('backToTop');
 
-        window.addEventListener('scroll', function() {
+        window.addEventListener('scroll', function () {
             if (window.pageYOffset > 300) {
                 backToTop.classList.add('visible');
             } else {
@@ -302,7 +304,7 @@
             }
         });
 
-        backToTop.addEventListener('click', function() {
+        backToTop.addEventListener('click', function () {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
@@ -310,12 +312,12 @@
         function scrollToError() {
             if (window.location.hash) {
                 let targetId = window.location.hash.substring(1);
-                
+
                 // If hash doesn't start with "error-", add it
                 if (!targetId.startsWith('error-') && /^\d+$/.test(targetId)) {
                     targetId = 'error-' + targetId;
                 }
-                
+
                 const targetElement = document.getElementById(targetId);
                 if (targetElement) {
                     setTimeout(() => {

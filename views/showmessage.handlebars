@@ -1,12 +1,13 @@
 <div class="showMessageOverlay" id="messageOverlay" aria-hidden="true">
-    <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle" aria-describedby="messageContent">
+    <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle"
+        aria-describedby="messageContent">
         <div class="messageHeader">
             <div class="messageIcon">
                 <i class="fas fa-info-circle"></i>
             </div>
             <h2 id="messageTitle">Notification</h2>
         </div>
-        
+
         <div class="messageBody">
             <p id="messageContent"></p>
             <a href="#" target="_blank" class="errorCodeBadge" id="errorCodeLink" style="display: none;">
@@ -25,14 +26,14 @@
     // Sanitize HTML to prevent XSS while allowing safe HTML tags
     function sanitizeHTML(html) {
         if (!html) return "";
-        
+
         // Use DOMParser for safer parsing
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, "text/html");
-        
+
         const allowedTags = ["b", "i", "u", "strong", "em", "br", "p", "span", "div", "a"];
         const allowedAttrs = ["href", "target", "class", "id", "style"];
-        
+
         function cleanNode(node) {
             const children = Array.from(node.childNodes);
             for (const child of children) {
@@ -60,11 +61,11 @@
                 }
             }
         }
-        
+
         cleanNode(doc.body);
         return doc.body.innerHTML;
     }
-    
+
     function showMessage(message, heading, errorCode) {
         const overlay = document.getElementById("messageOverlay");
         const titleEl = document.getElementById("messageTitle");
@@ -75,12 +76,12 @@
 
         // Set content
         titleEl.innerText = heading || "Notification";
-        
+
         // Handle HTML content safely
         if (message && message.includes("<")) {
-             contentEl.innerHTML = sanitizeHTML(message);
+            contentEl.innerHTML = sanitizeHTML(message);
         } else {
-             contentEl.innerText = message || "";
+            contentEl.innerText = message || "";
         }
 
         // Update Icon based on heading/context (simple heuristic)
@@ -112,12 +113,12 @@
         } else {
             errorLink.style.display = "none";
         }
-        
+
         // Show Modal
         overlay.classList.add("active");
         document.body.classList.add("blur-active");
         overlay.setAttribute("aria-hidden", "false");
-        
+
         // Focus trap could be added here for accessibility
         document.querySelector(".btn-message-action").focus();
     }
@@ -125,7 +126,7 @@
     function hideMessage() {
         const overlay = document.getElementById("messageOverlay");
         overlay.classList.add("fade-out");
-        
+
         setTimeout(() => {
             overlay.classList.remove("active", "fade-out");
             document.body.classList.remove("blur-active");
@@ -134,14 +135,14 @@
     }
 
     // Close on click outside
-    document.getElementById("messageOverlay").addEventListener("click", function(e) {
+    document.getElementById("messageOverlay").addEventListener("click", function (e) {
         if (e.target === this) {
             hideMessage();
         }
     });
 
     // Close on Escape key
-    document.addEventListener("keydown", function(e) {
+    document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && document.getElementById("messageOverlay").classList.contains("active")) {
             hideMessage();
         }
@@ -238,12 +239,12 @@
     .messageBody p {
         margin-bottom: 1rem;
     }
-    
+
     .messageBody a {
         color: var(--accent, #00b894);
         text-decoration: none;
     }
-    
+
     .messageBody a:hover {
         text-decoration: underline;
     }
@@ -306,20 +307,28 @@
         .messageModal {
             width: 95%;
         }
-        
+
         .messageHeader {
             padding: 1.5rem 1rem 0.5rem;
         }
-        
+
         .messageBody {
             padding: 0.5rem 1.5rem 1.5rem;
         }
     }
-    
+
     /* Animation Keyframes */
     @keyframes pulse-soft {
-        0% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+        0% {
+            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(0, 184, 148, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0);
+        }
     }
 </style>

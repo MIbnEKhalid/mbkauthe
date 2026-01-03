@@ -9,7 +9,8 @@
                     </path>
                 </g>
             </svg>
-            <span class="logo-text">{{#if appName}}{{appName}}{{else}}{{#if app}}{{app}}{{else}}mbkauthe{{/if}}{{/if}} <span class="logo-comp">mbktech</span></span>
+            <span class="logo-text">{{#if appName}}{{appName}}{{else}}{{#if app}}{{app}}{{else}}mbkauthe{{/if}}{{/if}}
+                <span class="logo-comp">mbktech</span></span>
         </a>
 
         <div class="header-actions">
@@ -22,11 +23,13 @@
                     <a class="profile-item" role="menuitem" title="{{username}}">
                         <span>@{{username}}</span>
                     </a>
-                    <a class="profile-item" href="https://portal.mbktech.org/user/settings" role="menuitem" title="Settings">
+                    <a class="profile-item" href="https://portal.mbktech.org/user/settings" role="menuitem"
+                        title="Settings">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
                     </a>
-                    <a class="profile-item" href="/mbkauthe/accounts" role="menuitem" title="Switch or Add another Account">
+                    <a class="profile-item" href="/mbkauthe/accounts" role="menuitem"
+                        title="Switch or Add another Account">
                         <i class="fa fa-user-group"></i>
                         <span>Switch account</span>
                     </a>
@@ -37,7 +40,8 @@
                 </div>
             </div>
             {{else}}
-            <a class="btn-login" style="text-decoration: none;" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i>  Login</a>
+            <a class="btn-login" style="text-decoration: none;" href="/mbkauthe/login"><i
+                    class="fas fa-sign-in-alt"></i> Login</a>
             {{/if}}
         </div>
     </div>

@@ -2,227 +2,231 @@
 <html lang="en">
 
 {{> head pageCode=code pageError=error ogUrl="/error" extraStyles="<style>
-    .login-box {
-      max-width: 600px;
-      padding: 2.5rem;
-    }
+  .login-box {
+    max-width: 600px;
+    padding: 2.5rem;
+  }
 
+  .status-code {
+    text-align: center;
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--success);
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .status-title {
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    color: var(--light);
+  }
+
+  .status-code::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 4px;
+    background-color: var(--accent);
+    border-radius: 2px;
+  }
+
+  .status-content {
+    text-align: center;
+  }
+
+  .status-message {
+    font-size: 1.2rem;
+    margin: 0.5rem 0;
+    color: var(--warning);
+    line-height: 1.4;
+  }
+
+  .status-links {
+    display: flex;
+    justify-content: center;
+  }
+
+  .status-link {
+    color: var(--accent);
+    text-decoration: none;
+    transition: var(--transition);
+    margin: 0 auto;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+  }
+
+  .status-link:hover {
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--secondary);
+    transform: translateY(-2px);
+  }
+
+  /* Details wrapper: improved layout, accessibility and animation */
+  .details-wrapper {
+    margin-top: 1.25rem;
+    background: rgba(255, 255, 255, .03);
+    border-radius: var(--border-radius);
+    padding: 0;
+    transition: box-shadow .25s ease, transform .25s ease;
+    border: 1px solid rgba(255, 255, 255, .06);
+    overflow: visible;
+  }
+
+  .details-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--light);
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+  }
+
+  .details-toggle:focus {
+    outline: 3px solid rgba(100, 150, 255, .18);
+    outline-offset: 2px;
+    border-radius: var(--border-radius);
+  }
+
+  .details-toggle .chev {
+    transition: transform .25s ease, color .2s ease;
+    color: var(--muted);
+  }
+
+  .details-wrapper:hover .details-toggle .chev {
+    color: var(--accent);
+  }
+
+  .error-details-wrapper {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .33s cubic-bezier(.2, .9, .2, 1), opacity .25s ease;
+    padding: 0 1rem;
+  }
+
+  .details-wrapper.active .error-details-wrapper {
+    max-height: 480px;
+    /* large enough for content */
+    opacity: 1;
+    padding: 0.9rem 1rem 1.25rem 1rem;
+  }
+
+  .error-details {
+    width: 100%;
+    min-height: 140px;
+    background: rgba(0, 0, 0, .28);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: calc(var(--border-radius) - 2px);
+    color: var(--text);
+    padding: 0.9rem;
+    padding-right: 3.6rem;
+    /* leave space for overlay button */
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: 0.9rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+    line-height: 1.45;
+  }
+
+  .error-details-container {
+    position: relative;
+    width: 100%;
+  }
+
+  /* Overlay copy button positioned inside the details container */
+  .copy-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.65rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.45rem 0.6rem;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    display: inline-flex;
+    gap: 0.45rem;
+    align-items: center;
+    z-index: 6;
+    backdrop-filter: blur(4px);
+  }
+
+  .copy-btn:hover {
+    background: var(--accent);
+    color: var(--dark);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  }
+
+  .copy-feedback {
+    position: absolute;
+    top: 2.4rem;
+    right: 0.6rem;
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--accent);
+    padding: 0.25rem 0.5rem;
+    font-weight: 700;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    display: none;
+    z-index: 6;
+  }
+
+  .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  @media (max-width: 768px) {
     .status-code {
-      text-align: center;
-      font-size: 4rem;
-      font-weight: 700;
-      color: var(--success);
-      position: relative;
-      margin-bottom: 1rem;
+      font-size: 3rem;
     }
 
     .status-title {
-      text-align: center;
-      margin-bottom: 1rem;
-      font-size: 1.5rem;
-      color: var(--light);
+      font-size: 1.25rem;
     }
 
-    .status-code::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100px;
-      height: 4px;
-      background-color: var(--accent);
-      border-radius: 2px;
+    .login-box {
+      padding: 1.5rem;
     }
+  }
 
-    .status-content {
-      text-align: center;
-    }
+  @media (max-width: 576px) {
 
-    .status-message {
-      font-size: 1.2rem;
-      margin: 0.5rem 0;
-      color: var(--warning);
-      line-height: 1.4;
+    .status-code {
+      font-size: 2.5rem;
     }
 
     .status-links {
-      display: flex;
-      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-
-    .status-link {
-      color: var(--accent);
-      text-decoration: none;
-      transition: var(--transition);
-      margin: 0 auto;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 0.5rem 0.75rem;
-      border-radius: var(--border-radius);
-    }
-
-    .status-link:hover {
-      text-decoration: none;
-      background: rgba(255,255,255,0.02);
-      color: var(--secondary);
-      transform: translateY(-2px);
-    }
-
-    /* Details wrapper: improved layout, accessibility and animation */
-    .details-wrapper {
-      margin-top: 1.25rem;
-      background: rgba(255, 255, 255, .03);
-      border-radius: var(--border-radius);
-      padding: 0;
-      transition: box-shadow .25s ease, transform .25s ease;
-      border: 1px solid rgba(255, 255, 255, .06);
-      overflow: visible;
-    }
-
-    .details-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      background: transparent;
-      border: 0;
-      color: var(--light);
-      font-size: 1.05rem;
-      font-weight: 600;
-      padding: 0.85rem 1rem;
-      cursor: pointer;
-    }
-
-    .details-toggle:focus {
-      outline: 3px solid rgba(100, 150, 255, .18);
-      outline-offset: 2px;
-      border-radius: var(--border-radius);
-    }
-
-    .details-toggle .chev {
-      transition: transform .25s ease, color .2s ease;
-      color: var(--muted);
-    }
-
-    .details-wrapper:hover .details-toggle .chev {
-      color: var(--accent);
-    }
-
-    .error-details-wrapper {
-      max-height: 0;
-      overflow: hidden;
-      opacity: 0;
-      transition: max-height .33s cubic-bezier(.2,.9,.2,1), opacity .25s ease;
-      padding: 0 1rem;
-    }
-
-    .details-wrapper.active .error-details-wrapper {
-      max-height: 480px; /* large enough for content */
-      opacity: 1;
-      padding: 0.9rem 1rem 1.25rem 1rem;
-    }
-
-    .error-details {
-      width: 100%;
-      min-height: 140px;
-      background: rgba(0, 0, 0, .28);
-      border: 1px solid rgba(255, 255, 255, .08);
-      border-radius: calc(var(--border-radius) - 2px);
-      color: var(--text);
-      padding: 0.9rem;
-      padding-right: 3.6rem; /* leave space for overlay button */
-      box-sizing: border-box;
-      resize: vertical;
-      font-size: 0.9rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
-      line-height: 1.45;
-    }
-
-    .error-details-container {
-      position: relative;
-      width: 100%;
-    }
-
-    /* Overlay copy button positioned inside the details container */
-    .copy-btn {
-      position: absolute;
-      top: 0.6rem;
-      right: 0.65rem;
-      background: rgba(0,0,0,0.55);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 6px;
-      padding: 0.45rem 0.6rem;
-      cursor: pointer;
-      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-      font-size: 0.95rem;
-      font-weight: 700;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-      display: inline-flex;
-      gap: 0.45rem;
-      align-items: center;
-      z-index: 6;
-      backdrop-filter: blur(4px);
-    }
-
-    .copy-btn:hover {
-      background: var(--accent);
-      color: var(--dark);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-    }
-
-    .copy-feedback {
-      position: absolute;
-      top: 2.4rem;
-      right: 0.6rem;
-      background: rgba(0,0,0,0.65);
-      color: var(--accent);
-      padding: 0.25rem 0.5rem;
-      font-weight: 700;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      display: none;
-      z-index: 6;
-    }
-
-    .sr-only {
-      position: absolute !important;
-      width: 1px !important;
-      height: 1px !important;
-      padding: 0 !important;
-      margin: -1px !important;
-      overflow: hidden !important;
-      clip: rect(0, 0, 0, 0) !important;
-      white-space: nowrap !important;
-      border: 0 !important;
-    }
-
-    @media (max-width: 768px) {
-      .status-code {
-        font-size: 3rem;
-      }
-
-      .status-title {
-        font-size: 1.25rem;
-      }
-
-      .login-box { padding: 1.5rem; }
-    }
-
-    @media (max-width: 576px) {
-
-      .status-code {
-        font-size: 2.5rem;
-      }
-
-      .status-links {
-        flex-direction: column;
-        gap: 0.5rem;
-      }
-    }
-  </style>"}}
+  }
+</style>"}}
 
 <body>
   {{> header}}
@@ -265,7 +269,7 @@
   </section>
 
   {{> versionInfo}}
-  
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.details-wrapper').forEach(wrapper => {

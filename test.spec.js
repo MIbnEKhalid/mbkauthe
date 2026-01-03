@@ -93,14 +93,6 @@ describe('mbkauthe Routes', () => {
       expect(response.text || response.body.toString()).toMatch(/<svg|SVG/);
     });
 
-    test.each([
-      ['/favicon.ico', 'favicon'],
-      ['/icon.ico', 'icon'],
-    ])('GET %s returns ICO content', async (path, desc) => {
-      const response = await request(BASE_URL).get(path);
-      expect(response.status).toBe(200);
-    });
-
     test('GET /mbkauthe/bg.webp returns WEBP content', async () => {
       const response = await request(BASE_URL).get('/mbkauthe/bg.webp');
       

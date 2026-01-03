@@ -196,30 +196,48 @@ The GitHub login feature is now fully integrated into your mbkauthe system and r
   - (SessionId removed) The application now stores multiple concurrent sessions in the `Sessions` table.
   - `GuestRole` (JSONB): Stores additional guest-specific role information in binary JSON format.
   - `AllowedApps`(JSONB): Array of applications the user is authorized to access.
+  - `Image` (TEXT): URL to the user's profile picture. Used by the `/mbkauthe/user/profilepic` route to serve profile images. If empty, the route returns the default icon.svg. The URL is cached in the session for performance and automatically refreshed on login/logout/account switch.
+  - `FullName` (VARCHAR): The full name/display name of the user.
+  - `email` (TEXT): The user's email address.
 
 - **Schema:**
 ```sql
 CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
 
 CREATE TABLE "Users" (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT AS IDENTITY,
     "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Password" VARCHAR(61), -- For raw passwords (when EncPass=false)
-    "PasswordEnc" VARCHAR(128), -- For encrypted passwords (when EncPass=true)
-    "Role" role DEFAULT 'NormalUser' NOT NULL,
+    "Password" VARCHAR(255) NOT NULL,
     "Active" BOOLEAN DEFAULT FALSE,
+    "Role" role DEFAULT 'NormalUser' NOT NULL,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
     "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "last_login" TIMESTAMP WITH TIME ZONE
+    "last_login" TIMESTAMP WITH TIME ZONE,
+    "PasswordEnc" VARCHAR(128),
+    
+    "FullName" VARCHAR(255),
+    "email" TEXT DEFAULT 'support@mbktech.org',
+    "Image" TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',  -- Profile picture URL (used by /mbkauthe/user/profilepic route)
+    "Bio" TEXT DEFAULT 'I am ....',
+    "SocialAccounts" TEXT DEFAULT '{}',
+    "Positions" jsonb DEFAULT '{"Not_Permanent":"Member Is Not Permanent"}',
+    "resetToken" TEXT,
+    "resetTokenExpires" TimeStamp,
+    "resetAttempts" INTEGER DEFAULT '0',
+    "lastResetAttempt" TimeStamp WITH TIME ZONE
 );
 
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" ("Active");
-CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" ("Role");
-CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" (last_login);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" USING BTREE ("UserName");
+CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING BTREE ("Role");
+CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING BTREE ("Active");
+CREATE INDEX IF NOT EXISTS idx_users_email ON "Users" USING BTREE ("email");
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING BTREE (last_login);
+-- JSONB GIN indexes for common filters/queries on JSON fields
+CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING GIN ("AllowedApps");
+CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING GIN ("Positions");
 
 -- Application Sessions table (stores multiple concurrent sessions per user)
 -- Note: this is separate from the express-session store table named "session"

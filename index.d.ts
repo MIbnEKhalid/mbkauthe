@@ -36,6 +36,7 @@ declare global {
       };
       oauthRedirect?: string;
       oauthCsrfToken?: string;
+      [key: string]: any;
     }
   }
 }
@@ -253,6 +254,8 @@ declare module 'mbkauthe' {
   export function hashPassword(password: string, username: string): string;
 
   export function clearSessionCookies(res: Response): void;
+
+  export function getLatestVersion(): Promise<string>;
 
   // Exports
   export const dblogin: Pool;

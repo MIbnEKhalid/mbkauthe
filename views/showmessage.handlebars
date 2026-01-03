@@ -1,223 +1,325 @@
-<div class="showMessageblurWindow">
-    <div class="showmessageWindow">
-        <h1></h1>
-        <p></p>
-        <a href="" target="_blank" class="error-code"></a>
-        <button class="btn btn-save full" onclick="hideMessage()">Okay</button>
+<div class="showMessageOverlay" id="messageOverlay" aria-hidden="true">
+    <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle" aria-describedby="messageContent">
+        <div class="messageHeader">
+            <div class="messageIcon">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h2 id="messageTitle">Notification</h2>
+        </div>
+        
+        <div class="messageBody">
+            <p id="messageContent"></p>
+            <a href="#" target="_blank" class="errorCodeBadge" id="errorCodeLink" style="display: none;">
+                <i class="fas fa-bug"></i>
+                <span id="errorCodeText"></span>
+            </a>
+        </div>
+
+        <div class="messageFooter">
+            <button class="btn-message-action" onclick="hideMessage()">Okay</button>
+        </div>
     </div>
 </div>
+
 <script>
-    // showMessage("Failed to load the page. Please try again later.", "Error", "404");
-    
     // Sanitize HTML to prevent XSS while allowing safe HTML tags
     function sanitizeHTML(html) {
-        const temp = document.createElement('div');
-        temp.textContent = html;
-        let sanitized = temp.innerHTML;
+        if (!html) return "";
         
-        // Allow only safe HTML tags (no script, iframe, object, embed, etc.)
-        const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'span', 'div'];
-        const tagRegex = /<(\/)?([\w]+)([^>]*)>/gi;
+        // Use DOMParser for safer parsing
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
         
-        sanitized = sanitized.replace(tagRegex, (match, closing, tagName, attributes) => {
-            tagName = tagName.toLowerCase();
-            if (allowedTags.includes(tagName)) {
-                // Remove event handlers and javascript: from attributes
-                const safeAttrs = attributes.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-                                           .replace(/javascript:/gi, '');
-                return `<${closing || ''}${tagName}${safeAttrs}>`;
+        const allowedTags = ["b", "i", "u", "strong", "em", "br", "p", "span", "div", "a"];
+        const allowedAttrs = ["href", "target", "class", "id", "style"];
+        
+        function cleanNode(node) {
+            const children = Array.from(node.childNodes);
+            for (const child of children) {
+                if (child.nodeType === 1) { // Element
+                    const tagName = child.tagName.toLowerCase();
+                    if (allowedTags.includes(tagName)) {
+                        // Clean attributes
+                        const attrs = Array.from(child.attributes);
+                        for (const attr of attrs) {
+                            const attrName = attr.name.toLowerCase();
+                            if (!allowedAttrs.includes(attrName) || attrName.startsWith("on")) {
+                                child.removeAttribute(attr.name);
+                            } else if (attrName === "href" && attr.value.toLowerCase().trim().startsWith("javascript:")) {
+                                child.removeAttribute("href");
+                            }
+                        }
+                        cleanNode(child);
+                    } else {
+                        // Disallowed tag: replace with text content
+                        const text = document.createTextNode(child.textContent);
+                        child.replaceWith(text);
+                    }
+                } else if (child.nodeType !== 3) { // Remove comments etc.
+                    child.remove();
+                }
             }
-            return ''; // Remove disallowed tags
-        });
+        }
         
-        return sanitized;
+        cleanNode(doc.body);
+        return doc.body.innerHTML;
     }
     
     function showMessage(message, heading, errorCode) {
-        document.querySelector(".showmessageWindow h1").innerText = heading;
-        // Sanitize and set innerHTML to allow safe HTML formatting
-        document.querySelector(".showmessageWindow p").innerHTML = sanitizeHTML(message);
+        const overlay = document.getElementById("messageOverlay");
+        const titleEl = document.getElementById("messageTitle");
+        const contentEl = document.getElementById("messageContent");
+        const errorLink = document.getElementById("errorCodeLink");
+        const errorText = document.getElementById("errorCodeText");
+        const iconEl = document.querySelector(".messageIcon i");
 
-        if (errorCode) {
-            document.querySelector(".showmessageWindow .error-code").style.display = "block";
-            document.querySelector(".showmessageWindow .error-code").innerText = `Error Code: ${errorCode}`;
+        // Set content
+        titleEl.innerText = heading || "Notification";
+        
+        // Handle HTML content safely
+        if (message && message.includes("<")) {
+             contentEl.innerHTML = sanitizeHTML(message);
         } else {
-            document.querySelector(".showmessageWindow .error-code").style.display = "none";
+             contentEl.innerText = message || "";
+        }
+
+        // Update Icon based on heading/context (simple heuristic)
+        const lowerHeading = (heading || "").toLowerCase();
+        iconEl.className = "fas"; // Reset
+        if (lowerHeading.includes("error") || lowerHeading.includes("failed")) {
+            iconEl.classList.add("fa-exclamation-circle");
+            document.querySelector(".messageIcon").style.background = "rgba(255, 118, 117, 0.1)";
+            document.querySelector(".messageIcon").style.color = "var(--danger, #ff7675)";
+        } else if (lowerHeading.includes("success")) {
+            iconEl.classList.add("fa-check-circle");
+            document.querySelector(".messageIcon").style.background = "rgba(67, 233, 123, 0.1)";
+            document.querySelector(".messageIcon").style.color = "var(--success, #43e97b)";
+        } else if (lowerHeading.includes("warning")) {
+            iconEl.classList.add("fa-exclamation-triangle");
+            document.querySelector(".messageIcon").style.background = "rgba(255, 209, 102, 0.1)";
+            document.querySelector(".messageIcon").style.color = "var(--warning, #ffd166)";
+        } else {
+            iconEl.classList.add("fa-info-circle");
+            document.querySelector(".messageIcon").style.background = "rgba(33, 150, 243, 0.1)";
+            document.querySelector(".messageIcon").style.color = "var(--primary, #2196f3)";
+        }
+
+        // Handle Error Code
+        if (errorCode) {
+            errorLink.style.display = "inline-flex";
+            errorText.innerText = `Code: ${errorCode}`;
+            errorLink.href = `/mbkauthe/ErrorCode/#${errorCode}`;
+        } else {
+            errorLink.style.display = "none";
         }
         
-        document.querySelector(".showmessageWindow .error-code").href = `/mbkauthe/ErrorCode/#${errorCode}`;
-       
-        document.querySelector(".showMessageblurWindow").classList.add("active");
+        // Show Modal
+        overlay.classList.add("active");
         document.body.classList.add("blur-active");
+        overlay.setAttribute("aria-hidden", "false");
+        
+        // Focus trap could be added here for accessibility
+        document.querySelector(".btn-message-action").focus();
     }
+
     function hideMessage() {
-        const blurWindow = document.querySelector(".showMessageblurWindow");
-        blurWindow.classList.add("fade-out");
+        const overlay = document.getElementById("messageOverlay");
+        overlay.classList.add("fade-out");
+        
         setTimeout(() => {
-            blurWindow.classList.remove("active", "fade-out");
+            overlay.classList.remove("active", "fade-out");
             document.body.classList.remove("blur-active");
-        }, 500);
+            overlay.setAttribute("aria-hidden", "true");
+        }, 300);
     }
+
+    // Close on click outside
+    document.getElementById("messageOverlay").addEventListener("click", function(e) {
+        if (e.target === this) {
+            hideMessage();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && document.getElementById("messageOverlay").classList.contains("active")) {
+            hideMessage();
+        }
+    });
 </script>
+
 <style>
-    .showMessageblurWindow {
+    .showMessageOverlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 10000;
-        backdrop-filter: blur(10px);
-        pointer-events: none;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
 
-    .showMessageblurWindow.active {
+    .showMessageOverlay.active {
         display: flex;
-        animation: fadeIn 0.3s ease-in-out;
+        opacity: 1;
         pointer-events: all;
     }
 
-    .showMessageblurWindow.fade-out {
-        animation: fadeOut 0.3s ease-in-out forwards;
+    .showMessageOverlay.fade-out {
+        opacity: 0;
     }
 
     body.blur-active {
         overflow: hidden;
     }
 
-    .showmessageWindow {
+    .messageModal {
+        background: var(--darker, #0a1414);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 0;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        transform: scale(0.95) translateY(10px);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .showMessageOverlay.active .messageModal {
+        transform: scale(1) translateY(0);
+    }
+
+    .messageHeader {
+        padding: 1.5rem 1.5rem 0.5rem;
         display: flex;
         flex-direction: column;
         align-items: center;
+        text-align: center;
+    }
+
+    .messageIcon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(33, 150, 243, 0.1);
+        color: var(--primary, #2196f3);
+        display: flex;
+        align-items: center;
         justify-content: center;
-        background: rgba(10, 20, 20, 0.95);
-        backdrop-filter: blur(10px);
-        padding: 2rem 2.5rem;
-        border-radius: 8px;
-        max-width: 90%;
-        width: 550px;
-        position: relative;
-        color: #e0f7fa;
-        border: 1px solid rgba(0, 184, 148, 0.2);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        animation: slideIn 0.3s ease-out;
-        pointer-events: all;
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
     }
 
-    .showmessageWindow h1 {
-        margin-top: 0;
-        font-size: 1.8rem;
-        text-align: center;
-        color: #eaf6fb;
-        margin-bottom: 1rem;
-        font-weight: 700;
+    .messageHeader h2 {
+        color: var(--text, #fff);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
     }
 
-    .showmessageWindow p {
-        font-size: 1.1rem;
+    .messageBody {
+        padding: 0.5rem 2rem 1.5rem;
         text-align: center;
-        color: #b2dfdb;
-        margin-bottom: 1rem;
+        color: var(--text-light, #ccc);
+        font-size: 1rem;
         line-height: 1.6;
     }
 
-    .showmessageWindow .error-code {
-        font-size: 0.95rem;
-        text-align: center;
-        color: #ffd166;
-        font-weight: 600;
-        margin: 0.75rem auto;
-        padding: 0.5rem 1rem;
-        background: rgba(255, 209, 102, 0.1);
-        border: 1px solid #ffd166;
-        border-radius: 8px;
-        display: inline-block;
-        transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
+    .messageBody p {
+        margin-bottom: 1rem;
+    }
+    
+    .messageBody a {
+        color: var(--accent, #00b894);
         text-decoration: none;
     }
-
-    .showmessageWindow .error-code:hover {
-        background: rgba(255, 209, 102, 0.2);
-        color: #ffd166;
-        box-shadow: 0 4px 10px rgba(255, 209, 102, 0.2);
+    
+    .messageBody a:hover {
+        text-decoration: underline;
     }
 
-    .showmessageWindow .btn-save {
-        width: 100%;
-        padding: 8px;
+    .errorCodeBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-light, #aaa) !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .errorCodeBadge:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
+        color: var(--text, #fff) !important;
+    }
+
+    .messageFooter {
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        display: flex;
+        justify-content: center;
+    }
+
+    .btn-message-action {
+        background: var(--accent, #00b894);
+        color: #fff;
+        border: none;
+        padding: 0.8rem 2rem;
         border-radius: 8px;
-        background: #00b894;
-        color: #101c1c;
-        font-weight: 700;
-        font-size: 1.2rem;
-        border: .1rem solid #00b894;
+        font-size: 1rem;
+        font-weight: 800;
         cursor: pointer;
-        transition: all 0.4s cubic-bezier(.4, 0, .2, 1);
-        box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
+        transition: all 0.2s ease;
+        width: 100%;
+        border: 2px solid transparent;
+        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+        transition: all 0.3s ease;
     }
 
-    .showmessageWindow .btn-save:hover {
-        background: #101c1c;
-        color: #00b894;
-        box-shadow: 0 6px 20px rgba(0, 184, 148, 0.3);
+    .btn-message-action:hover {
+        background: transparent;
+        color: #00a180;
+        border-color: #00a180;
+        box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
     }
 
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
+    .btn-message-action:active {
+        transform: translateY(0);
     }
 
-    @keyframes fadeOut {
-        from {
-            opacity: 1;
+    @media (max-width: 480px) {
+        .messageModal {
+            width: 95%;
         }
-        to {
-            opacity: 0;
+        
+        .messageHeader {
+            padding: 1.5rem 1rem 0.5rem;
         }
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        
+        .messageBody {
+            padding: 0.5rem 1.5rem 1.5rem;
         }
     }
-
-    @media (max-width: 768px) {
-        .showmessageWindow {
-            padding: 1.5rem 2rem;
-            width: 90%;
-        }
-
-        .showmessageWindow h1 {
-            font-size: 1.5rem;
-        }
-
-        .showmessageWindow p {
-            font-size: 1rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .showmessageWindow {
-            padding: 1.25rem 1.5rem;
-        }
-
-        .showmessageWindow h1 {
-            font-size: 1.3rem;
-        }
+    
+    /* Animation Keyframes */
+    @keyframes pulse-soft {
+        0% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
     }
 </style>

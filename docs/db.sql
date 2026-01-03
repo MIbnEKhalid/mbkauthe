@@ -34,25 +34,41 @@ CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google (user_name);
 
 CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
 
+
 CREATE TABLE "Users" (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT AS IDENTITY,
     "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Password" VARCHAR(61), -- For raw passwords (when EncPass=false)
-    "PasswordEnc" VARCHAR(128), -- For encrypted passwords (when EncPass=true)
-    "Role" role DEFAULT 'NormalUser' NOT NULL,
+    "Password" VARCHAR(255) NOT NULL,
     "Active" BOOLEAN DEFAULT FALSE,
+    "Role" role DEFAULT 'NormalUser' NOT NULL,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
     "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "last_login" TIMESTAMP WITH TIME ZONE
+    "last_login" TIMESTAMP WITH TIME ZONE,
+    "PasswordEnc" VARCHAR(128),
+    
+    "FullName" VARCHAR(255),
+    "email" TEXT DEFAULT 'support@mbktech.org',
+    "Image" TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',
+    "Bio" TEXT DEFAULT 'I am ....',
+    "SocialAccounts" TEXT DEFAULT '{}',
+    "Positions" jsonb DEFAULT '{"Not_Permanent":"Member Is Not Permanent"}',
+    "resetToken" TEXT,
+    "resetTokenExpires" TimeStamp,
+    "resetAttempts" INTEGER DEFAULT '0',
+    "lastResetAttempt" TimeStamp WITH TIME ZONE
 );
 
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" ("Active");
-CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" ("Role");
-CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" (last_login);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" USING BTREE ("UserName");
+CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING BTREE ("Role");
+CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING BTREE ("Active");
+CREATE INDEX IF NOT EXISTS idx_users_email ON "Users" USING BTREE ("email");
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING BTREE (last_login);
+-- JSONB GIN indexes for common filters/queries on JSON fields
+CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING GIN ("AllowedApps");
+CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING GIN ("Positions");
 
 -- Application Sessions table (stores multiple concurrent sessions per user)
 -- Note: this is separate from the express-session store table named "session"

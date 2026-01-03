@@ -13,83 +13,138 @@
         {{> backgroundElements}}
 
         <div class="login-box">
-            <h1 class="login-title">Login</h1>
+            <div class="login-box-inner">
+                <!-- Left Column: Branding & Secondary Actions -->
+                <div class="login-sidebar">
+                    <div class="sidebar-content">
+                        <div class="brand-section">
+                            <img width="50px" height="50px" src="/icon.svg" alt="MBKAuthe Logo" class="brand-logo" />
+                            <h2 class="brand-title">Welcome to MBKAuthe</h2>
+                            <p class="brand-description">Secure authentication for MBKTech.org services</p>
+                        </div>
 
-            <form id="loginForm" method="POST">
-                <input type="hidden" name="_csrf" value="{{csrfToken}}">
-                <div class="form-group">
-                    <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" " required
-                        pattern="^[a-z0-9.]+$"
-                        title="Username must contain lowercase letters, numbers, and periods only, no spaces, no special characters."
-                        oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9.]/g, '')" />
-                    <label class="form-label">Username</label>
-                    <i class="fas fa-info-circle input-icon" onclick="usernameinfo()"></i>
-                </div>
+                        <div class="sidebar-actions">
+                            {{#if githubLoginEnabled }}
+                            <a type="button" id="githubLoginBtn" class="btn-social btn-switch-side">
+                                <i class="fab fa-github"></i>
+                                <span>Continue with GitHub</span>
+                            </a>
+                            {{/if }}
+                            {{#if googleLoginEnabled }}
+                            <a type="button" id="googleLoginBtn" class="btn-social btn-google-side">
+                                <i class="fab fa-google"></i>
+                                <span>Continue with Google</span>
+                            </a>
+                            {{/if }}
+                            <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
+                                <i class="fa fa-user-group"></i>
+                                <span>Switch Account</span>
+                            </a>
+                        </div>
 
-                <div class="form-group">
-                    <input id="loginPassword" class="form-input" type="password" name="Password" placeholder="" required
-                        minlength="8" title="Password must be at least 8 characters long" />
-                    <label class="form-label">Password</label>
-                    <i class="fas fa-eye input-icon" id="togglePassword"></i>
-                </div>
-
-                <div class="remember-me">
-                    <input type="checkbox" id="rememberMe" name="rememberMe">
-                    <label for="rememberMe">Remember me</label>
-                </div>
-
-                <button type="submit" class="btn-login" id="loginButton">
-                    <span id="loginButtonText">Login</span>
-                </button>
-                {{#if githubLoginEnabled }}
-                <div class="social-login">
-                    <div class="divider">
-                        <span>or</span>
+                        <div class="sidebar-links">
+                            <a href="https://portal.mbktech.org/forgot-password" class="sidebar-link">
+                                <i class="fas fa-key"></i> Forgot Password?
+                            </a>
+                            <a href="https://mbktech.org/Support" target="_blank" class="sidebar-link">
+                                <i class="fas fa-life-ring"></i> Need Help?
+                            </a>
+                        </div>
                     </div>
-                    <!-- Use JS to initiate GitHub login and pass redirect param to backend -->
-                    <a type="button" id="githubLoginBtn" class="btn-github">
-                        <i class="fab fa-github"></i>
-                        <span>Continue with GitHub</span>
-                    </a>
-                </div>
-                {{/if }}
-                {{#if googleLoginEnabled }}
-                <div class="social-login">
-                    {{#unless githubLoginEnabled }}
-                    <div class="divider">
-                        <span>or</span>
-                    </div>
-                    {{/unless}}
-                    <!-- Use JS to initiate Google login and pass redirect param to backend -->
-                    <a type="button" id="googleLoginBtn" class="btn-github">
-                        <i class="fab fa-google"></i>
-                        <span>Continue with Google</span>
-                    </a>
-                </div>
-                {{/if }}
-
-                {{#if userLoggedIn }}
-                <div class="WarningboxInfo">
-                    You Are Already Logged In With username
-                    <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>. Go To
-                    <a class="terms-link" href="{{customURL}}">Dashboard</a>
-                </div>
-                {{/if }}
-
-                <div class="login-links">
-                    <a href="https://portal.mbktech.org/forgot-password" class="login-link">Forgot Password?</a>
-                    <a href="https://mbktech.org/Support" target="_blank" class="login-link">Need Help?</a>
                 </div>
 
-                <p class="terms-info">
-                    By logging in, you agree to our
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
-                        class="terms-link">Terms & Conditions</a>
-                    and
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank"
-                        class="terms-link">Privacy Policy</a>.
-                </p>
-            </form>
+                <!-- Right Column: Main Login Form -->
+                <div class="login-main">
+                    <h1 class="login-title">Login</h1>
+
+                    <form id="loginForm" method="POST" class="login-form">
+                        {{#if userLoggedIn }}
+                        <div class="WarningboxInfo already-logged-info">
+                            <strong>You are already logged in as</strong>
+                            <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>.
+                            <div>
+                                <a class="terms-link" href="{{customURL}}">Go to dashboard</a>
+                                or
+                                <a class="terms-link" href="/mbkauthe/accounts">switch account</a>.
+                            </div>
+                        </div>
+                        {{/if }}
+                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                        <div class="form-group">
+                            <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" "
+                                required pattern="^[a-z0-9.]+$"
+                                title="Username must contain lowercase letters, numbers, and periods only, no spaces, no special characters."
+                                oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9.]/g, '')" />
+                            <label class="form-label">Username</label>
+                            <i class="fas fa-info-circle input-icon" onclick="usernameinfo()"></i>
+                        </div>
+
+                        <div class="form-group">
+                            <input id="loginPassword" class="form-input" type="password" name="Password" placeholder=""
+                                required minlength="8" title="Password must be at least 8 characters long" />
+                            <label class="form-label">Password</label>
+                            <i class="fas fa-eye input-icon" id="togglePassword"></i>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div class="remember-me" style="margin-bottom: 0;">
+                                <input type="checkbox" id="rememberMe" name="rememberMe">
+                                <label for="rememberMe">Remember me</label>
+                            </div>
+
+                            <a href="https://portal.mbktech.org/forgot-password" class="login-link" style="margin-bottom: 0; white-space: nowrap;">Forgot Password?</a>
+                        </div>
+
+                        <button type="submit" class="btn-login" id="loginButton">
+                            <span id="loginButtonText">Login</span>
+                        </button>
+
+                        <!-- Mobile/Tablet Only: Social & Secondary Actions -->
+                        <div class="mobile-actions">
+                            {{#if githubLoginEnabled }}
+                            {{#if googleLoginEnabled }}
+                            <div class="social-login">
+                                <div class="divider">
+                                    <span>or</span>
+                                </div>
+                                <div class="social-icons-row">
+                                    <a type="button" class="btn-icon mobile-github-btn" title="Continue with GitHub">
+                                        <i class="fab fa-github"></i>
+                                    </a>
+                                    <a type="button" class="btn-icon mobile-google-btn" title="Continue with Google">
+                                        <i class="fab fa-google"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {{/if}}
+                            {{/if}}
+                            
+                            {{#if githubLoginEnabled }}
+                            {{#if googleLoginEnabled }}
+                            <div class="divider">
+                                <span>or</span>
+                            </div>
+                            {{/if}}
+                            {{/if}}
+
+                            <a href="/mbkauthe/accounts" class="btn-github mobile-switch-btn">
+                                <i class="fa fa-user-group"></i>
+                                <span>Switch Account</span>
+                            </a>
+
+                        </div>
+
+                        <p class="terms-info">
+                            By logging in, you agree to our
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Terms &
+                                Conditions</a>
+                            and
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Privacy
+                                Policy</a>.
+                        </p>
+                    </form>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -266,8 +321,11 @@
             window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
         }
 
+        // Attach to both sidebar button (desktop) and mobile button
         const githubBtn = document.getElementById('githubLoginBtn');
+        const mobileGithubBtn = document.querySelector('.mobile-github-btn');
         if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
+        if (mobileGithubBtn) mobileGithubBtn.addEventListener('click', startGithubLogin);
         {{/if }}
 
         {{#if googleLoginEnabled }}
@@ -281,9 +339,12 @@
             window.location.href = `/mbkauthe/api/google/login?redirect=${encodeURIComponent(redirect)}`;
         }
 
+        // Attach to both sidebar button (desktop) and mobile button
         const googleBtn = document.getElementById('googleLoginBtn');
+        const mobileGoogleBtn = document.querySelector('.mobile-google-btn');
         if (googleBtn) googleBtn.addEventListener('click', startGoogleLogin);
-        {{/if }}
+        if (mobileGoogleBtn) mobileGoogleBtn.addEventListener('click', startGoogleLogin);
+        {{/if}}
     </script>
 </body>
 

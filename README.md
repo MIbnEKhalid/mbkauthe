@@ -23,6 +23,8 @@
 - Easy Express.js integration
 - Customizable Handlebars templates
 - Session fixation prevention
+- Dynamic profile picture routing with session caching
+- Modern responsive UI with desktop two-column layout
 
 ## 📦 Installation
 

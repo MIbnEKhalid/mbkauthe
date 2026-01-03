@@ -71,7 +71,7 @@ if (process.env.test === "dev") {
     app.use(router);
     app.use((req, res) => {
         console.log(`[mbkauthe] Path not found: ${req.method} ${req.url}`);
-        return renderError(res, {
+        return renderError(res, req, {
             layout: false,
             code: 404,
             error: "Not Found",

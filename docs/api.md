@@ -356,6 +356,129 @@ fetch('/mbkauthe/api/logout', {
 
 ---
 
+### Multi-Account Endpoints
+
+#### `GET /mbkauthe/accounts`
+
+Renders the account switching page, allowing users to switch between remembered accounts on the device.
+
+**Rate Limit:** 8 requests per minute
+
+**CSRF Protection:** Required
+
+**Response:** HTML page with account list
+
+**Template Variables:**
+- `customURL` - Redirect URL after switch
+- `userLoggedIn` - Whether a user is currently logged in
+- `username` - Current username
+- `fullname` - Current user's full name
+- `role` - Current user's role
+
+**Usage:**
+```
+GET /mbkauthe/accounts
+```
+
+---
+
+#### `GET /mbkauthe/api/account-sessions`
+
+Retrieves the list of remembered accounts for the current device.
+
+**Rate Limit:** 8 requests per minute
+
+**Response (200 OK):**
+```json
+{
+  "accounts": [
+    {
+      "sessionId": "64-char-session-id",
+      "username": "john.doe",
+      "fullName": "John Doe",
+      "isCurrent": true
+    },
+    {
+      "sessionId": "another-session-id",
+      "username": "jane.smith",
+      "fullName": "Jane Smith",
+      "isCurrent": false
+    }
+  ],
+  "currentSessionId": "64-char-session-id"
+}
+```
+
+**Behavior:**
+- Validates each stored session against the database
+- Automatically removes invalid/expired sessions from the cookie
+- Returns only valid, active sessions
+
+---
+
+#### `POST /mbkauthe/api/switch-session`
+
+Switches the active session to another remembered account.
+
+**Rate Limit:** 8 requests per minute
+
+**Request Body:**
+```json
+{
+  "sessionId": "target-session-id (required)",
+  "redirect": "/dashboard (optional)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "username": "jane.smith",
+  "fullName": "Jane Smith",
+  "redirect": "/dashboard"
+}
+```
+
+**Error Responses:**
+
+| Status Code | Message |
+|------------|---------|
+| 400 | Invalid session ID format |
+| 401 | Session expired |
+| 403 | Account not available on this device |
+| 500 | Internal Server Error |
+
+**Behavior:**
+- Verifies the target session exists in the device's remembered list
+- Validates the session against the database
+- Regenerates the session ID to prevent fixation
+- Updates session cookies and current user context
+
+---
+
+#### `POST /mbkauthe/api/logout-all`
+
+Logs out all remembered accounts on the current device.
+
+**Rate Limit:** 8 requests per minute
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "All accounts logged out"
+}
+```
+
+**Behavior:**
+- Deletes all session records associated with the device's remembered accounts from the database
+- Clears the account list cookie
+- Destroys the current session
+- Clears all session cookies
+
+---
+
 #### `POST /mbkauthe/api/terminateAllSessions`
 
 Terminates all active sessions across all users (admin only).
@@ -523,23 +646,6 @@ Serves the application's SVG icon file from the root level.
 
 ---
 
-#### `GET /favicon.ico`
-
-Serves the application's favicon.
-
-**Aliases:** `/icon.ico`
-
-**Response:** ICO image file (Content-Type: image/x-icon)
-
-**Cache:** Cached for 1 year (max-age=31536000)
-
-**Usage:**
-```html
-<link rel="icon" type="image/x-icon" href="/favicon.ico">
-```
-
----
-
 #### `GET /mbkauthe/bg.webp`
 
 Serves the background image for authentication pages.
@@ -551,6 +657,39 @@ Serves the background image for authentication pages.
 **Usage:**
 ```css
 background-image: url('/mbkauthe/bg.webp');
+```
+
+---
+
+#### `GET /mbkauthe/user/profilepic`
+
+Serves the current user's profile picture or a default icon.
+
+**Authentication:** Optional (returns default icon if not logged in)
+
+**Response:** 
+- If logged in with valid profile picture URL: 302 redirect to the user's profile picture URL (from `Users.Image` column)
+- If not logged in or no profile picture: SVG image file (Content-Type: image/svg+xml) streaming `/icon.svg`
+
+**Cache:** 
+- Profile picture URL is cached in session for performance
+- Cache is automatically cleared on login, logout, or account switch
+
+**Behavior:**
+1. First request: Queries `Users` table for `Image` column value
+2. Subsequent requests: Returns cached value from session
+3. On login/logout/switch: Cache is invalidated and fresh data is fetched
+
+**Usage:**
+```html
+<img src="/mbkauthe/user/profilepic" alt="Profile Picture">
+```
+
+**Example Response Flow:**
+```
+User logged in → Query DB → Cache URL → Redirect to URL
+User not logged in → Stream /icon.svg
+Empty Image value → Stream /icon.svg
 ```
 
 ---

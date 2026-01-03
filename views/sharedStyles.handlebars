@@ -48,9 +48,99 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 2rem;
+            padding: 1rem 1.5rem;
             max-width: 1400px;
             margin: 0 auto;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-left: auto;
+        }
+
+        .profile-menu {
+            position: relative;
+        }
+
+        .profile-trigger {
+            width: 45px;
+            height: 45px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .profile-trigger:hover {
+            border-color: var(--accent);
+            box-shadow: 0 10px 30px rgba(0, 184, 148, 0.2);
+        }
+
+        .profile-trigger:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            object-fit: cover;
+            background: var(--dark);
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.5rem);
+            background: var(--darker);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--border-radius);
+            min-width: 190px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: var(--transition);
+            z-index: 1000;
+        }
+
+        .profile-dropdown.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .profile-item {
+            width: 100%;
+            display: block;
+            padding: 0.85rem 1rem;
+            color: var(--text);
+            background: transparent;
+            border: none;
+            text-decoration: none;
+            text-align: left;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .profile-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--accent);
+        }
+
+        .profile-item:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .logo {
@@ -85,7 +175,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 120px 2rem 80px;
+            padding: 120px 1.7rem 0px;
             position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, var(--darker), var(--primary-dark));
@@ -120,6 +210,25 @@
         .login-box:hover {
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
             border-color: rgba(0, 184, 148, 0.3);
+        }
+
+        /* Two-column layout structure (desktop only) */
+        .login-box-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .login-sidebar {
+            display: none;
+        }
+
+        .login-main {
+            width: 100%;
+        }
+
+        .mobile-actions {
+            display: block;
         }
 
         .login-title {
@@ -252,7 +361,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 1rem 0;
+            margin: 0.5rem 0;
         }
 
         .divider::before,
@@ -299,6 +408,47 @@
 
         #googleLoginBtn i {
             font-size: 1.1rem;
+            color: #4285f4;
+        }
+
+        /* Social icons row for mobile */
+        .social-icons-row {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            max-width: 80px;
+            height: 50px;
+            padding: 12px;
+            border-radius: var(--border-radius);
+            background: #262b30;
+            color: white;
+            border: solid 0.13rem #262b30;
+            font-weight: 700;
+            font-size: 1.4rem;
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .btn-icon:hover {
+            background: transparent;
+            box-shadow: var(--box-shadow);
+        }
+
+        .btn-icon i {
+            font-size: 1.4rem;
+        }
+
+        .mobile-google-btn i {
             color: #4285f4;
         }
 
@@ -408,7 +558,6 @@
             align-items: center;
             justify-content: flex-start;
             width: 100%;
-            margin: 1rem 0;
         }
 
         .remember-me input[type="checkbox"] {
@@ -557,6 +706,7 @@
             font-size: 0.9rem;
             font-weight: 500;
             margin-top: 1rem;
+            margin-bottom: 10px;
             text-align: center;
             box-shadow: var(--box-shadow);
         }
@@ -579,6 +729,211 @@
         .version-info:hover {
             color: var(--accent);
             border-color: var(--accent);
+        }
+
+        /* Desktop Layout: Two-column design (>1000px) */
+        @media (min-width: 1001px) {
+            .login-box {
+                max-width: 1100px;
+                padding: 0;
+                overflow: hidden;
+            }
+
+            .login-box-inner {
+                flex-direction: row;
+                min-height: 600px;
+            }
+
+            /* Left Sidebar: 30% - Branding & Secondary Actions */
+            .login-sidebar {
+                display: flex;
+                flex-direction: column;
+                width: 40%;
+                background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(0, 184, 148, 0.08));
+                padding: 3rem 2rem;
+                border-right: 1px solid rgba(0, 184, 148, 0.3);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .login-sidebar::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(0, 184, 148, 0.1) 0%, transparent 70%);
+                animation: pulse 8s ease-in-out infinite;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            @keyframes pulse {
+                0%, 100% { opacity: 0.5; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.1); }
+            }
+
+            .sidebar-content {
+                display: flex;
+                flex-direction: column;
+                gap: 2.5rem;
+                height: 100%;
+            }
+
+            .brand-section {
+                text-align: center;
+            }
+
+            .brand-icon {
+                font-size: 3.5rem;
+                color: var(--accent);
+                margin-bottom: 1.5rem;
+                display: block;
+                filter: drop-shadow(0 4px 12px rgba(0, 184, 148, 0.4));
+                position: relative;
+                z-index: 1;
+            }
+
+            .brand-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--light);
+                margin-bottom: 0.75rem;
+                line-height: 1.3;
+            }
+
+            .brand-description {
+                font-size: 0.9rem;
+                color: var(--text-light);
+                line-height: 1.5;
+            }
+
+            .sidebar-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .btn-social {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 0.85rem 1.1rem;
+                border-radius: var(--border-radius);
+                font-weight: 600;
+                font-size: 0.9rem;
+                text-decoration: none;
+                transition: var(--transition);
+                border: 0.13rem solid;
+                position: relative;
+                z-index: 1;
+                overflow: hidden;
+            }
+
+            .btn-google-side {
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--text);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .btn-google-side:hover {
+                background: transparent;
+                border-color: var(--accent);
+                box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
+            }
+
+            .btn-google-side i {
+                color: #4285f4;
+            }
+
+            .btn-switch-side {
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--text);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .btn-switch-side:hover {
+                background: transparent;
+                border-color: var(--accent);
+                box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
+            }
+
+            .sidebar-links {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                margin-top: auto;
+                padding-top: 2rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.12);
+                position: relative;
+                z-index: 1;
+            }
+
+            .sidebar-link {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--text-light);
+                text-decoration: none;
+                font-size: 0.85rem;
+                transition: var(--transition);
+                padding: 0.6rem 0.75rem;
+                border-radius: 6px;
+                border: 1px solid transparent;
+            }
+
+            .sidebar-link:hover {
+                color: var(--accent);
+                background: rgba(0, 184, 148, 0.08);
+                border-color: rgba(0, 184, 148, 0.3);
+            }
+
+            .sidebar-link i {
+                font-size: 0.95rem;
+                opacity: 0.8;
+            }
+
+            /* Right Main Form: 70% - Login Fields Only */
+            .login-main {
+                width: 70%;
+                padding: 3rem 4rem;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            .login-form {
+                max-width: 420px;
+                margin: 0 auto;
+                width: 100%;
+            }
+
+            .login-title {
+                margin-bottom: 2.5rem;
+                font-size: 2rem;
+                text-align: center;
+            }
+
+            .login-title::after {
+                display: block;
+            }
+
+            /* Hide mobile-only elements on desktop */
+            .mobile-actions {
+                display: none;
+            }
+
+            /* Adjust form spacing for cleaner look */
+            .form-group {
+                margin-bottom: 1.75rem;
+            }
+
+            .terms-info {
+                margin-top: 2rem;
+            }
         }
 
         @media (max-width: 768px) {
@@ -605,7 +960,7 @@
             }
 
             .login-links {
-                flex-direction: column;
+                flex-direction: row;
                 gap: 0.5rem;
                 align-items: center;
             }

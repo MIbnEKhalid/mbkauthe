@@ -29,13 +29,13 @@
                                 <i class="fab fa-github"></i>
                                 <span>Continue with GitHub</span>
                             </a>
-                            {{/if }}
+                            {{/if}}
                             {{#if googleLoginEnabled }}
                             <a type="button" id="googleLoginBtn" class="btn-social btn-google-side">
                                 <i class="fab fa-google"></i>
                                 <span>Continue with Google</span>
                             </a>
-                            {{/if }}
+                            {{/if}}
                             <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
                                 <i class="fa fa-user-group"></i>
                                 <span>Switch Account</span>
@@ -68,7 +68,7 @@
                                 <a class="terms-link" href="/mbkauthe/accounts">switch account</a>.
                             </div>
                         </div>
-                        {{/if }}
+                        {{/if}}
                         <input type="hidden" name="_csrf" value="{{csrfToken}}">
                         <div class="form-group">
                             <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" "
@@ -312,7 +312,7 @@
             }
         });
 
-        { { #if githubLoginEnabled } }
+        {{#if githubLoginEnabled }}
 
         // GitHub login: Navigate directly to GitHub OAuth flow
         async function startGithubLogin() {
@@ -328,9 +328,9 @@
         const mobileGithubBtn = document.querySelector('.mobile-github-btn');
         if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
         if (mobileGithubBtn) mobileGithubBtn.addEventListener('click', startGithubLogin);
-        { {/if } }
+        {{/if}}
 
-        { { #if googleLoginEnabled } }
+        {{#if googleLoginEnabled }}
 
         // Google login: Navigate directly to Google OAuth flow
         async function startGoogleLogin() {
@@ -346,7 +346,7 @@
         const mobileGoogleBtn = document.querySelector('.mobile-google-btn');
         if (googleBtn) googleBtn.addEventListener('click', startGoogleLogin);
         if (mobileGoogleBtn) mobileGoogleBtn.addEventListener('click', startGoogleLogin);
-        { {/if } }
+        {{/if}}
     </script>
 </body>
 

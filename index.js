@@ -99,4 +99,5 @@ export {
     ErrorCodes, ErrorMessages, getErrorByCode,
     createErrorResponse, logError
 } from "./lib/utils/errors.js";
+export { mbkautheVar } from "./lib/config/index.js";
 export default router;

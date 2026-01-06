@@ -130,3 +130,20 @@ CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("Expi
 -- No Encrypted password for 'support' user
 INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "GuestRole")
         VALUES ('support', '12345678', 'SuperAdmin', true, false, '{"allowPages": [""], "NotallowPages": [""]}'::jsonb);
+
+
+
+-- API Tokens for persistent programmatic access
+CREATE TABLE "ApiTokens" (
+    "id" SERIAL PRIMARY KEY,
+    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
+    "Name" VARCHAR(255) NOT NULL, -- User-provided friendly name
+    "TokenHash" VARCHAR(128) NOT NULL UNIQUE, -- Hashed access token
+    "Prefix" VARCHAR(32) NOT NULL, -- First few chars of token for ID
+    "LastUsed" TIMESTAMP WITH TIME ZONE,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE -- Optional expiration
+);
+
+CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash ON "ApiTokens" ("TokenHash");
+CREATE INDEX IF NOT EXISTS idx_apitokens_username ON "ApiTokens" ("UserName");

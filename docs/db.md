@@ -68,6 +68,25 @@ CREATE INDEX IF NOT EXISTS idx_user_google_google_id ON user_google (google_id);
 CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google (user_name);
 ```
 
+### 5. API Tokens Table
+Used for storing persistent API keys.
+
+```sql
+CREATE TABLE "ApiTokens" (
+    "id" SERIAL PRIMARY KEY,
+    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
+    "Name" VARCHAR(255) NOT NULL, -- User-provided friendly name
+    "TokenHash" VARCHAR(128) NOT NULL UNIQUE, -- Hashed access token (SHA-256)
+    "Prefix" VARCHAR(32) NOT NULL, -- First few chars of token for ID
+    "LastUsed" TIMESTAMP WITH TIME ZONE,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE -- Optional expiration
+);
+
+CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash ON "ApiTokens" ("TokenHash");
+CREATE INDEX IF NOT EXISTS idx_apitokens_username ON "ApiTokens" ("UserName");
+```
+
 ## How It Works
 
 ### Login Flow (GitHub/Google)

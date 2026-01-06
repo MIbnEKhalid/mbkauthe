@@ -168,6 +168,12 @@ Password doesn't meet length requirements.
 #### `1004 - INVALID_TOKEN_FORMAT`
 Token format is incorrect.
 
+#### `1005 - INVALID_AUTH_TOKEN`
+The provided API token is invalid.
+
+#### `1006 - API_TOKEN_EXPIRED`
+The provided API token has expired.
+
 ### Rate Limiting (1100-1199)
 
 #### `1101 - RATE_LIMIT_EXCEEDED`

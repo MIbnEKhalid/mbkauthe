@@ -1,4 +1,4 @@
-<div class="showMessageOverlay" id="messageOverlay" aria-hidden="true">
+<div class="showMessageOverlay" id="messageOverlay" aria-hidden="true" hidden>
     <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle"
         aria-describedby="messageContent">
         <div class="messageHeader">
@@ -115,6 +115,7 @@
         }
 
         // Show Modal
+        overlay.removeAttribute("hidden");
         overlay.classList.add("active");
         document.body.classList.add("blur-active");
         overlay.setAttribute("aria-hidden", "false");
@@ -131,6 +132,7 @@
             overlay.classList.remove("active", "fade-out");
             document.body.classList.remove("blur-active");
             overlay.setAttribute("aria-hidden", "true");
+            overlay.setAttribute("hidden", "");
         }, 300);
     }
 

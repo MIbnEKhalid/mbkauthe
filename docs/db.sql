@@ -137,13 +137,29 @@ INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount"
 CREATE TABLE "ApiTokens" (
     "id" SERIAL PRIMARY KEY,
     "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "Name" VARCHAR(255) NOT NULL, -- User-provided friendly name
-    "TokenHash" VARCHAR(128) NOT NULL UNIQUE, -- Hashed access token
-    "Prefix" VARCHAR(32) NOT NULL, -- First few chars of token for ID
+    "Name" VARCHAR(255) NOT NULL,
+    "TokenHash" VARCHAR(128) NOT NULL UNIQUE,
+    "Prefix" VARCHAR(32) NOT NULL,
+    "Permissions" JSONB NOT NULL DEFAULT '{"scope":"read-only","allowedApps":null}'::jsonb,
     "LastUsed" TIMESTAMP WITH TIME ZONE,
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE -- Optional expiration
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE
 );
 
+-- Basic indexes
 CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash ON "ApiTokens" ("TokenHash");
 CREATE INDEX IF NOT EXISTS idx_apitokens_username ON "ApiTokens" ("UserName");
+
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash_expires ON "ApiTokens" ("TokenHash", "ExpiresAt") WHERE "ExpiresAt" IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_apitokens_username_created ON "ApiTokens" ("UserName", "CreatedAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_apitokens_expires ON "ApiTokens" ("ExpiresAt") WHERE "ExpiresAt" IS NOT NULL;
+
+-- JSONB indexes for fast permission queries
+CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_gin ON "ApiTokens" USING GIN ("Permissions");
+CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_scope ON "ApiTokens" (("Permissions"->>'scope'));
+
+-- Data integrity constraints
+ALTER TABLE "ApiTokens" ADD CONSTRAINT chk_apitokens_permissions_scope CHECK ("Permissions"->>'scope' IN ('read-only', 'write'));
+ALTER TABLE "ApiTokens" ADD CONSTRAINT chk_apitokens_name_not_empty CHECK (LENGTH(TRIM("Name")) > 0);
+ALTER TABLE "ApiTokens" ADD CONSTRAINT chk_apitokens_expires_future CHECK ("ExpiresAt" IS NULL OR "ExpiresAt" > "CreatedAt");

@@ -25,6 +25,7 @@ declare global {
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
         sessionId?: string;
         allowedApps?: string[];
+        tokenScope?: 'read-only' | 'write' | null;
       };
       preAuthUser?: {
         id: number;
@@ -144,6 +145,26 @@ declare module 'mbkauthe' {
     access_token: string;
     created_at: Date;
     updated_at: Date;
+  }
+
+  // API Token Types
+  export type TokenScope = 'read-only' | 'write';
+  
+  export interface TokenPermissions {
+    scope: TokenScope;
+    allowedApps: string[] | null;
+  }
+
+  export interface ApiToken {
+    id: number;
+    UserName: string;
+    Name: string;
+    TokenHash: string;
+    Prefix: string;
+    Permissions: TokenPermissions;
+    LastUsed?: Date;
+    CreatedAt: Date;
+    ExpiresAt?: Date;
   }
 
   // API Response Types

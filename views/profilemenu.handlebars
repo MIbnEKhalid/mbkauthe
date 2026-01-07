@@ -1,0 +1,187 @@
+<div class="header-actions">
+    {{#if userLoggedIn}}
+    <div class="profile-menu">
+        <button class="profile-trigger" type="button" aria-expanded="false" aria-haspopup="true">
+            <img src="/mbkauthe/user/profilepic?u={{username}}" alt="Profile" class="profile-avatar">
+        </button>
+        <div class="profile-dropdown" role="menu">
+            <a class="profile-item" role="menuitem" title="{{username}}">
+                <span>@{{username}}</span>
+            </a>
+            <a class="profile-item" href="https://portal.mbktech.org/user/settings" role="menuitem" title="Settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a class="profile-item" href="/mbkauthe/accounts" role="menuitem" title="Switch or Add another Account">
+                <i class="fa fa-user-group"></i>
+                <span>Switch account</span>
+            </a>
+            <button class="profile-item" type="button" data-action="logout" role="menuitem" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </div>
+    {{else}}
+    <a class="btn-login" style="text-decoration: none;" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i>
+        Login</a>
+    {{/if}}
+</div>
+<style>
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-left: auto;
+    }
+
+    .profile-menu {
+        position: relative;
+    }
+
+    .profile-trigger {
+        width: 45px;
+        height: 45px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .profile-trigger:hover {
+        border-color: var(--accent);
+        box-shadow: 0 10px 30px rgba(0, 184, 148, 0.2);
+    }
+
+    .profile-trigger:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        object-fit: cover;
+        background: var(--dark);
+    }
+
+    .profile-dropdown {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.5rem);
+        background: var(--darker);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--border-radius);
+        min-width: 190px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-6px);
+        transition: var(--transition);
+        z-index: 1000;
+    }
+
+    .profile-dropdown.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .profile-item {
+        width: 100%;
+        display: block;
+        padding: 0.85rem 1rem;
+        color: var(--text);
+        background: transparent;
+        border: none;
+        text-decoration: none;
+        text-align: left;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .profile-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--accent);
+    }
+
+    .profile-item:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+<script>
+    (() => {
+        const trigger = document.querySelector('header .profile-trigger');
+        const dropdown = document.querySelector('header .profile-dropdown');
+
+        if (!trigger || !dropdown) {
+            return;
+        }
+
+        const closeMenu = () => {
+            dropdown.classList.remove('open');
+            trigger.setAttribute('aria-expanded', 'false');
+        };
+
+        trigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const isOpen = dropdown.classList.toggle('open');
+            trigger.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!dropdown.contains(event.target) && !trigger.contains(event.target)) {
+                closeMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+            }
+        });
+
+        const logoutButton = dropdown.querySelector('[data-action="logout"]');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', async () => {
+                const originalLabel = logoutButton.textContent;
+                logoutButton.disabled = true;
+                logoutButton.textContent = 'Logging out...';
+
+                try {
+                    const response = await fetch('/mbkauthe/api/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include'
+                    });
+
+                    const result = await response.json().catch(() => ({}));
+
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert(result.message || 'Logout failed. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('[mbkauthe] Error during logout:', error);
+                    alert('Logout failed. Please try again.');
+                } finally {
+                    logoutButton.disabled = false;
+                    logoutButton.textContent = originalLabel;
+                    closeMenu();
+                }
+            });
+        }
+    })();
+</script>

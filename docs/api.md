@@ -41,11 +41,15 @@ Authorization: Bearer <your_api_token>
 - **Stateless:** Validates against the `ApiTokens` table on every request.
 - **Expiration:** Tokens can have an optional expiration date.
 - **Permissions:** API tokens inherit the permissions of the user who created them.
+- **Scopes:** Tokens have a scope (`read-only` or `write`) that controls which HTTP methods are allowed:
+  - `read-only`: Only GET, HEAD, and OPTIONS requests (safe, read-only operations)
+  - `write`: All HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
 - **Usage Tracking:** The system updates the `LastUsed` timestamp on every successful request.
 
 **Errors:**
 - `401 Unauthorized` (Code 1005: `INVALID_AUTH_TOKEN`): Token is malformed or not found.
 - `401 Unauthorized` (Code 1006: `API_TOKEN_EXPIRED`): Token exists but has passed its expiration date.
+- `403 Forbidden` (Code 1007: `TOKEN_SCOPE_INSUFFICIENT`): Token scope doesn't allow this HTTP method.
 
 **Example Usage:**
 
@@ -419,6 +423,184 @@ fetch('/mbkauthe/api/logout', {
   }
 });
 ```
+
+---
+
+### Multi-Account Endpoints
+
+---
+
+#### Token Management Endpoints
+
+##### `POST /mbkauthe/api/token`
+
+Create a new API token for the authenticated user.
+
+**Rate Limit:** 10 requests per minute
+
+**Authentication:** Session required (cookie or Bearer token)
+
+**Request Body:**
+```json
+{
+  "name": "string (required, 1-255 chars, friendly name for the token)",
+  "expiresDays": "number (optional, 1-365, default 90)",
+  "scope": "string (optional, 'read-only' or 'write', default 'read-only')",
+  "allowedApps": "array (optional, app names or ['*'] for all apps)"
+}
+```
+
+**Token Scopes:**
+- `read-only`: Allows only read operations (GET, HEAD, OPTIONS methods)
+- `write`: Allows all operations (GET, POST, PUT, DELETE, PATCH, etc.)
+
+**Token Application Access:**
+- Omit `allowedApps`: Token inherits from user's allowed apps
+- `["app1", "app2"]`: Token restricted to specific apps (must be subset of user's apps for non-SuperAdmin)
+- `["*"]`: All user's apps (non-SuperAdmin) or all system apps (SuperAdmin only)
+- **SuperAdmin bypass**: SuperAdmin tokens work on any app regardless of `allowedApps` configuration
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "token": "mbk_7f83a92b1dc4e5a6f89b012c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e",
+  "tokenId": 42,
+  "prefix": "mbk_7f83a92",
+  "name": "My API Token",
+  "scope": "read-only",
+  "allowedApps": ["App1", "App2"],
+  "expiresAt": "2025-04-27T12:34:56.000Z",
+  "createdAt": "2025-01-27T12:34:56.000Z",
+  "message": "Token created successfully. Save it now - it won't be shown again."
+}
+```
+
+**Error Responses:**
+
+| Status Code | Error Code | Message |
+|------------|------------|---------|
+| 400 | MISSING_REQUIRED_FIELD | Token name is required (1-255 characters) |
+| 400 | MISSING_REQUIRED_FIELD | expiresDays must be between 1 and 365 |
+| 400 | MISSING_REQUIRED_FIELD | Invalid scope. Available scopes: read-only, write |
+| 400 | MISSING_REQUIRED_FIELD | allowedApps must be an array |
+| 401 | SESSION_NOT_FOUND | Not authenticated |
+| 403 | INSUFFICIENT_PERMISSIONS | Only SuperAdmin can create tokens with '*' (all apps) access |
+| 403 | INSUFFICIENT_PERMISSIONS | You don't have access to app 'X' |
+| 500 | INTERNAL_SERVER_ERROR | Internal Server Error |
+
+**Example Requests:**
+
+*Create a read-only token for specific apps:*
+```javascript
+const response = await fetch('/mbkauthe/api/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer mbk_existing_token...' // or use session cookie
+  },
+  body: JSON.stringify({
+    name: 'CI/CD Pipeline Token',
+    expiresDays: 30,
+    scope: 'read-only',
+    allowedApps: ['App1', 'App2']
+  })
+});
+```
+
+*Create a write token with inherited app access:*
+```javascript
+const response = await fetch('/mbkauthe/api/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'Admin API Token',
+    scope: 'write'
+    // allowedApps omitted - inherits from user
+  })
+});
+```
+
+---
+
+##### `GET /mbkauthe/api/tokens`
+
+List all API tokens for the authenticated user (token value not included).
+
+**Rate Limit:** 10 requests per minute
+
+**Authentication:** Session required (cookie or Bearer token)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "tokens": [
+    {
+      "id": 42,
+      "name": "CI/CD Pipeline Token",
+      "prefix": "mbk_7f83a92",
+      "scope": "read-only",
+      "allowedApps": ["App1", "App2"],
+      "lastUsed": "2025-01-27T10:15:30.000Z",
+      "createdAt": "2025-01-27T12:34:56.000Z",
+      "expiresAt": "2025-04-27T12:34:56.000Z",
+      "expired": false
+    },
+    {
+      "id": 43,
+      "name": "Admin API Token",
+      "prefix": "mbk_a1b2c3d",
+      "scope": "write",
+      "allowedApps": null,
+      "lastUsed": null,
+      "createdAt": "2025-01-26T08:20:15.000Z",
+      "expiresAt": null,
+      "expired": false
+    }
+  ],
+  "count": 2
+}
+```
+
+**Note:** `allowedApps: null` means the token inherits from user's allowed apps.
+
+**Error Responses:**
+
+| Status Code | Error Code | Message |
+|------------|------------|---------|
+| 401 | SESSION_NOT_FOUND | Not authenticated |
+| 500 | INTERNAL_SERVER_ERROR | Internal Server Error |
+
+---
+
+##### `DELETE /mbkauthe/api/token/:id`
+
+Revoke (delete) an API token by its ID.
+
+**Rate Limit:** 10 requests per minute
+
+**Authentication:** Session required (cookie or Bearer token)
+
+**URL Parameters:**
+- `id`: Token ID (integer)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Token revoked successfully"
+}
+```
+
+**Error Responses:**
+
+| Status Code | Error Code | Message |
+|------------|------------|---------|
+| 400 | MISSING_REQUIRED_FIELD | Invalid token ID |
+| 401 | SESSION_NOT_FOUND | Not authenticated |
+| 404 | SESSION_NOT_FOUND | Token not found or not owned by you |
+| 500 | INTERNAL_SERVER_ERROR | Internal Server Error |
 
 ---
 

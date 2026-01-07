@@ -78,6 +78,8 @@ CREATE TABLE "ApiTokens" (
     "Name" VARCHAR(255) NOT NULL, -- User-provided friendly name
     "TokenHash" VARCHAR(128) NOT NULL UNIQUE, -- Hashed access token (SHA-256)
     "Prefix" VARCHAR(32) NOT NULL, -- First few chars of token for ID
+    "Scope" VARCHAR(20) DEFAULT 'read-only', -- Token scope: 'read-only' or 'write'
+    "AllowedApps" JSONB DEFAULT NULL, -- Apps this token can access
     "LastUsed" TIMESTAMP WITH TIME ZONE,
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     "ExpiresAt" TIMESTAMP WITH TIME ZONE -- Optional expiration
@@ -86,6 +88,38 @@ CREATE TABLE "ApiTokens" (
 CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash ON "ApiTokens" ("TokenHash");
 CREATE INDEX IF NOT EXISTS idx_apitokens_username ON "ApiTokens" ("UserName");
 ```
+
+**Token Permissions (JSONB):**
+
+The `Permissions` column stores both scope and allowed apps in a single JSONB structure for optimal performance:
+
+```json
+{
+  "scope": "read-only" | "write",
+  "allowedApps": null | ["app1", "app2"] | ["*"] | []
+}
+```
+
+**Scope Values:**
+- `read-only`: Allows only safe, read-only HTTP methods (GET, HEAD, OPTIONS)
+- `write`: Allows all HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
+
+**AllowedApps Values:**
+- `null` (default): Token inherits allowed apps from user's `AllowedApps` in Users table
+- `["app1", "app2"]`: Token is restricted to specific apps (must be subset of user's apps)
+- `["*"]`: Token has access to all user's apps (for non-SuperAdmin) or all apps in system (SuperAdmin only)
+- `[]` (empty array): Token has no app access (effectively disabled)
+
+**Note**: SuperAdmin users bypass all app permission checks, so their tokens work on any app regardless of the `allowedApps` value.
+
+**Security:**
+- Tokens are stored as SHA-256 hashes (never plain text)
+- Only the prefix (first 11 characters) is stored for identification
+- The full token is only shown once during creation
+- Scope enforcement is applied at the middleware level before route processing
+- App access is validated against both token restrictions and user permissions
+- **SuperAdmin exception**: SuperAdmin users bypass app permission checks - their tokens work on any app regardless of `allowedApps` configuration
+- Wildcard `["*"]` for non-SuperAdmin means "all apps the user has access to", not "all apps in system"
 
 ## How It Works
 

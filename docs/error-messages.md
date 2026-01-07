@@ -174,6 +174,16 @@ The provided API token is invalid.
 #### `1006 - API_TOKEN_EXPIRED`
 The provided API token has expired.
 
+#### `1007 - TOKEN_SCOPE_INSUFFICIENT`
+Token scope doesn't allow the requested operation.
+```javascript
+{
+    errorCode: 1007,
+    message: "This API token doesn't have permission for this operation.",
+    hint: "Use a token with 'write' scope or create a new one with appropriate permissions"
+}
+```
+
 ### Rate Limiting (1100-1199)
 
 #### `1101 - RATE_LIMIT_EXCEEDED`

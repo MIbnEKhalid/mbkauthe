@@ -81,6 +81,13 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"loginRedirectURL":"/dashboard"`
   - Required: No
 
+- bucket
+  - Description: Optional external storage bucket name or identifier used for static assets or third-party integrations.
+  - Default: an empty string `""` (no bucket configured)
+  - Example: `"bucket":"s3-bucket-name"`
+  - Usage: Future use in mbkbucket
+  - Required: No
+
 - GITHUB_LOGIN_ENABLED / GOOGLE_LOGIN_ENABLED
   - Description: Enable OAuth providers.
   - Default: `false`

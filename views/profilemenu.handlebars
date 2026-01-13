@@ -4,7 +4,7 @@
         <button class="profile-trigger" type="button" aria-expanded="false" aria-haspopup="true">
             <img src="/mbkauthe/user/profilepic?u={{username}}" alt="Profile" class="profile-avatar">
         </button>
-        <div class="profile-dropdown" role="menu">
+        <div class="profile-dropdown" role="menu" hidden>
             <a class="profile-item" role="menuitem" title="{{username}}">
                 <span>@{{username}}</span>
             </a>
@@ -128,14 +128,43 @@
         }
 
         const closeMenu = () => {
+            if (!dropdown.classList.contains('open')) return;
             dropdown.classList.remove('open');
             trigger.setAttribute('aria-expanded', 'false');
+
+            // After transition, hide to prevent FOUC on next paint
+            const onTransition = (e) => {
+                if (e.propertyName === 'opacity') {
+                    dropdown.setAttribute('hidden', '');
+                    dropdown.removeEventListener('transitionend', onTransition);
+                }
+            };
+
+            dropdown.addEventListener('transitionend', onTransition);
+            // Fallback in case transitionend doesn't fire
+            setTimeout(() => {
+                if (!dropdown.classList.contains('open')) {
+                    dropdown.setAttribute('hidden', '');
+                }
+            }, 350);
         };
 
         trigger.addEventListener('click', (event) => {
             event.stopPropagation();
-            const isOpen = dropdown.classList.toggle('open');
-            trigger.setAttribute('aria-expanded', String(isOpen));
+            const isOpening = !dropdown.classList.contains('open');
+
+            if (isOpening) {
+                // Reveal then start transition to open state
+                dropdown.removeAttribute('hidden');
+                // Ensure the class add happens on next frame for transition to work
+                requestAnimationFrame(() => {
+                    dropdown.classList.add('open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                });
+            } else {
+                // Close the menu
+                closeMenu();
+            }
         });
 
         document.addEventListener('click', (event) => {
@@ -183,5 +212,21 @@
                 }
             });
         }
+
+        // Populate the "Switch account" link with encoded current page URL in its `redirect` param
+        (function setSwitchAccountRedirect() {
+            const switchAccountLink = dropdown.querySelector('a[href^="/mbkauthe/accounts"]');
+            if (!switchAccountLink) return;
+
+            try {
+                const currentUrl = window.location.href;
+                // Ensure the href uses the base path up to ?redirect= and append the encoded current URL
+                const baseHref = switchAccountLink.href.split('?redirect=')[0] + '?redirect=';
+                switchAccountLink.href = baseHref + encodeURIComponent(currentUrl);
+            } catch (err) {
+                // non-fatal, but log for debugging
+                console.error('[mbkauthe] Failed to set redirect URL for switch account link', err);
+            }
+        })();
     })();
 </script>

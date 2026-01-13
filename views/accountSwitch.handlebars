@@ -298,6 +298,30 @@
     <script>
         const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
 
+        // Ensure login anchors include ?redirect using the redirect query param (not the current page URL)
+        (function setLoginHrefFromQuery() {
+            try {
+                const encoded = redirectTarget ? encodeURIComponent(redirectTarget) : '';
+
+                const useAnotherLink = document.getElementById('useAnother');
+                if (useAnotherLink) {
+                    useAnotherLink.href = `/mbkauthe/login${encoded ? `?redirect=${encoded}` : ''}`;
+                }
+
+                const mobileLink = document.querySelector('.mobile-switch-btn');
+                if (mobileLink) {
+                    mobileLink.href = `/mbkauthe/login${encoded ? `?redirect=${encoded}` : ''}`;
+                }
+
+                const emptyStateLink = document.querySelector('#emptyState a.btn-login');
+                if (emptyStateLink) {
+                    emptyStateLink.href = `/mbkauthe/login${encoded ? `?redirect=${encoded}` : ''}`;
+                }
+            } catch (err) {
+                console.error('[mbkauthe] Failed to set login hrefs with redirect query param:', err);
+            }
+        })();
+
         // Handle "Log in to another account" click
         const useAnotherBtn = document.getElementById('useAnother');
         if (useAnotherBtn) {
@@ -386,7 +410,19 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    window.location.href = data.redirect || redirectTarget;
+                    // Prioritize explicit ?redirect if present and valid, else fall back to server-provided redirect or template
+                    const params = new URLSearchParams(window.location.search);
+                    let queryRedirect = null;
+                    if (params.has('redirect')) {
+                        try {
+                            const raw = params.get('redirect');
+                            if (raw) queryRedirect = decodeURIComponent(raw);
+                        } catch (e) {
+                            queryRedirect = null;
+                        }
+                    }
+                    const finalRedirect = queryRedirect || data.redirect || redirectTarget;
+                    if (finalRedirect) window.location.href = finalRedirect;
                 } else {
                     showMessage(data.message || 'Could not switch account', 'Switch Account');
                     loadAccounts();

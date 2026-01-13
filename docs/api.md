@@ -108,7 +108,7 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 | Cookie Name | Description | HttpOnly | Secure | SameSite |
 |------------|-------------|----------|--------|----------|
 | `mbkauthe.sid` | Session identifier | ✓ | Auto* | lax |
-| `sessionId` | Encrypted session token (AES-256-GCM) | ✓ | Auto* | lax |
+| `sessionId` | Encrypted session token (AES-256-GCM). This cookie is encrypted and treated as an opaque value by clients; do not attempt to parse or rely on the raw cookie contents. Use server endpoints (e.g., `/mbkauthe/api/checkSession`) to validate or query session information. | ✓ | Auto* | lax |
 | `username` | Username | ✗ | Auto* | lax |
 
 \* `secure` flag is automatically set to `true` in production when `IS_DEPLOYED=true`
@@ -185,6 +185,8 @@ Renders the main login page.
 - `version` - MBKAuthe version
 - `appName` - Application name
 - `csrfToken` - CSRF protection token
+- `lastLoginMethod` - (optional) last login method recorded by the server (e.g., `"password"`, `"github"`, `"google"`) used to render UI badges
+- `lastLoginPassword`, `lastLoginGithub`, `lastLoginGoogle` - convenience booleans derived from `lastLoginMethod` for server-side template rendering of "Last used" badges
 
 **Example:**
 ```
@@ -215,6 +217,8 @@ Authenticates a user and creates a session.
   "sessionId": "64-character-hex-string"
 }
 ```
+
+Note: the server also sets an encrypted `sessionId` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
 
 **Success Response with 2FA (200 OK):**
 ```json
@@ -334,6 +338,8 @@ Verifies the 2FA token and completes the login process.
   "redirectUrl": "/dashboard"
 }
 ```
+
+Note: the server also sets an encrypted `sessionId` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
 
 **Error Responses:**
 
@@ -1280,6 +1286,30 @@ app.get('/moderator', validateSessionAndRole('SuperAdmin'), (req, res) => {
 ```javascript
 app.get('/moderator', validateSession, checkRolePermission('SuperAdmin'), (req, res) => {
   res.send('Moderator panel');
+});
+```
+
+---
+
+### Strict validation helpers
+
+For endpoints that must reject API token-based authentication and only accept browser session cookies, MBKAuthe exposes two strict helpers:
+
+- `strictValidateSession` — same as `validateSession`, but rejects requests that provide `Authorization` headers (API tokens) and returns `401` when a token is used.
+- `strictValidateSessionAndRole(requiredRole, notAllowed)` — combined helper that behaves like `validateSessionAndRole` but enforces strict (cookie-only) authentication.
+
+**Usage examples:**
+```javascript
+import { strictValidateSession, strictValidateSessionAndRole } from 'mbkauthe';
+
+// Accept only cookie sessions
+app.get('/sensitive', strictValidateSession, (req, res) => {
+  res.send('Sensitive data');
+});
+
+// Validate session AND role, using cookie-only authentication
+app.get('/admin', strictValidateSessionAndRole('SuperAdmin'), (req, res) => {
+  res.send('Admin');
 });
 ```
 

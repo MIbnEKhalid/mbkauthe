@@ -69,6 +69,9 @@ if (process.env.test === "dev") {
     console.log("[mbkauthe] Dev mode is enabled. Starting server in dev mode.");
     const port = 5555;
     app.use(router);
+    app.get(["/dashboard", "/home", "/"], (req, res) => {
+        return res.redirect("/mbkauthe/login");
+    });
     app.use((req, res) => {
         console.log(`[mbkauthe] Path not found: ${req.method} ${req.url}`);
         return renderError(res, req, {
@@ -91,7 +94,8 @@ if (process.env.test !== "dev") {
 
 export {
     validateSession, validateApiSession, checkRolePermission,
-    validateSessionAndRole, authenticate, reloadSessionUser
+    validateSessionAndRole, authenticate, reloadSessionUser,
+    strictValidateSession, strictValidateSessionAndRole
 } from "./lib/middleware/auth.js";
 export { renderError } from "./lib/utils/response.js";
 export { dblogin } from "./lib/database/pool.js";

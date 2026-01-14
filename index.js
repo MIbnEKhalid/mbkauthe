@@ -4,8 +4,8 @@ import { getLatestVersion } from "./lib/main.js";
 import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
-import { packageJson } from "./lib/config/index.js";
-import { renderError } from "./lib/utils/response.js";
+import { packageJson } from "#config.js";
+import { renderError, renderPage } from "#response.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,6 +72,21 @@ if (process.env.test === "dev") {
     app.get(["/dashboard", "/home", "/"], (req, res) => {
         return res.redirect("/mbkauthe/login");
     });
+    app.get("/showmessage", (req, res) => {
+        //uncomment line 26 on showmessage.handlebars for testing, after testing comment it back
+        return renderPage(req, res, "showmessage", false);
+    });
+    app.get("/500", (req, res) => {
+        return renderError(res, req, {
+            layout: false,
+            code: 500,
+            error: "Internal Server Error",
+            message: "Simulated 500 Error",
+            details: "This is a simulated 500 error page for testing purposes.",
+            pagename: "Home",
+            page: "/mbkauthe/login",
+        });
+    });
     app.use((req, res) => {
         console.log(`[mbkauthe] Path not found: ${req.method} ${req.url}`);
         return renderError(res, req, {
@@ -97,11 +112,11 @@ export {
     validateSessionAndRole, authenticate, reloadSessionUser,
     strictValidateSession, strictValidateSessionAndRole
 } from "./lib/middleware/auth.js";
-export { renderError } from "./lib/utils/response.js";
-export { dblogin } from "./lib/database/pool.js";
+export { renderError, getUserContext, renderPage } from "#response.js";
+export { dblogin } from "#pool.js";
 export {
     ErrorCodes, ErrorMessages, getErrorByCode,
     createErrorResponse, logError
 } from "./lib/utils/errors.js";
-export { mbkautheVar } from "./lib/config/index.js";
+export { mbkautheVar } from "#config.js";
 export default router;

@@ -60,7 +60,8 @@
         text-decoration: none;
     }
 
-    .logo svg {
+    .logo svg,
+    .logo-image {
         height: 40px;
         width: auto;
     }
@@ -85,7 +86,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 120px 1.7rem 0px;
+        padding: 120px 1.7rem 20px;
         position: relative;
         overflow: hidden;
         background: linear-gradient(135deg, var(--darker), var(--primary-dark));
@@ -290,32 +291,6 @@
         font-size: 0.9rem;
     }
 
-    .btn-github {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        padding: 12px 20px;
-        border-radius: var(--border-radius);
-        background: #262b30;
-        color: white;
-        border: solid 0.13rem #262b30;
-        font-weight: 700;
-        font-size: 1rem;
-        text-decoration: none;
-        transition: var(--transition);
-    }
-
-    .btn-github:hover {
-        background: transparent;
-        box-shadow: var(--box-shadow);
-    }
-
-    .btn-github i {
-        font-size: 1.1rem;
-    }
-
     #googleLoginBtn i {
         font-size: 1.1rem;
         color: #4285f4;
@@ -327,35 +302,6 @@
         gap: 1rem;
         justify-content: center;
         align-items: center;
-    }
-
-    .btn-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        flex: 1;
-        max-width: 80px;
-        height: 50px;
-        padding: 12px;
-        border-radius: var(--border-radius);
-        background: #262b30;
-        color: white;
-        border: solid 0.13rem #262b30;
-        font-weight: 700;
-        font-size: 1.4rem;
-        text-decoration: none;
-        transition: var(--transition);
-        cursor: pointer;
-    }
-
-    .btn-icon:hover {
-        background: transparent;
-        box-shadow: var(--box-shadow);
-    }
-
-    .btn-icon i {
-        font-size: 1.4rem;
     }
 
     .mobile-google-btn i {

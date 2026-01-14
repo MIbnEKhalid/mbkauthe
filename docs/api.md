@@ -1315,6 +1315,39 @@ app.get('/admin', strictValidateSessionAndRole('SuperAdmin'), (req, res) => {
 
 ---
 
+### Response Utilities
+
+MBKAuthe exports small helpers to assist with page rendering and context:
+
+- `getUserContext(req)` — returns a lightweight context object for templates: `{ userLoggedIn, isuserlogin, username, fullname, role, allowedApps }`.
+- `renderPage(req, res, fileLocation, layout = true, data = {})` — renders a template with the user/context merged into the data; returns a Promise and yields the typical Express `res.render` behavior.
+- `renderError(res, req, options)` — renders the standardized error page; note the signature is `(res, req, options)` and `options` follow the `ErrorRenderOptions` described in the types.
+
+**Example:**
+
+```javascript
+import { getUserContext, renderPage, renderError } from 'mbkauthe';
+
+app.get('/dashboard', (req, res) => {
+  const ctx = getUserContext(req);
+  return renderPage(req, res, 'info', true, { greeting: 'Hello', ...ctx });
+});
+
+app.get('/err', (req, res) => {
+  return renderError(res, req, {
+    layout: false,
+    code: 500,
+    error: "Internal Server Error",
+    message: "Simulated 500 Error",
+    details: "This is a simulated 500 error page for testing purposes.",
+    pagename: "Home",
+    page: "/mbkauthe/login",
+  });
+});
+```
+
+---
+
 ### `authenticate(token)`
 
 API authentication middleware for server-to-server communication.

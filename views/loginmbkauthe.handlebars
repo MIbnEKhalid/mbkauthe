@@ -41,10 +41,31 @@
 
         .mobile-github-btn,
         .mobile-google-btn,
-        .btn-social,
-        .btn-github {
+        .btn-social {
             position: relative;
             overflow: visible;
+        }
+
+        @media (max-width: 1000px) {
+            .login-box {
+                position: relative;
+                background: rgba(10, 20, 20, 0.95);
+                overflow: hidden;
+            }
+
+            .login-box::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(0, 184, 148, 0.08));
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .login-box>* {
+                position: relative;
+                z-index: 1;
+            }
         }
     </style>
 
@@ -104,17 +125,6 @@
                     <h1 class="login-title">Login</h1>
 
                     <form id="loginForm" method="POST" class="login-form">
-                        {{#if userLoggedIn }}
-                        <div class="WarningboxInfo already-logged-info">
-                            <strong>You are already logged in as</strong>
-                            <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>.
-                            <div>
-                                <a class="terms-link" href="{{customURL}}">Go to dashboard</a>
-                                or
-                                <a class="terms-link" href="/mbkauthe/accounts">switch account</a>.
-                            </div>
-                        </div>
-                        {{/if}}
                         <input type="hidden" name="_csrf" value="{{csrfToken}}">
                         <div class="form-group">
                             <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" "
@@ -148,7 +158,17 @@
                             {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true"
                                 title="Last used">Last Used</span>{{/if}}
                         </button>
-
+                        {{#if userLoggedIn }}
+                        <div class="WarningboxInfo already-logged-info">
+                            <strong>You are already logged in as</strong>
+                            <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>.
+                            <div>
+                                <a class="terms-link" href="{{customURL}}">Go to dashboard</a>
+                                or
+                                <a class="terms-link" href="/mbkauthe/accounts">switch account</a>.
+                            </div>
+                        </div>
+                        {{/if}}
                         <!-- Mobile/Tablet Only: Social & Secondary Actions -->
                         <div class="mobile-actions">
                             {{#if githubLoginEnabled }}
@@ -158,13 +178,13 @@
                                     <span>or</span>
                                 </div>
                                 <div class="social-icons-row">
-                                    <a type="button" class="btn-icon mobile-github-btn last-used-parent"
+                                    <a type="button" class="swi s mobile-github-btn last-used-parent"
                                         title="Continue with GitHub">
                                         <i class="fab fa-github"></i>
                                         {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
                                             title="Last used">Last Used</span>{{/if}}
                                     </a>
-                                    <a type="button" class="btn-icon mobile-google-btn last-used-parent"
+                                    <a type="button" class="swi s mobile-google-btn last-used-parent"
                                         title="Continue with Google">
                                         <i class="fab fa-google"></i>
                                         {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
@@ -183,7 +203,13 @@
                             {{/if}}
                             {{/if}}
 
-                            <a href="/mbkauthe/accounts" class="btn-github mobile-switch-btn">
+                            <style>
+                            .swi {display: flex;align-items: center;justify-content: center;gap: 10px;padding: 0.85rem 1.1rem;border-radius: var(--border-radius);font-weight: 600;font-size: 0.9rem;text-decoration: none;transition: var(--transition);border: 0.13rem solid;position: relative;z-index: 1;overflow: hidden;background: rgba(255, 255, 255, 0.05);color: var(--text);border-color: rgba(255, 255, 255, 0.15);}
+                            .swi:hover {background: transparent;border-color: var(--accent);box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);}
+                            .swi.s{font-size: 1.3rem;}
+                            </style> 
+                            
+                            <a href="/mbkauthe/accounts" class="swi btn-social btn-switch-side">
                                 <i class="fa fa-user-group"></i>
                                 <span>Switch Account</span>
                             </a>
@@ -201,6 +227,7 @@
                     </form>
                 </div>
             </div>
+        </div>
         </div>
     </section>
 

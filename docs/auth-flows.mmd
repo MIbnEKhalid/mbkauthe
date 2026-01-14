@@ -1,0 +1,121 @@
+%%{init: {"themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "primaryTextColor": "#333333", "secondaryTextColor": "#333333", "background": "#ffffff"}}}%%
+flowchart TD
+  A[Client POST /api/login - payload: username password redirect] --> B[Validate input length & format]
+  B -->|invalid| Aerr[400 - missing/invalid]
+  B --> C[Query Users and TwoFA status]
+  C -->|no user| U404[401 - invalid credentials]
+  C --> D[Compare password - EncPass or raw]
+  D -->|fail| P401[401 - incorrect password]
+  D -->|ok| E[Check account Active and app authorization]
+  E -->|inactive| I403[403 - account inactive]
+  E -->|not authorized| A403[403 - app not authorized]
+  E --> F[checkTrustedDevice username]
+  F -->|trusted and 2FA enabled| G[completeLoginProcess]
+  F -->|not trusted and 2FA enabled| H[Set preAuthUser and respond twoFactorRequired:true]
+  F -->|not trusted and 2FA disabled| G
+
+  %% Expanded completeLoginProcess (implementation detail)
+  G --> Gdel[Delete old session store row]
+  Gdel --> Gregen[Regenerate session - new session id]
+  Gregen --> Gprune[Enforce max sessions per user - prune oldest if limit reached]
+  Gprune --> Gcache[clearProfilePicCache]
+  Gcache --> Ginsert[Insert app Sessions row - returns sessionId]
+  Ginsert --> Glast[Update Users.last_login timestamp]
+  Glast --> Gcookies[Set cookies: encrypted sessionId, username, fullName, lastLoginMethod; upsert account list cookie]
+  Gcookies --> |trustDevice| Gtrust[Create TrustedDevices row; set device_token cookie]
+  Gcookies --> RESP[200 - success: session created; cookies set; sessionId returned]
+  Gtrust --> RESP
+
+%% 2FA
+  A2[Client POST /api/verify-2fa - payload: token trustDevice] --> B2[Ensure req.session.preAuthUser exists]
+  B2 -->|missing| Err401[401 - session not found]
+  B2 --> C2[Validate token format - 6 digits]
+  C2 --> D2[Fetch TwoFA secret from DB for username]
+  D2 --> E2[Verify TOTP token]
+  E2 -->|invalid| T401[401 - invalid 2FA token]
+  E2 -->|valid| F2[completeLoginProcess]
+  F2 --> RESP2[200 - success: session created; cookies set]
+
+%% completeLoginProcess & validateSession kept separate for clarity
+
+%% Logout
+  L1[Client POST /api/logout] --> L2{req.session.user exists?}
+  L2 -->|no| Lerr[400 - Not logged in]
+  L2 -->|yes| L3[Delete app Sessions row and session store row]
+  L3 --> L4[removeAccountFromCookie]
+  L4 --> L5[Destroy session and clear session cookies]
+  L5 --> LResp[200 - logout successful]
+
+%% Account-sessions
+  AS1[Client GET /api/account-sessions] --> AS2[readAccountListFromCookie]
+  AS2 -->|empty| ASresp[Return empty accounts and currentSessionId]
+  AS2 --> AS3[For each stored account: validate each stored session via fetchActiveSession]
+  AS3 -->|invalid| AS4[invalidate DB session and remove account from cookie]
+  AS3 -->|valid| AS5[Push validated account to list]
+  AS5 --> ASresp2[Return accounts and currentSessionId]
+
+%% Switch session
+  SS1[Client POST /api/switch-session] --> SS2[Validate sessionId format]
+  SS2 -->|invalid| SSerr400[400 - Invalid session id]
+  SS2 --> SS3[Check sessionId in readAccountListFromCookie]
+  SS3 -->|missing| SSerr403[403 - Account not available on this device]
+  SS3 --> SS4[fetchActiveSession]
+  SS4 -->|not found| SSerr401[401 - Session expired]
+  SS4 --> SS5[Regenerate session; set req.session.user to DB row; save session]
+  SS5 --> SS6[Sync cookies & upsert account list cookie]
+  SS6 --> SSresp[200 - success with username fullName redirect]
+
+%% Logout-all
+  LA1[Client POST /api/logout-all] --> LA2[readAccountListFromCookie]
+  LA2 --> LA3[Collect sessionIds; add currentSession if present]
+  LA3 --> LA4[Delete Sessions rows by ids]
+  LA4 --> LA5[Delete session store row for current session]
+  LA5 --> LA6[Clear account list cookie, clear session cookies, destroy session]
+  LA6 --> LAresp[200 - All accounts logged out]
+
+%% OAuth
+  O1[Client GET /api/provider/login?redirect=...] --> O2[Server create CSRF token and save to session.oauthCsrfToken and oauthRedirect]
+  O2 --> O3[passport.authenticate -> redirect to provider auth page]
+  O3 --> O4[Provider redirects back to /api/provider/login/callback with state and auth code]
+  O4 --> O5[validateOAuthCallback: compare state with session.oauthCsrfToken]
+  O5 -->|invalid| Oerr[403 - CSRF mismatch]
+  O5 -->|valid| O6[passport.authenticate -> locate linked user record]
+  O6 -->|not linked| Oerr2[403 - Account not linked]
+  O6 --> O7[Check account active and allowedApps]
+  O7 -->|2FA enabled and device trusted| O8[completeLoginProcess skip 2FA]
+  O7 -->|2FA enabled and not trusted| O9[Set req.session.preAuthUser and redirect to /2fa]
+  O7 -->|2FA disabled| O8
+  O8 --> Oresp[200/redirect - login completed]
+
+  %% UI pages
+  LG1[Client GET /mbkauthe/login] --> LG2[Render login page with CSRF, provider flags and lastLogin cookie]
+  AC1[Client GET /mbkauthe/accounts] --> AC2[Render account switch page with CSRF and accounts list]
+
+%% Token validation
+  T1[Incoming request with Authorization: Bearer <token>] --> T2[If token starts with mbk_ -> API token]
+  T2 --> T3[Hash token then query ApiTokens joined to Users by TokenHash]
+  T3 -->|not found| Terr[401 - INVALID_TOKEN]
+  T3 -->|found| T4[Check ExpiresAt; parse permissions.scope and allowedApps]
+  T4 -->|expired| Texp[401 - TOKEN_EXPIRED]
+  T4 --> T5[Update ApiTokens LastUsed; return tokenUser with tokenScope]
+  T5 --> T6[Validate tokenScope via canAccessMethod for request method]
+  T6 -->|insufficient| T403[403 - TOKEN_SCOPE_INSUFFICIENT]
+  T6 --> NEXT[Populate req.session.user and proceed]
+
+%% reloadSessionUser
+  R1[Call reloadSessionUser helper] --> R2[Ensure req.session.user.id exists]
+  R2 --> R3[Query Sessions JOIN Users WHERE s.id = req.session.user.sessionId]
+  R3 -->|not found| RFALSE[Destroy session; clear cookies; return false]
+  R3 --> R4[Check expiry and Active and allowedApps]
+  R4 -->|fail| RFALSE
+  R4 --> R5[Update req.session.user values; fetch fullname from cookie or DB]
+  R5 --> R6[Save session and sync cookies]
+  R6 --> RTRUE[Return true]
+
+%% Trusted device
+  TD1[Request has device_token cookie] --> TD2[If missing -> null]
+  TD2 --> TD3[Hash device token then query TrustedDevices for matching token and username and not expired]
+  TD3 -->|no row| TDNULL[return null]
+  TD3 -->|row found| TD4[If account inactive or not authorized for app -> return null]
+  TD4 --> TD5[Update TrustedDevices last used timestamp; return device user object]
+

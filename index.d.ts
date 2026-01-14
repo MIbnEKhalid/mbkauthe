@@ -222,12 +222,25 @@ declare module 'mbkauthe' {
     next: NextFunction
   ): void | Promise<void>;
 
+  export function validateApiSession(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void | Promise<void>;
+
   export function checkRolePermission(
     requiredRole: UserRole | 'Any' | 'any',
     notAllowed?: UserRole
   ): AuthMiddleware;
 
   export function validateSessionAndRole(
+    requiredRole: UserRole | 'Any' | 'any',
+    notAllowed?: UserRole
+  ): AuthMiddleware;
+
+  export const strictValidateSession: AuthMiddleware;
+
+  export function strictValidateSessionAndRole(
     requiredRole: UserRole | 'Any' | 'any',
     notAllowed?: UserRole
   ): AuthMiddleware;
@@ -239,10 +252,38 @@ declare module 'mbkauthe' {
   export function reloadSessionUser(req: Request, res: Response): Promise<boolean>;
 
   // Utility Functions
+  // Renders an error page — signature is (res, req, options)
   export function renderError(
     res: Response,
+    req: Request,
     options: ErrorRenderOptions
   ): Response;
+
+  // Return a lightweight context object used to populate templates
+  export function getUserContext(req: Request): {
+    userLoggedIn: boolean;
+    isuserlogin: boolean;
+    username: string;
+    fullname: string;
+    role: string;
+    allowedApps: string[];
+  };
+
+  // Renders a template page with optional layout and data
+  export function renderPage(
+    req: Request,
+    res: Response,
+    fileLocation: string,
+    layout?: boolean,
+    data?: Record<string, any>
+  ): Promise<Response>;
+
+  // Error utilities
+  export const ErrorCodes: { [key: string]: number };
+  export const ErrorMessages: { [key: number]: { message: string; userMessage?: string; hint?: string } };
+  export function getErrorByCode(errorCode: number, customData?: any): { errorCode: number; message: string; userMessage?: string; hint?: string } & any;
+  export function createErrorResponse(statusCode: number, errorCode: number, customData?: any): any;
+  export function logError(context: string, errorCode: number, additionalInfo?: any): void;
 
   export function getCookieOptions(): {
     maxAge: number;

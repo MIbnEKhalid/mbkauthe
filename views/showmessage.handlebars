@@ -23,6 +23,7 @@
 </div>
 
 <script>
+    //showMessage("This is a <b>test message</b> with some <i>HTML</i> content.", "Info", "E1234");
     // Sanitize HTML to prevent XSS while allowing safe HTML tags
     function sanitizeHTML(html) {
         if (!html) return "";
@@ -267,7 +268,6 @@
 
     .errorCodeBadge:hover {
         background: rgba(255, 255, 255, 0.1);
-        transform: translateY(-1px);
         color: var(--text, #fff) !important;
     }
 

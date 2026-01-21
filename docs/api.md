@@ -108,7 +108,7 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 | Cookie Name | Description | HttpOnly | Secure | SameSite |
 |------------|-------------|----------|--------|----------|
 | `mbkauthe.sid` | Session identifier | ✓ | Auto* | lax |
-| `sessionId` | Encrypted session token (AES-256-GCM). This cookie is encrypted and treated as an opaque value by clients; do not attempt to parse or rely on the raw cookie contents. Use server endpoints (e.g., `/mbkauthe/api/checkSession`) to validate or query session information. | ✓ | Auto* | lax |
+| `sessionId` | Encrypted session token (AES-256-GCM). This cookie is encrypted and treated as an opaque value by clients; do not attempt to parse or rely on the raw cookie contents. Use server endpoints (e.g., `GET /mbkauthe/api/checkSession`, `POST /mbkauthe/api/checkSession` (body) or `POST /mbkauthe/api/verifySession`) to validate or query session information. | ✓ | Auto* | lax |
 | `username` | Username | ✗ | Auto* | lax |
 
 \* `secure` flag is automatically set to `true` in production when `IS_DEPLOYED=true`
@@ -297,6 +297,97 @@ fetch('/mbkauthe/api/checkSession')
       // not authenticated
     }
   });
+```
+
+---
+
+#### `POST /mbkauthe/api/checkSession` (body)
+
+Validate a session by providing a session identifier in the request body. Useful for server-to-server checks or when you have an encrypted `sessionId` value from a cookie and need to validate it server-side.
+
+**Rate Limit:** 8 requests per minute (same limiter used by public session endpoints)
+
+**Request Body (JSON):**
+```json
+{
+  "sessionId": "string (uuid or encrypted string)",
+  "isEncrypt": "boolean | 'true' (optional, indicates sessionId is encrypted)
+}
+```
+
+**Notes:**
+- The endpoint accepts `isEncrypt` or the misspelled `isEncryt` (both `true` or the string `'true'` are accepted).
+- If `isEncrypt` is true, the server will first attempt `decodeURIComponent()` on the value and then decrypt it (AES) to obtain a UUID session id. If decryption fails or the resulting value is not a UUID, the server returns `400 Bad Request` with `SESSION_INVALID`.
+- A missing `sessionId` returns `400 Bad Request` with `MISSING_REQUIRED_FIELD`.
+
+**Success Response (200 OK):**
+```json
+{
+  "sessionValid": true,
+  "expiry": "2025-12-27T12:34:56.000Z"
+}
+```
+
+**Invalid/Expired Session:**
+- Returns 200 with `{ "sessionValid": false, "expiry": null }` for unknown/expired/inactive sessions.
+
+**Example Request (Fetch):**
+```javascript
+fetch('/mbkauthe/api/checkSession', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId: '550e8400-e29b-41d4-a716-446655440000' })
+}).then(r => r.json()).then(console.log);
+```
+
+**Example Request (Encrypted sessionId):**
+```javascript
+fetch('/mbkauthe/api/checkSession', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId: 'ENCRYPTED_VALUE', isEncrypt: true })
+}).then(r => r.json()).then(console.log);
+```
+
+---
+
+#### `POST /mbkauthe/api/verifySession`
+
+Returns session details for a provided `sessionId`. Intended for server-side validation and to retrieve associated user metadata without relying on an active cookie session.
+
+**Request Body (JSON):**
+```json
+{
+  "sessionId": "string (uuid or encrypted string)",
+  "isEncrypt": "boolean | 'true' (optional)"
+}
+```
+
+**Behavior and Notes:**
+- `isEncrypt`/`isEncryt` have the same behavior as in `/api/checkSession`.
+- If the session is valid and active, the response includes `username` and `role`.
+- Missing or invalid `sessionId` results in `400 Bad Request` with an appropriate error code (`MISSING_REQUIRED_FIELD` or `SESSION_INVALID`).
+
+**Success Response (200 OK):**
+```json
+{
+  "valid": true,
+  "expiry": "2025-12-27T12:34:56.000Z",
+  "username": "john.doe",
+  "role": "NormalUser"
+}
+```
+
+**Invalid/Expired Session:**
+- Returns 200 with `{ "valid": false, "expiry": null }` for unknown/expired/inactive sessions.
+
+**Example Request:**
+```javascript
+fetch('/mbkauthe/api/verifySession', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId: '550e8400-e29b-41d4-a716-446655440000' })
+}).then(r => r.json()).then(console.log);
 ```
 
 ---

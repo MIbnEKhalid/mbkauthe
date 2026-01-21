@@ -10,7 +10,7 @@ npm install mbkauthe
 
 ## Version
 
-Current Version: 1.4.2
+Current Version: 4.3.2
 
 ## Registry
 

@@ -147,6 +147,27 @@
             font-size: 18px;
             flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 50%;
+        }
+
+        .avatar .initials {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
         }
 
         .account-info {
@@ -367,14 +388,43 @@
                     item.role = 'button';
                     item.tabIndex = 0;
 
-                    item.innerHTML = `
-                        <div class="avatar">${initial}</div>
-                        <div class="account-info">
-                            <div class="account-name">${acct.fullName || acct.username}</div>
-                            <div class="account-email">${acct.username}</div>
-                        </div>
-                        ${isCurrent ? '<div class="current-badge">Current</div>' : ''}
+                    // Build avatar with image (if available) and initials fallback to avoid HTML injection
+                    const avatar = document.createElement('div');
+                    avatar.className = 'avatar';
+
+                    const initials = document.createElement('div');
+                    initials.className = 'initials';
+                    initials.textContent = initial;
+                    initials.style.display = acct.image ? 'none' : 'flex';
+
+                    if (acct.image) {
+                        const img = document.createElement('img');
+                        img.className = 'avatar-img';
+                        img.src = acct.image;
+                        img.alt = `Avatar for ${acct.username}`;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.onerror = function () { img.style.display = 'none'; initials.style.display = 'flex'; };
+                        avatar.appendChild(img);
+                    }
+
+                    avatar.appendChild(initials);
+
+                    const info = document.createElement('div');
+                    info.className = 'account-info';
+                    info.innerHTML = `
+                        <div class="account-name">${acct.fullName || acct.username}</div>
+                        <div class="account-email">${acct.username}</div>
                     `;
+
+                    item.appendChild(avatar);
+                    item.appendChild(info);
+                    if (isCurrent) {
+                        const badge = document.createElement('div');
+                        badge.className = 'current-badge';
+                        badge.textContent = 'Current';
+                        item.appendChild(badge);
+                    };
 
                     item.addEventListener('click', () => {
                         if (!isCurrent) {

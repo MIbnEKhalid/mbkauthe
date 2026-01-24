@@ -112,11 +112,28 @@ export {
     validateSessionAndRole, authenticate, reloadSessionUser,
     strictValidateSession, strictValidateSessionAndRole
 } from "./lib/middleware/auth.js";
-export { renderError, getUserContext, renderPage } from "#response.js";
+export {
+    sessionConfig,
+    corsMiddleware,
+    sessionRestorationMiddleware,
+    sessionCookieSyncMiddleware
+} from "./lib/middleware/index.js";
+export { validateTokenScope } from "./lib/middleware/scopeValidator.js";
+export { renderError, getUserContext, renderPage, proxycall } from "#response.js";
 export { dblogin } from "#pool.js";
+export { getLatestVersion } from "./lib/routes/misc.js";
+export { checkTrustedDevice, completeLoginProcess } from "./lib/routes/auth.js";
 export {
     ErrorCodes, ErrorMessages, getErrorByCode,
     createErrorResponse, logError
 } from "./lib/utils/errors.js";
+export {
+    encryptSessionId, decryptSessionId, cachedCookieOptions, cachedClearCookieOptions,
+    DEVICE_TRUST_DURATION_DAYS, DEVICE_TRUST_DURATION_MS,
+    generateDeviceToken, hashDeviceToken, getDeviceTokenCookieOptions,
+    getCookieOptions, getClearCookieOptions, clearSessionCookies,
+    readAccountListFromCookie, upsertAccountListCookie, removeAccountFromCookie, clearAccountListCookie
+} from "./lib/config/cookies.js";
+export { hashPassword, hashApiToken } from "./lib/config/security.js";
 export { mbkautheVar } from "#config.js";
 export default router;

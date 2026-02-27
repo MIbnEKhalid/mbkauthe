@@ -50,7 +50,7 @@ CREATE TABLE "Users" (
     
     "FullName" VARCHAR(255),
     "email" TEXT DEFAULT 'support@mbktech.org',
-    "Image" TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',
+    "Image" TEXT DEFAULT 'https://portal.mbktech.org/Assets/Images/M.png',
     "Bio" TEXT DEFAULT 'I am ....',
     "SocialAccounts" TEXT DEFAULT '{}',
     "Positions" jsonb DEFAULT '{"Not_Permanent":"Member Is Not Permanent"}',

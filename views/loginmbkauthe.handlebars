@@ -26,7 +26,7 @@
             background: var(--accent);
             color: #fff;
             border-radius: 999px;
-            border: 2px solid rgba(0, 0, 0, 0.15);
+            border: 2px solid rgb(0 0 0 / 52%);
             z-index: 30;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
             line-height: 1;
@@ -81,7 +81,10 @@
                 <div class="login-sidebar">
                     <div class="sidebar-content">
                         <div class="brand-section">
-                            <img width="50px" height="50px" src="/icon.svg" alt="MBKAuthe Logo" class="brand-logo" />
+                            <div class="logo" style="justify-content: center;margin-bottom: 1rem;">
+                                <img src="/icon.svg" alt="Logo" class="logo-image">
+                                <span class="logo-text">BK <span>Tech</span></span>
+                            </div>
                             <h2 class="brand-title">Welcome to MBKAuthe</h2>
                             <p class="brand-description">Secure authentication for MBKTech.org services</p>
                         </div>
@@ -92,7 +95,7 @@
                                 <i class="fab fa-github"></i>
                                 <span>Continue with GitHub</span>
                                 {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
-                                    title="Last used">Last Used</span>{{/if}}
+                                    title="Last used">Last</span>{{/if}}
                             </a>
                             {{/if}}
                             {{#if googleLoginEnabled }}
@@ -100,7 +103,7 @@
                                 <i class="fab fa-google"></i>
                                 <span>Continue with Google</span>
                                 {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
-                                    title="Last used">Last Used</span>{{/if}}
+                                    title="Last used">Last</span>{{/if}}
                             </a>
                             {{/if}}
                             <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
@@ -156,7 +159,7 @@
                         <button type="submit" class="btn-login last-used-parent" id="loginButton">
                             <span id="loginButtonText">Login</span>
                             {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true"
-                                title="Last used">Last Used</span>{{/if}}
+                                title="Last used">Last</span>{{/if}}
                         </button>
                         {{#if userLoggedIn }}
                         <div class="WarningboxInfo already-logged-info">
@@ -182,13 +185,13 @@
                                         title="Continue with GitHub">
                                         <i class="fab fa-github"></i>
                                         {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
-                                            title="Last used">Last Used</span>{{/if}}
+                                            title="Last used">Last</span>{{/if}}
                                     </a>
                                     <a type="button" class="swi s mobile-google-btn last-used-parent"
                                         title="Continue with Google">
                                         <i class="fab fa-google"></i>
                                         {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
-                                            title="Last used">Last Used</span>{{/if}}
+                                            title="Last used">Last</span>{{/if}}
                                     </a>
                                 </div>
                             </div>

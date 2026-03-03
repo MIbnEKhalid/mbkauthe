@@ -180,13 +180,13 @@
                 <h2><i class="fas fa-code-branch"></i> Version Information</h2>
                 <div class="info-row">
                     <div class="info-label">Current Version:</div>
-                    <div class="info-value" id="CurrentVersion">{{version}}</div>
+                    <div class="info-value" id="CurrentVersion">{{CurrentVersion}}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Latest Version:</div>
                     <div class="info-value">
                         {{latestVersion}}
-                        {{#if (eq latestVersion version)}}
+                        {{#if (eq latestVersion CurrentVersion)}}
                         <span class="version-status version-up-to-date">
                             <i class="fas fa-check-circle"></i> Up to date
                         </span>
@@ -206,7 +206,7 @@
                     <div class="info-value">{{APP_VERSION}}</div>
                 </div>
                 <div class="info-row">
-                    <div class="info-label">Domain:</div>
+                    <div class="info-label">DOMAIN:</div>
                     <div class="info-value">{{mbkautheVar.DOMAIN}}</div>
                 </div>
                 <div class="info-row">

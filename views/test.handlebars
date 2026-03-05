@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{> head pageTitle="Session Test" ogUrl="/mbkauthe/test"}}
+
+<body>
+    {{> header}}
+
+    <style>
+        .session-card {
+            background: rgba(10, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 760px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            position: relative;
+            z-index: 2;
+            transition: var(--transition);
+            display: grid;
+            grid-template-columns: 110px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .session-card:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            border-color: rgba(0, 184, 148, 0.3);
+        }
+
+        .avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0, 184, 148, 0.2), rgba(33, 150, 243, 0.15));
+            border: 2px solid rgba(0, 184, 148, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar .initials {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 2rem;
+        }
+
+        .session-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .session-status {
+            color: var(--success);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .session-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--light);
+            margin: 0;
+        }
+
+        .session-sub {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .session-details {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 184, 148, 0.15);
+            border-radius: var(--border-radius);
+            padding: 1rem 1.2rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .session-details div span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .session-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: var(--border-radius);
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--dark);
+        }
+
+        .btn-primary:hover {
+            background: #00a07f;
+            box-shadow: 0 4px 12px rgba(0, 184, 148, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(0, 184, 148, 0.35);
+            color: var(--accent);
+        }
+
+        .btn-outline:hover {
+            background: rgba(0, 184, 148, 0.1);
+            border-color: var(--accent);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #e55f5f;
+            box-shadow: 0 4px 12px rgba(255, 118, 117, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .session-card {
+                grid-template-columns: 1fr;
+            }
+
+            .avatar {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+
+    <section class="login-container">
+        {{> backgroundElements}}
+
+        <div class="session-card" role="region" aria-label="User Session">
+            <div class="avatar" aria-hidden="true">
+                <img src="/mbkauthe/user/profilepic?u={{profilePicUrl}}"
+                    alt="Avatar for {{username}}"
+                    title="{{displayName}}"
+                    loading="lazy" decoding="async" width="96" height="96"
+                    onerror="this.style.display='none';var s=this.nextElementSibling; if(s) s.style.display='flex';" />
+                <div class="initials" aria-hidden="true" style="display:none">{{initial}}</div>
+            </div>
+
+            <div class="session-meta">
+                <div>
+                    <div class="session-status">✅ Authentication successful</div>
+                    <h3 class="session-title">{{username}} <small style="color:var(--text-light);font-weight:500">· {{role}}</small></h3>
+                    <p class="session-sub">ID: {{id}} · Session: {{sessionIdShort}}…</p>
+                </div>
+
+                <div class="session-details" aria-live="polite">
+                    <div><span>Full Name:</span> {{fullname}}</div>
+                    <div><span>Allowed Apps:</span> {{allowedApps}}</div>
+                    <div><span>Session Expires:</span> <span id="session-expiry-display">{{#if sessionExpiry}}{{sessionExpiry}}{{else}}N/A{{/if}}</span></div>
+                    {{#if sessionExpiry}}<div id="session-countdown"><span>Time Remaining:</span> <span id="countdown-value">calculating…</span></div>{{/if}}
+                </div>
+
+                <div class="session-actions">
+                    <button class="btn btn-danger" onclick="logout()" aria-label="Log out">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                    <a class="btn btn-outline" href="https://portal.mbktech.org/">
+                        <i class="fas fa-globe"></i> Web Portal
+                    </a>
+                    <a class="btn btn-outline" href="https://portal.mbktech.org/user/settings">
+                        <i class="fas fa-user-cog"></i> User Settings
+                    </a>
+                    <a class="btn btn-outline" href="/mbkauthe/info">
+                        <i class="fas fa-info-circle"></i> Info Page
+                    </a>
+                    <a class="btn btn-outline" href="/mbkauthe/login">
+                        <i class="fas fa-sign-in-alt"></i> Login Page
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="/mbkauthe/main.js"></script>
+    {{#if sessionExpiry}}
+    <script>
+        (function () {
+            var expiry = new Date('{{sessionExpiry}}');
+            var display = document.getElementById('session-expiry-display');
+            var countdown = document.getElementById('countdown-value');
+
+            // Format the expiry date in local time
+            if (display) {
+                display.textContent = expiry.toLocaleString();
+            }
+
+            function updateCountdown() {
+                var now = new Date();
+                var diff = expiry - now;
+                if (diff <= 0) {
+                    countdown.textContent = 'Expired';
+                    countdown.style.color = 'var(--danger)';
+                    return;
+                }
+                var h = Math.floor(diff / 3600000);
+                var m = Math.floor((diff % 3600000) / 60000);
+                var s = Math.floor((diff % 60000) / 1000);
+                countdown.textContent =
+                    (h ? h + 'h ' : '') +
+                    (h || m ? m + 'm ' : '') +
+                    s + 's';
+
+                // warn when under 5 minutes
+                countdown.style.color = diff < 300000 ? 'var(--warning)' : 'var(--success)';
+            }
+
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        })();
+    </script>
+    {{/if}}
+</body>
+</html>

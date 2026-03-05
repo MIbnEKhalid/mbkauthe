@@ -4,9 +4,11 @@
 [![License](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Publish](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
+[![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
+
 
 <p align="center">
-  <img height="64px" src="./public/icon.svg" alt="MBKAuthe" />
+  <img height="64px" src="./public/logo.png" alt="MBKAuthe" />
 </p>
 
 **MBKAuthe** is a production-ready authentication system for Node.js with Express and PostgreSQL. Features include secure login, 2FA, role-based access, OAuth (GitHub & Google), multi-session support, and multi-app user management.

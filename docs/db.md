@@ -193,8 +193,8 @@ The system handles various error cases:
 ## Login Page Updates
 
 The login page now includes:
-- A "Continue with GitHub" button
-- A "Continue with Google" button
+- A "Login with GitHub" button
+- A "Login with Google" button
 - A divider ("or") between regular and OAuth login
 - Proper styling that matches your existing design
 

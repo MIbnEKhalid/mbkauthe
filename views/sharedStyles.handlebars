@@ -48,7 +48,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 1.5rem;
+        padding: 10px 1.5rem;
         max-width: 1400px;
         margin: 0 auto;
     }
@@ -69,6 +69,7 @@
     .logo-text {
         font-size: 2rem;
         font-weight: 700;
+        padding-top: 10px;
         color: var(--light);
     }
 
@@ -78,7 +79,7 @@
 
     .logo-comp {
         margin-top: 20px;
-        font-size: 1.2rem;
+        font-size: 1rem;
         font-weight: bold;
         color: var(--text-light);
     }
@@ -608,7 +609,7 @@
             flex-direction: column;
             width: 40%;
             background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(0, 184, 148, 0.08));
-            padding: 3rem 2rem;
+            padding: 2.5rem 2rem;
             border-right: 1px solid rgba(0, 184, 148, 0.3);
             position: relative;
             overflow: hidden;
@@ -801,6 +802,24 @@
         .terms-info {
             margin-top: 2rem;
         }
+    }
+
+    @media (max-width: 400px) {
+
+        .logo svg,
+        .logo-image {
+            height: 30px;
+        }
+
+        .logo-text {
+            font-size: 1.6rem;
+        }
+
+        .mbkauthe-btn-login {
+            font-size: 1rem !important;
+            padding: 6px !important;
+        }
+
     }
 
     @media (max-width: 768px) {

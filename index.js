@@ -70,7 +70,7 @@ if (process.env.test === "dev") {
     const port = 5555;
     app.use(router);
     app.get(["/dashboard", "/home", "/"], (req, res) => {
-        return res.redirect("/mbkauthe/login");
+            return res.redirect("/mbkauthe/");
     });
     app.get("/showmessage", (req, res) => {
         //uncomment line 26 on showmessage.handlebars for testing, after testing comment it back

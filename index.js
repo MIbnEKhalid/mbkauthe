@@ -65,10 +65,11 @@ async function checkVersion() {
     }
 }
 
+app.use(router);
+
 if (process.env.test === "dev") {
     console.log("[mbkauthe] Dev mode is enabled. Starting server in dev mode.");
     const port = 5555;
-    app.use(router);
     app.get(["/dashboard", "/home", "/"], (req, res) => {
             return res.redirect("/mbkauthe/");
     });
@@ -136,4 +137,4 @@ export {
 } from "./lib/config/cookies.js";
 export { hashPassword, hashApiToken } from "./lib/config/security.js";
 export { mbkautheVar } from "#config.js";
-export default router;
+export default app;

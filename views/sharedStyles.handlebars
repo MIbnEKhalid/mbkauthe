@@ -1,4 +1,6 @@
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
     :root {
         --primary: #2196f3;
         --primary-dark: #1769aa;
@@ -16,13 +18,20 @@
         --border-radius: 8px;
         --box-shadow: 0 4px 10px rgba(33, 150, 243, 0.15);
         --transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
+        --font-sans: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        --font-display: 'Space Grotesk', 'Manrope', sans-serif;
+        --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+        --text-size-sm: 0.9rem;
+        --text-size-md: 1rem;
+        --text-size-lg: 1.2rem;
+        --text-size-xl: 2rem;
     }
 
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: var(--font-sans);
     }
 
     body {
@@ -67,10 +76,12 @@
     }
 
     .logo-text {
-        font-size: 2rem;
+        font-size: var(--text-size-xl);
         font-weight: 700;
         padding-top: 10px;
         color: var(--light);
+        font-family: var(--font-display);
+        letter-spacing: 0.01em;
     }
 
     .logo-text span {
@@ -79,7 +90,7 @@
 
     .logo-comp {
         margin-top: 20px;
-        font-size: 1rem;
+        font-size: var(--text-size-md);
         font-weight: bold;
         color: var(--text-light);
     }
@@ -148,9 +159,10 @@
     .login-title {
         text-align: center;
         margin-bottom: 2rem;
-        font-size: 2rem;
+        font-size: var(--text-size-xl);
         position: relative;
         color: var(--light);
+        font-family: var(--font-display);
     }
 
     .login-title::after {
@@ -168,7 +180,7 @@
     .login-subtitle {
         text-align: center;
         color: var(--text-light);
-        font-size: 0.95rem;
+        font-size: var(--text-size-sm);
         margin-top: -1rem;
         margin-bottom: 2rem;
         line-height: 1.5;
@@ -186,7 +198,7 @@
         border: 2px solid rgba(0, 184, 148, 0.3);
         border-radius: var(--border-radius);
         color: var(--text);
-        font-size: 1rem;
+        font-size: var(--text-size-md);
         transition: var(--transition);
     }
 
@@ -202,7 +214,7 @@
         letter-spacing: 0.5rem;
         text-align: center;
         font-weight: 600;
-        font-family: 'Courier New', monospace;
+        font-family: var(--font-mono);
     }
 
     .form-label {
@@ -245,11 +257,41 @@
         background: var(--accent);
         color: var(--dark);
         font-weight: 700;
-        font-size: 1.2rem;
+        font-size: var(--text-size-lg);
         border: .1rem solid var(--accent);
         cursor: pointer;
         transition: all 0.4s cubic-bezier(.4, 0, .2, 1);
         box-shadow: var(--box-shadow);
+    }
+
+    .swi {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0.85rem 1.1rem;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        font-size: var(--text-size-sm);
+        text-decoration: none;
+        transition: var(--transition);
+        border: 0.13rem solid;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .swi:hover {
+        background: transparent;
+        border-color: var(--accent);
+        box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
+    }
+
+    .swi.s {
+        font-size: 1.3rem;
     }
 
     .btn-login:hover {

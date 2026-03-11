@@ -19,8 +19,8 @@ async function logout() {
 
     if (response.ok) {
       // Then clear all caches after successful logout (except rememberedUsername)
-      await nuclearCacheClear();
-      // nuclearCacheClear already redirects, so no need for additional redirect
+      await selectiveCacheClear();
+      // selectiveCacheClear already redirects, so no need for additional redirect
     } else {
       alert(result.message);
     }
@@ -30,62 +30,41 @@ async function logout() {
   }
 }
 
-async function nuclearCacheClear() {
+async function selectiveCacheClear() {
   try {
-    // Preserve rememberedUsername before clearing storage
-    const rememberedUsername = localStorage.getItem('rememberedUsername');
 
-    // 1. Clear all possible caches
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
-    }
+    const cookiesToClear = [
+      'sessionId',
+      'mbkauthe.sid',
+      'fullName',
+      '_csrf'
+    ];
 
-    // 2. Clear service workers
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map(registration => registration.unregister()));
-    }
+    const localStorageToClear = [
+      'sessionId',
+      'mbkauthe.sid',
+      'fullName',
+      '_csrf'
+    ];
 
-    // 3. Clear all storage except rememberedUsername
-    localStorage.clear();
-    sessionStorage.clear();
-    if (rememberedUsername) {
-      localStorage.setItem('rememberedUsername', rememberedUsername);
-    }
-
-    if ('indexedDB' in window) {
-      try {
-        const dbs = await window.indexedDB.databases();
-        await Promise.all(dbs.map(db => {
-          if (db.name) {
-            return window.indexedDB.deleteDatabase(db.name);
-          }
-          return Promise.resolve();
-        }));
-      } catch (error) {
-        console.error("[mbkauthe] Error clearing IndexedDB:", error);
-      }
-    }
-
-    // 4. Clear cookies (except those you want to preserve)
-    document.cookie.split(';').forEach(cookie => {
-      const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-
-      // Skip cookies you want to preserve (add conditions as needed)
-      if (!name.startsWith('preserve_')) {  // Example condition
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`;
-      }
+    // 1. Clear selected localStorage keys
+    localStorageToClear.forEach(key => {
+      localStorage.removeItem(key);
     });
 
-    // 5. Force hard reload with cache busting
+    // 2. Clear selected cookies
+    cookiesToClear.forEach(name => {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`;
+    });
+
+    // 3. Optional reload
     window.location.reload();
 
   } catch (error) {
-    console.error('[mbkauthe] Nuclear cache clear failed:', error);
-    window.location.reload(true);
+    console.error('[mbkauthe] selective cache clear failed:', error);
+    window.location.reload();
   }
 }
 

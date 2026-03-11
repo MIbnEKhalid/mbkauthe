@@ -1,0 +1,25 @@
+:root {
+    --primary: #2196f3;
+    --primary-dark: #1769aa;
+    --secondary: #43e97b;
+    --accent: #00b894;
+    --dark: #101c1c;
+    --darker: #0a1414;
+    --light: #eaf6fb;
+    --text: #e0f7fa;
+    --text-light: #b2dfdb;
+    --text-dark: #1a2a2a;
+    --success: #43e97b;
+    --warning: #ffd166;
+    --danger: #ff7675;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 10px rgba(33, 150, 243, 0.15);
+    --transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
+    --font-sans: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-display: 'Space Grotesk', 'Manrope', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+    --text-size-sm: 0.9rem;
+    --text-size-md: 1rem;
+    --text-size-lg: 1.2rem;
+    --text-size-xl: 2rem;
+}

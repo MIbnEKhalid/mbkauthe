@@ -90,7 +90,8 @@ describe('mbkauthe Routes', () => {
       const response = await request(BASE_URL).get('/icon.svg');
       
       expect(response.status).toBe(200);
-      expect(response.text || response.body.toString()).toMatch(/<svg|SVG/);
+      expect(response.headers['content-type']).toContain('image/png');
+
     });
 
     test('GET /mbkauthe/bg.webp returns WEBP content', async () => {

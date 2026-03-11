@@ -13,6 +13,9 @@
 
 **MBKAuthe** is a production-ready authentication system for Node.js with Express and PostgreSQL. Features include secure login, 2FA, role-based access, OAuth (GitHub & Google), multi-session support, and multi-app user management.
 
+## Todo
+- Currently, for every request to a protected page, a database query is made to retrieve authentication information (allowed apps, username, session ID, role, etc.). We should implement a caching mechanism to reduce this overhead, but also find a way to allow administrators to log users out and update permissions in near real-time.
+
 ## ✨ Key Features
 
 - Secure password authentication (PBKDF2)

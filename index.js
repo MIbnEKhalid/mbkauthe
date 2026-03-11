@@ -1,10 +1,9 @@
 import express from "express";
 import router from "./lib/main.js";
-import { getLatestVersion } from "./lib/main.js";
+import { checkVersion } from "./lib/main.js";
 import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
-import { packageJson } from "#config.js";
 import { renderError, renderPage } from "#response.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,20 +50,6 @@ app.engine("handlebars", engine({
 
 app.set("view engine", "handlebars");
 
-// Version check with error handling
-async function checkVersion() {
-    try {
-        const latestVersion = await getLatestVersion();
-        if (latestVersion && latestVersion !== packageJson.version) {
-            console.warn(`[mbkauthe] Current version (${packageJson.version}) is outdated. Latest version: ${latestVersion}. Consider updating mbkauthe.`);
-        } else if (latestVersion) {
-            console.info(`[mbkauthe] Running latest version (${packageJson.version}).`);
-        }
-    } catch (error) {
-        console.warn(`[mbkauthe] Failed to check for updates: ${error.message}`);
-    }
-}
-
 app.use(router);
 
 if (process.env.test === "dev") {
@@ -72,6 +57,13 @@ if (process.env.test === "dev") {
     const port = 5555;
     app.get(["/dashboard", "/home", "/"], (req, res) => {
             return res.redirect("/mbkauthe/");
+    });
+    app.get("/dev/2fa", (req, res) => {
+            return renderPage(req, res, "2fa", {
+                layout: false,
+                pagename: "Two-Factor Authentication",
+                page: "/home"
+            });
     });
     app.get("/showmessage", (req, res) => {
         //uncomment line 26 on showmessage.handlebars for testing, after testing comment it back

@@ -28,7 +28,7 @@
                 <input type="hidden" name="_csrf" value="{{csrfToken}}">
                 <div class="form-group token-container" id="tokenCon">
                     <input id="token" class="form-input" type="text" name="token" placeholder=" " pattern="\d{6}"
-                        title="Token must be exactly 6 digits" maxlength="6" minlength="6" autocomplete="off"
+                        title="Token must be exactly 6 digits" maxlength="6" minlength="6" autocomplete="off" autofocus
                         required />
                     <label class="form-label">2FA Token</label>
                     <i class="fas fa-info-circle input-icon" onclick="tokeninfo()"></i>
@@ -107,20 +107,6 @@
                 loginButtonText.textContent = 'Verify';
                 showMessage('Failed to verify token. Please try again.', 'Error');
             }
-        });
-
-        // Auto focus on empty token field
-        document.addEventListener('DOMContentLoaded', function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            const tokenFromUrl = urlParams.get('token');
-            const tokenInput = document.getElementById('token');
-
-            if (tokenFromUrl) {
-                tokenInput.value = tokenFromUrl;
-            }
-
-            // Automatically focus the token input field
-            tokenInput.focus();
         });
 
     </script>

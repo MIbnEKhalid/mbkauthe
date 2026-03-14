@@ -1,12 +1,13 @@
 {
   "name": "mbkauthe",
-  "version": "4.6.1",
+  "version": "4.6.2",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
   "types": "index.d.ts",
   "scripts": {
-    "dev": "cross-env test=dev nodemon index.js",
+    "dev": "cross-env test=dev env=dev nodemon index.js",
+    "create-tables": "node lib/createTable.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/auth-flows.mmd -o docs/images/auth-flows.svg",

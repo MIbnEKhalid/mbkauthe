@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{> head pageTitle="DB Query Monitor" ogUrl="/mbkauthe/db" extraStyles="<style>
+  .db-container {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 120px 1.7rem 40px;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at top right, rgba(33, 150, 243, 0.25), transparent 55%),
+                radial-gradient(circle at 20% 20%, rgba(0, 184, 148, 0.18), transparent 50%),
+                linear-gradient(135deg, var(--darker), #0b1e25);
+  }
+
+  .db-panel {
+    background: rgba(10, 20, 20, 0.94);
+    border-radius: 18px;
+    padding: 2.25rem;
+    width: min(1200px, 100%);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 184, 148, 0.18);
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .db-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(33, 150, 243, 0.06), transparent 55%);
+    pointer-events: none;
+  }
+
+  .db-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .db-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 2vw, 2.4rem);
+    color: var(--light);
+  }
+
+  .db-subtitle {
+    color: var(--text-light);
+    font-size: var(--text-size-sm);
+    margin-top: 0.3rem;
+  }
+
+  .db-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .db-link {
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.6rem;
+    border: 1px solid rgba(33, 150, 243, 0.4);
+    background: rgba(33, 150, 243, 0.12);
+    color: var(--light);
+    text-decoration: none;
+    transition: var(--transition);
+  }
+
+  .db-link:hover {
+    background: rgba(33, 150, 243, 0.25);
+  }
+
+  .db-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-box {
+    padding: 1rem 1.2rem;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 184, 148, 0.2);
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--light);
+  }
+
+  .db-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.2rem;
+  }
+
+  .db-toolbar label {
+    color: var(--text-light);
+  }
+
+  .db-toolbar input {
+    width: 5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text);
+  }
+
+  .db-toolbar button {
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.6rem;
+    border: 1px solid rgba(0, 184, 148, 0.4);
+    background: rgba(0, 184, 148, 0.12);
+    color: var(--light);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .db-toolbar button:hover {
+    background: rgba(0, 184, 148, 0.25);
+  }
+
+  .db-table-wrapper {
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(6, 12, 14, 0.7);
+    padding: 0.4rem;
+    overflow-x: auto;
+  }
+
+  .copy-row-btn {
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(33, 150, 243, 0.5);
+    background: rgba(33, 150, 243, 0.12);
+    color: var(--light);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: var(--transition);
+  }
+
+  .copy-row-btn:hover {
+    background: rgba(33, 150, 243, 0.25);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text);
+    font-size: 0.9rem;
+    min-width: 900px;
+  }
+
+  th, td {
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    vertical-align: top;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .badge.ok {
+    background: rgba(67, 233, 123, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(67, 233, 123, 0.4);
+  }
+
+  .badge.err {
+    background: rgba(255, 118, 117, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(255, 118, 117, 0.35);
+  }
+
+  .empty {
+    font-style: italic;
+    color: var(--text-light);
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .notification {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.7rem;
+    background: rgba(67, 233, 123, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(67, 233, 123, 0.4);
+  }
+
+  @media (max-width: 900px) {
+    .db-panel {
+      padding: 1.5rem;
+    }
+
+    .db-actions {
+      width: 100%;
+    }
+
+    table {
+      min-width: 100%;
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100%;
+    }
+
+    tr {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      margin-bottom: 0.9rem;
+      padding: 0.6rem 0.8rem;
+      background: rgba(0, 0, 0, 0.28);
+    }
+
+    td {
+      border: none;
+      padding: 0.5rem 0;
+    }
+
+    td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-light);
+      margin-bottom: 0.25rem;
+    }
+  }
+</style>"}}
+
+<body>
+  {{> header appName=appName}}
+
+  <section class="db-container">
+    {{> backgroundElements}}
+
+    <div class="db-panel">
+      <div class="db-header">
+        <div>
+          <div class="db-title">DB Query Monitor</div>
+          <div class="db-subtitle">Live view of recent database queries and diagnostics</div>
+        </div>
+        <div class="db-actions">
+          <a class="db-link" href="/mbkauthe/info">Back to info</a>
+        </div>
+      </div>
+
+      <div class="db-card">
+        <div class="stat-box">
+          <div class="stat-label">Query Count</div>
+          <div class="stat-value" id="query-count">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Limit</div>
+          <div class="stat-value" id="query-limit">{{queryLimit}}</div>
+        </div>
+      </div>
+
+      <div class="db-toolbar">
+        <form id="limit-form" action="/mbkauthe/db" method="get">
+          <label for="limit">Limit</label>
+          <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" />
+          <button type="submit">Update</button>
+        </form>
+        <button id="reset-btn" type="button">Reset</button>
+        <button id="copy-btn" type="button">Copy Log</button>
+      </div>
+
+      {{#if resetDone}}
+        <div class="notification">Query log and count have been reset.</div>
+      {{/if}}
+
+      <div id="query-log" class="db-table-wrapper">
+        <div class="empty">Loading query log...</div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+      const limitInput = document.getElementById('limit');
+      const queryCountEl = document.getElementById('query-count');
+      const queryLimitEl = document.getElementById('query-limit');
+      const queryLogEl = document.getElementById('query-log');
+      const resetBtn = document.getElementById('reset-btn');
+      const copyBtn = document.getElementById('copy-btn');
+
+      const escapeHtml = (str) => String(str || '')
+        .replace(/[&<>"'`]/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[s]);
+
+      const buildTable = (queryLog) => {
+        if (!Array.isArray(queryLog) || queryLog.length === 0) {
+          queryLogEl.innerHTML = '<div class="empty">No queries recorded yet.</div>';
+          return;
+        }
+
+        const rows = queryLog.map((entry, idx) => {
+          const values = Array.isArray(entry.values) ? escapeHtml(JSON.stringify(entry.values)) : '';
+          const callsite = entry.callsite || null;
+          const callsiteText = callsite
+            ? `${callsite.function || '(anonymous)'}\n${callsite.file}:${callsite.line}:${callsite.column}`
+            : '';
+          const durationText = typeof entry.durationMs === 'number'
+            ? `${entry.durationMs.toFixed(2)} ms`
+            : '';
+          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
+          const statusBadge = statusText === 'OK'
+            ? '<span class="badge ok">OK</span>'
+            : statusText === 'ERR'
+            ? '<span class="badge err">ERR</span>'
+            : '';
+          const errorText = entry.error
+            ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
+            : '';
+          const requestText = entry.request
+            ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
+              `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
+              `\nip: ${entry.request.ip || ''}`
+            : '';
+          const poolText = entry.pool
+            ? `total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
+            : '';
+
+          return `
+            <tr>
+              <td data-label="#">${idx + 1}</td>
+              <td data-label="Time">${escapeHtml(entry.time)}</td>
+              <td data-label="Name">${entry.name ? `<code>${escapeHtml(entry.name)}</code>` : ''}</td>
+              <td data-label="Duration">${durationText ? `<code>${escapeHtml(durationText)}</code>` : ''}</td>
+              <td data-label="Status">${statusBadge}</td>
+              <td data-label="Query"><code>${escapeHtml(entry.query)}</code></td>
+              <td data-label="Values">${values ? `<code>${values}</code>` : ''}</td>
+              <td data-label="Error">${errorText ? `<code>${escapeHtml(errorText)}</code>` : ''}</td>
+              <td data-label="Request">${requestText ? `<code>${escapeHtml(requestText)}</code>` : ''}</td>
+              <td data-label="Pool">${poolText ? `<code>${escapeHtml(poolText)}</code>` : ''}</td>
+              <td data-label="Callsite">${callsiteText ? `<code>${escapeHtml(callsiteText)}</code>` : ''}</td>
+              <td data-label="Copy"><button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button></td>
+            </tr>
+          `;
+        }).join('');
+
+        queryLogEl.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Time</th>
+                <th>Name</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Query</th>
+                <th>Values</th>
+                <th>Error</th>
+                <th>Request</th>
+                <th>Pool</th>
+                <th>Callsite</th>
+                <th>Copy</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        `;
+      };
+
+      const loadLog = async (options = {}) => {
+        const limit = Number(limitInput.value) || 50;
+        queryLimitEl.textContent = String(limit);
+
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (options.reset) params.set('reset', '1');
+
+        const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
+        if (!response.ok) {
+          queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+          return;
+        }
+
+        const data = await response.json();
+        queryCountEl.textContent = data.queryCount ?? '-';
+        buildTable(data.queryLog);
+
+        if (options.reset) {
+          const next = new URLSearchParams({ limit: String(limit), resetDone: '1' });
+          window.location.assign(`/mbkauthe/db?${next.toString()}`);
+        }
+      };
+
+      resetBtn.addEventListener('click', () => {
+        loadLog({ reset: true }).catch(() => {
+          queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
+        });
+      });
+
+      copyBtn.addEventListener('click', () => {
+        const text = queryLogEl.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => (copyBtn.textContent = 'Copy log'), 1200);
+        });
+      });
+
+      queryLogEl.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (!target.classList.contains('copy-row-btn')) return;
+
+        const payload = target.getAttribute('data-copy');
+        if (!payload) return;
+
+        navigator.clipboard.writeText(payload).then(() => {
+          const original = target.textContent;
+          target.textContent = 'Copied';
+          setTimeout(() => {
+            target.textContent = original || 'Copy';
+          }, 1200);
+        });
+      });
+
+      loadLog().catch(() => {
+        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+      });
+    </script>
+  {{> versionInfo}}
+</body>
+</html>

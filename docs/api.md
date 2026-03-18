@@ -15,6 +15,8 @@ This document provides comprehensive API documentation for MBKAuthe authenticati
   - [Protected Endpoints](#protected-endpoints)
   - [OAuth Endpoints](#oauth-endpoints)
   - [Information Endpoints](#information-endpoints)
+- [Diagnostics (Dev Only)](#diagnostics-dev-only)
+- [Additional Endpoints](#additional-endpoints)
 - [Middleware Reference](#middleware-reference)
 - [Code Examples](#code-examples)
 
@@ -192,6 +194,150 @@ Renders the main login page.
 ```
 GET /mbkauthe/login?redirect=/dashboard
 ```
+
+---
+
+#### `GET /mbkauthe/2fa`
+
+Renders the 2FA challenge page after a login that requires TOTP.
+
+**Rate Limit:** 5 requests per minute
+
+---
+
+#### `GET /mbkauthe/accounts`
+
+Renders the account-switch page for remembered sessions on the device.
+
+**Rate Limit:** 8 requests per minute
+
+---
+
+#### `GET /mbkauthe/test`
+
+Renders a test page for the current session context.
+
+**Rate Limit:** 8 requests per minute
+
+---
+
+#### `POST /mbkauthe/test`
+
+Lightweight check to verify an authenticated session.
+
+**Response:** `{ "success": true, "message": "You are logged in" }`
+
+---
+
+## Diagnostics (Dev Only)
+
+These endpoints are only mounted when `process.env.env === "dev"`.
+
+#### `GET /mbkauthe/db`
+
+Renders the DB Query Monitor page. The UI fetches data from `/mbkauthe/db.json`.
+
+**Query Parameters:**
+- `limit` (optional) - number of most recent queries to show (default: 50)
+- `resetDone` (optional) - UI notification flag used after reset
+
+---
+
+#### `GET /mbkauthe/db.json`
+
+Returns recent DB query diagnostics.
+
+**Query Parameters:**
+- `limit` (optional) - number of most recent queries to return (default: 50)
+- `reset` (optional) - set to `1` to clear the query log and counter
+
+**Response Body:**
+```json
+{
+  "queryCount": 120,
+  "queryLimit": 50,
+  "resetDone": false,
+  "queryLog": [
+    {
+      "time": "2026-03-19T12:00:00.000Z",
+      "name": "login-get-user",
+      "query": "SELECT ...",
+      "values": ["user"],
+      "durationMs": 3.42,
+      "success": true,
+      "error": null,
+      "request": {
+        "method": "GET",
+        "url": "/mbkauthe/login",
+        "ip": "::1",
+        "userId": 1,
+        "username": "support"
+      },
+      "pool": {
+        "total": 2,
+        "idle": 1,
+        "waiting": 0
+      },
+      "callsite": {
+        "function": "validateSession",
+        "file": "lib/middleware/auth.js",
+        "line": 197,
+        "column": 30
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /mbkauthe/validate-superadmin`
+
+Validates that the current session has `SuperAdmin` role and returns a JSON summary.
+
+---
+
+## Additional Endpoints
+
+The endpoints below are active in the router but are not fully expanded above. Use this list as a reference.
+
+**Auth & Session:**
+
+- `POST /mbkauthe/api/verify-2fa` - Verifies TOTP and completes login.
+- `POST /mbkauthe/api/logout` - Logs out the current session.
+- `GET /mbkauthe/api/account-sessions` - Lists remembered accounts for the current device.
+- `POST /mbkauthe/api/switch-session` - Switches active session to another remembered account.
+- `POST /mbkauthe/api/logout-all` - Logs out all remembered accounts on the device.
+
+**Session Validation:**
+
+- `GET /mbkauthe/api/checkSession` - Checks session validity (cookie-based).
+- `POST /mbkauthe/api/checkSession` - Checks session validity by sessionId (body).
+- `POST /mbkauthe/api/verifySession` - Returns session details by sessionId (body).
+
+**OAuth:**
+
+- `GET /mbkauthe/api/github/login` - Starts GitHub OAuth login flow.
+- `GET /mbkauthe/api/github/login/callback` - GitHub OAuth callback.
+- `GET /mbkauthe/api/google/login` - Starts Google OAuth login flow.
+- `GET /mbkauthe/api/google/login/callback` - Google OAuth callback.
+
+**Info & UI:**
+
+- `GET /mbkauthe/info` and `GET /mbkauthe/i` - Info page.
+- `GET /mbkauthe/info.json` and `GET /mbkauthe/i.json` - Info page JSON.
+- `GET /mbkauthe/ErrorCode` - Error codes page.
+- `GET /mbkauthe/user/profilepic` - User profile picture proxy.
+
+**Admin:**
+
+- `POST /mbkauthe/api/terminateAllSessions` - Terminates all sessions (requires `Main_SECRET_TOKEN`).
+
+**Static Assets:**
+
+- `GET /mbkauthe/main.js`
+- `GET /mbkauthe/main.css`
+- `GET /mbkauthe/bg.webp`
 
 ---
 

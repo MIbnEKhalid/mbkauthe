@@ -30,6 +30,7 @@
 - Session fixation prevention
 - Dynamic profile picture routing with session caching
 - Modern responsive UI with desktop two-column layout
+- Dev-only DB Query Monitor with callsite, timing, and request context
 
 ## 📦 Installation
 
@@ -46,7 +47,7 @@ Copy-Item .env.example .env
 ```
 See [docs/env.md](docs/env.md).
 
-**2. Set Up Database**  
+**2. Set Up Database**
 Run [docs/db.sql](docs/db.sql) to create tables and a default SuperAdmin (`support` / `12345678`). Change the password immediately. See [docs/db.md](docs/db.md).
 
 **3. Integrate with Express**
@@ -81,6 +82,14 @@ npm run dev
 - **Combined:** `validateSessionAndRole(['SuperAdmin', 'NormalUser'])`
 - **API Token Auth:** `authenticate(process.env.API_TOKEN)`
 
+## 🧰 Diagnostics (dev only)
+
+These are only mounted when `process.env.env === "dev"`:
+
+- **DB Query Monitor (HTML):** `/mbkauthe/db`
+- **DB Query Monitor (JSON):** `/mbkauthe/db.json`
+- **SuperAdmin check:** `/mbkauthe/validate-superadmin`
+
 ## 🔐 Security
 
 - Rate limiting, CSRF protection, secure cookies
@@ -101,6 +110,18 @@ Enable via `MBKAUTH_TWO_FA_ENABLE=true`. Trusted devices can skip 2FA for a set 
 - **Redirect URL:** `mbkautheVar={"loginRedirectURL":"/dashboard"}`
 - **Custom Views:** `views/loginmbkauthe.handlebars`, `2fa.handlebars`, `Error/dError.handlebars`
 - **Database Access:** `import { dblogin } from 'mbkauthe'; const result = await dblogin.query('SELECT * FROM "Users"');`
+
+## 📄 API Reference
+
+- Full endpoint list and details: [docs/api.md](docs/api.md)
+
+## 🧰 Diagnostics (dev only)
+
+- **DB Query Monitor (HTML):** `/mbkauthe/db`
+- **DB Query Monitor (JSON):** `/mbkauthe/db.json`
+- **SuperAdmin check:** `/mbkauthe/debug/validate-superadmin`
+
+These routes are only mounted when `process.env.env === "dev"`. They expose query timing, status/error, pool stats, request context, and callsite data for troubleshooting.
 
 ## 🚢 Deployment
 

@@ -81,6 +81,12 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"loginRedirectURL":"/dashboard"`
   - Required: No
 
+- env
+  - Description: Development flag to enable diagnostics (DB query monitor, debug endpoints).
+  - Values: `dev` to enable; any other value disables.
+  - Example: `env=dev`
+  - Required: No
+
 - bucket
   - Description: Optional external storage bucket name or identifier used for static assets or third-party integrations.
   - Default: an empty string `""` (no bucket configured)

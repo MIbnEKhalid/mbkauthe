@@ -59,7 +59,7 @@ if (process.env.test === "dev") {
             return res.redirect("/mbkauthe/");
     });
     app.get("/dev/2fa", (req, res) => {
-            return renderPage(req, res, "2fa", {
+            return renderPage(req, res, "pages/2fa.handlebars", {
                 layout: false,
                 pagename: "Two-Factor Authentication",
                 page: "/home"
@@ -109,7 +109,8 @@ export {
     sessionConfig,
     corsMiddleware,
     sessionRestorationMiddleware,
-    sessionCookieSyncMiddleware
+    sessionCookieSyncMiddleware,
+    requestContextMiddleware
 } from "./lib/middleware/index.js";
 export { validateTokenScope } from "./lib/middleware/scopeValidator.js";
 export { renderError, getUserContext, renderPage, proxycall } from "#response.js";

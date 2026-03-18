@@ -138,7 +138,10 @@ INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount"
 VALUES ('support', '12345678', 'SuperAdmin', true, false, 'Support User')
 ON CONFLICT ("UserName") DO NOTHING;
 
-SELECT * FROM "Users" WHERE "UserName" = 'support';
+INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "FullName")
+VALUES ('admin', '12345678', 'SuperAdmin', true, false, 'Admin User')
+ON CONFLICT ("UserName") DO NOTHING;
+
 
 -- API Tokens for persistent programmatic access
 CREATE TABLE IF NOT EXISTS "ApiTokens" (

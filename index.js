@@ -5,6 +5,7 @@ import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 import { renderError, renderPage } from "#response.js";
+import { packageJson } from "#config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +44,9 @@ app.engine("handlebars", engine({
                 return []; // Return an empty array if obj is undefined, null, or not an object
             }
             return Object.entries(obj).map(([key, value]) => ({ key, value }));
+        },
+        cacheBuster: function () {
+            return packageJson.version;
         }
     }
 

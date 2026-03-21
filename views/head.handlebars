@@ -5,6 +5,7 @@
     <meta name="keywords" content="MBK Tech, authentication, login, secure portal, 2FA, OAuth">
     <meta name="robots" content="index,follow,max-image-preview:large">
     <meta name="author" content="MBK Tech">
+    <meta name="color-scheme" content="dark light">
     <meta property="og:title" content="{{#if pageTitle}}{{pageTitle}}{{else}}{{#if pageCode}}{{pageCode}}{{/if}}{{#if pageError}} - {{pageError}}{{/if}}{{/if}} | MBK Tech Portal" />
     <meta property="og:description" content="{{#if description}}{{description}}{{else}}Secure authentication portal for MBK Tech accounts, project access, and session management.{{/if}}" />
     <meta property="og:type" content="website" />
@@ -13,6 +14,17 @@
     <meta property="og:url" content="{{#if ogUrl}}{{ogUrl}}{{else}}/mbkauthe/login{{/if}}">
     <link rel="canonical" href="{{#if ogUrl}}{{ogUrl}}{{else}}/mbkauthe/login{{/if}}">
     <title>{{#if pageTitle}}{{pageTitle}}{{else}}{{#if pageCode}}{{pageCode}}{{/if}}{{#if pageError}} - {{pageError}}{{/if}}{{/if}} | MBK Tech Portal</title>
+    <script>
+        (() => {
+            const storedTheme = localStorage.getItem('mbkauthe-theme');
+            const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            const resolvedTheme = storedTheme === 'light' || storedTheme === 'dark'
+                ? storedTheme
+                : (prefersLight ? 'light' : 'dark');
+
+            document.documentElement.setAttribute('data-theme', resolvedTheme);
+        })();
+    </script>
     <link rel="icon" type="image/png" href="/icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {{> sharedStyles}}

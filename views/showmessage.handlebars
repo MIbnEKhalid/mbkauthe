@@ -10,7 +10,7 @@
 
         <div class="messageBody">
             <p id="messageContent"></p>
-            <a href="#" target="_blank" class="errorCodeBadge" id="errorCodeLink" style="display: none;">
+            <a href="#" target="_blank" class="errorCodeBadge is-hidden" id="errorCodeLink">
                 <i class="fas fa-bug"></i>
                 <span id="errorCodeText"></span>
             </a>
@@ -87,32 +87,30 @@
 
         // Update Icon based on heading/context (simple heuristic)
         const lowerHeading = (heading || "").toLowerCase();
-        iconEl.className = "fas"; // Reset
+        const iconWrap = document.querySelector(".messageIcon");
+        iconEl.className = "fas";
+        iconWrap.classList.remove("is-error", "is-success", "is-warning", "is-info");
         if (lowerHeading.includes("error") || lowerHeading.includes("failed")) {
             iconEl.classList.add("fa-exclamation-circle");
-            document.querySelector(".messageIcon").style.background = "rgba(255, 118, 117, 0.1)";
-            document.querySelector(".messageIcon").style.color = "var(--danger, #ff7675)";
+            iconWrap.classList.add("is-error");
         } else if (lowerHeading.includes("success")) {
             iconEl.classList.add("fa-check-circle");
-            document.querySelector(".messageIcon").style.background = "rgba(67, 233, 123, 0.1)";
-            document.querySelector(".messageIcon").style.color = "var(--success, #43e97b)";
+            iconWrap.classList.add("is-success");
         } else if (lowerHeading.includes("warning")) {
             iconEl.classList.add("fa-exclamation-triangle");
-            document.querySelector(".messageIcon").style.background = "rgba(255, 209, 102, 0.1)";
-            document.querySelector(".messageIcon").style.color = "var(--warning, #ffd166)";
+            iconWrap.classList.add("is-warning");
         } else {
             iconEl.classList.add("fa-info-circle");
-            document.querySelector(".messageIcon").style.background = "rgba(33, 150, 243, 0.1)";
-            document.querySelector(".messageIcon").style.color = "var(--primary, #2196f3)";
+            iconWrap.classList.add("is-info");
         }
 
         // Handle Error Code
         if (errorCode) {
-            errorLink.style.display = "inline-flex";
+            errorLink.classList.remove("is-hidden");
             errorText.innerText = `Code: ${errorCode}`;
             errorLink.href = `/mbkauthe/ErrorCode/#${errorCode}`;
         } else {
-            errorLink.style.display = "none";
+            errorLink.classList.add("is-hidden");
         }
 
         // Show Modal
@@ -159,7 +157,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.6);
+        background: color-mix(in srgb, var(--darker) 55%, transparent 45%);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         display: none;
@@ -185,13 +183,13 @@
     }
 
     .messageModal {
-        background: var(--darker, #0a1414);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--surface-1);
+        border: 1px solid var(--muted-border);
         border-radius: 16px;
         padding: 0;
         width: 90%;
         max-width: 400px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 20px 50px color-mix(in srgb, var(--darker) 35%, transparent 65%);
         transform: scale(0.95) translateY(10px);
         transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         display: flex;
@@ -215,8 +213,8 @@
         width: 60px;
         height: 60px;
         border-radius: 50%;
-        background: rgba(33, 150, 243, 0.1);
-        color: var(--primary, #2196f3);
+        background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
+        color: var(--primary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -224,8 +222,28 @@
         margin-bottom: 1rem;
     }
 
+    .messageIcon.is-info {
+        background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
+        color: var(--primary);
+    }
+
+    .messageIcon.is-error {
+        background: color-mix(in srgb, var(--danger) 14%, transparent 86%);
+        color: var(--danger);
+    }
+
+    .messageIcon.is-success {
+        background: color-mix(in srgb, var(--success) 14%, transparent 86%);
+        color: var(--success);
+    }
+
+    .messageIcon.is-warning {
+        background: color-mix(in srgb, var(--warning) 14%, transparent 86%);
+        color: var(--warning);
+    }
+
     .messageHeader h2 {
-        color: var(--text, #fff);
+        color: var(--text);
         font-size: 1.5rem;
         font-weight: 600;
         margin: 0;
@@ -234,7 +252,7 @@
     .messageBody {
         padding: 0.5rem 2rem 1.5rem;
         text-align: center;
-        color: var(--text-light, #ccc);
+        color: var(--text-light);
         font-size: 1rem;
         line-height: 1.6;
     }
@@ -244,7 +262,7 @@
     }
 
     .messageBody a {
-        color: var(--accent, #00b894);
+        color: var(--accent);
         text-decoration: none;
     }
 
@@ -256,30 +274,34 @@
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--surface-soft);
         padding: 0.4rem 0.8rem;
         border-radius: 20px;
         font-size: 0.85rem;
-        color: var(--text-light, #aaa) !important;
+        color: var(--text-light) !important;
         text-decoration: none !important;
         transition: all 0.2s ease;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--muted-border);
+    }
+
+    .errorCodeBadge.is-hidden {
+        display: none;
     }
 
     .errorCodeBadge:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text, #fff) !important;
+        background: var(--surface-1);
+        color: var(--text) !important;
     }
 
     .messageFooter {
         padding: 1.5rem;
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--surface-muted);
         display: flex;
         justify-content: center;
     }
 
     .btn-message-action {
-        background: var(--accent, #00b894);
+        background: var(--accent);
         color: #fff;
         border: none;
         padding: 0.8rem 2rem;
@@ -296,8 +318,8 @@
 
     .btn-message-action:hover {
         background: transparent;
-        color: #00a180;
-        border-color: #00a180;
+        color: var(--accent);
+        border-color: var(--accent);
         box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
     }
 

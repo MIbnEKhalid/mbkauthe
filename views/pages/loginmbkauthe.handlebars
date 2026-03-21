@@ -26,7 +26,7 @@
             background: var(--accent);
             color: #fff;
             border-radius: 999px;
-            border: 2px solid rgb(0 0 0 / 52%);
+            border: 2px solid var(--muted-border);
             z-index: 30;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
             line-height: 1;
@@ -46,10 +46,14 @@
             overflow: visible;
         }
 
+        .form-row-split {
+            align-items: center;
+        }
+
         @media (max-width: 1000px) {
             .login-box {
                 position: relative;
-                background: rgba(10, 20, 20, 0.95);
+                background: var(--glass-bg);
                 overflow: hidden;
             }
 
@@ -57,7 +61,9 @@
                 content: "";
                 position: absolute;
                 inset: 0;
-                background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(0, 184, 148, 0.08));
+                background: linear-gradient(135deg,
+                        color-mix(in srgb, var(--primary) 16%, transparent 84%),
+                        color-mix(in srgb, var(--accent) 16%, transparent 84%));
                 pointer-events: none;
                 z-index: 0;
             }
@@ -81,7 +87,7 @@
                 <div class="login-sidebar">
                     <div class="sidebar-content">
                         <div class="brand-section">
-                            <div class="logo" style="justify-content: center;margin-bottom: 1rem;">
+                            <div class="logo logo-centered">
                                 <img src="/icon.svg" alt="Logo" class="logo-image">
                                 <span class="logo-text">BK <span>Tech</span></span>
                             </div>
@@ -145,15 +151,13 @@
                             <i class="fas fa-eye input-icon" id="togglePassword"></i>
                         </div>
 
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div class="remember-me" style="margin-bottom: 0;">
+                        <div class="form-row-split">
+                            <div class="remember-me remember-me-inline">
                                 <input type="checkbox" id="rememberMe" name="rememberMe">
                                 <label for="rememberMe">Remember me</label>
                             </div>
 
-                            <a href="https://portal.mbktech.org/forgot-password" class="login-link"
-                                style="margin-bottom: 0; white-space: nowrap;">Forgot Password?</a>
+                            <a href="https://portal.mbktech.org/forgot-password" class="login-link login-link-nowrap">Forgot Password?</a>
                         </div>
 
                         <button type="submit" class="btn-login last-used-parent" id="loginButton">

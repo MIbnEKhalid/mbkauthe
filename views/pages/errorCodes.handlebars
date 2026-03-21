@@ -17,7 +17,7 @@
         .page-header {
             text-align: center;
             padding: 3rem 0 2rem;
-            border-bottom: 2px solid rgba(0, 184, 148, 0.3);
+            border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
         }
 
         .page-header h1 {
@@ -39,28 +39,28 @@
             backdrop-filter: blur(10px);
             padding: 1rem 0;
             z-index: 100;
-            border-bottom: 1px solid rgba(0, 184, 148, 0.2);
+            border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
         }
 
         .search-input {
             width: 100%;
             padding: 1rem 1.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(0, 184, 148, 0.3);
+            background: var(--surface-soft);
+            border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
             border-radius: 8px;
-            color: #e0f7fa;
+            color: var(--text);
             font-size: 1rem;
             transition: all 0.3s ease;
         }
 
         .search-input:focus {
             outline: none;
-            border-color: #00b894;
-            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+            background: var(--surface-1);
         }
 
         .search-input::placeholder {
-            color: #b2dfdb;
+            color: var(--text-light);
             opacity: 0.6;
         }
 
@@ -74,8 +74,8 @@
             gap: 1rem;
             margin-bottom: 1.5rem;
             padding: 1rem;
-            background: rgba(0, 184, 148, 0.1);
-            border-left: 4px solid #00b894;
+            background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+            border-left: 4px solid var(--accent);
             border-radius: 4px;
         }
 
@@ -91,8 +91,8 @@
         }
 
         .error-card {
-            background: rgba(10, 20, 20, 0.8);
-            border: 1px solid rgba(0, 184, 148, 0.2);
+            background: color-mix(in srgb, var(--glass-bg) 90%, transparent 10%);
+            border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent 78%);
             border-radius: 8px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
@@ -101,7 +101,7 @@
         }
 
         .error-card:hover {
-            border-color: #00b894;
+            border-color: var(--accent);
             box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
         }
 
@@ -132,11 +132,11 @@
             font-size: 1.1rem;
             margin-bottom: 0.75rem;
             padding-left: 1rem;
-            border-left: 3px solid rgba(0, 184, 148, 0.3);
+            border-left: 3px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
         }
 
         .error-hint {
-            background: rgba(255, 209, 102, 0.1);
+            background: color-mix(in srgb, var(--warning) 15%, transparent 85%);
             color: var(--warning);
             padding: 0.75rem 1rem;
             border-radius: 6px;
@@ -154,12 +154,16 @@
             font-size: 1.2rem;
         }
 
+        .is-hidden {
+            display: none !important;
+        }
+
         .back-to-top {
             position: fixed;
             bottom: 2rem;
             right: 2rem;
             background: var(--accent);
-            color: var(--darker);
+            color: var(--text-dark);
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -242,7 +246,7 @@
             {{/each}}
         </div>
 
-        <div class="no-results" id="noResults" style="display: none;">
+        <div class="no-results hidden-by-default" id="noResults">
             No error codes found matching your search.
         </div>
     </div>
@@ -262,9 +266,9 @@
 
             if (!searchTerm) {
                 // Show all cards and categories
-                errorCards.forEach(card => card.style.display = 'block');
-                categories.forEach(cat => cat.style.display = 'block');
-                noResults.style.display = 'none';
+                errorCards.forEach(card => card.classList.remove('is-hidden'));
+                categories.forEach(cat => cat.classList.remove('is-hidden'));
+                noResults.classList.add('hidden-by-default');
                 return;
             }
 
@@ -272,24 +276,24 @@
             errorCards.forEach(card => {
                 const searchData = card.getAttribute('data-search').toLowerCase();
                 if (searchData.includes(searchTerm)) {
-                    card.style.display = 'block';
+                    card.classList.remove('is-hidden');
                     hasResults = true;
                 } else {
-                    card.style.display = 'none';
+                    card.classList.add('is-hidden');
                 }
             });
 
             // Hide/show categories based on visible cards
             categories.forEach(category => {
-                const visibleCards = category.querySelectorAll('.error-card[style="display: block;"]');
+                const visibleCards = category.querySelectorAll('.error-card:not(.is-hidden)');
                 if (visibleCards.length > 0) {
-                    category.style.display = 'block';
+                    category.classList.remove('is-hidden');
                 } else {
-                    category.style.display = 'none';
+                    category.classList.add('is-hidden');
                 }
             });
 
-            noResults.style.display = hasResults ? 'none' : 'block';
+            noResults.classList.toggle('hidden-by-default', hasResults);
         });
 
         // Back to top button

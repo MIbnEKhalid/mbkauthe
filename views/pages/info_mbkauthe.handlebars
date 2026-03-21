@@ -3,14 +3,14 @@
 
 {{> head pageTitle="Version and Configuration Information" ogUrl="/mbkauthe/info" extraStyles="<style>
     .info-box {
-        background: rgba(10, 20, 20, 0.95);
+        background: var(--glass-bg);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         padding: 2.5rem;
         width: 100%;
         max-width: 900px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(0, 184, 148, 0.2);
+        border: 1px solid var(--glass-border);
         position: relative;
         z-index: 2;
         transition: var(--transition);
@@ -18,7 +18,7 @@
 
     .info-box:hover {
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        border-color: rgba(0, 184, 148, 0.3);
+        border-color: color-mix(in srgb, var(--accent) 35%, transparent 65%);
     }
 
     .info-title {
@@ -44,20 +44,20 @@
     .info-section {
         margin-bottom: 2rem;
         padding: 1.5rem;
-        border: 1px solid rgba(0, 184, 148, 0.2);
+        border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
         border-radius: var(--border-radius);
-        background-color: rgba(0, 0, 0, 0.2);
+        background-color: var(--surface-muted);
         transition: var(--transition);
     }
 
     .info-section:hover {
-        border-color: rgba(0, 184, 148, 0.4);
-        background-color: rgba(0, 0, 0, 0.3);
+        border-color: color-mix(in srgb, var(--accent) 40%, transparent 60%);
+        background-color: var(--input-bg);
     }
 
     .info-section h2 {
         color: var(--accent);
-        border-bottom: 2px solid rgba(0, 184, 148, 0.3);
+        border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
         padding-bottom: 10px;
         margin-top: 0;
         margin-bottom: 1.5rem;
@@ -75,7 +75,7 @@
         display: flex;
         margin-bottom: 1rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(0, 184, 148, 0.1);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, transparent 82%);
         align-items: center;
     }
 
@@ -117,21 +117,21 @@
     }
 
     .version-outdated {
-        background: rgba(255, 118, 117, 0.2);
+        background: color-mix(in srgb, var(--success) 18%, transparent 82%);
         color: var(--danger);
-        border: 1px solid var(--danger);
+        border: 1px solid color-mix(in srgb, var(--success) 60%, transparent 40%);
     }
 
     .version-fetch-error {
-        background: rgba(255, 209, 102, 0.2);
+        background: color-mix(in srgb, var(--danger) 18%, transparent 82%);
         color: var(--warning);
-        border: 1px solid var(--warning);
+        border: 1px solid color-mix(in srgb, var(--danger) 60%, transparent 40%);
     }
 
     @media (max-width: 768px) {
-        .info-box {
+        background: color-mix(in srgb, var(--warning) 20%, transparent 80%);
             padding: 2rem;
-            max-width: 100%;
+        border: 1px solid color-mix(in srgb, var(--warning) 60%, transparent 40%);
         }
 
         .info-title {

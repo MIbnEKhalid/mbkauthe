@@ -10,18 +10,18 @@
     padding: 120px 1.7rem 40px;
     position: relative;
     overflow: hidden;
-    background: radial-gradient(circle at top right, rgba(33, 150, 243, 0.25), transparent 55%),
-                radial-gradient(circle at 20% 20%, rgba(0, 184, 148, 0.18), transparent 50%),
-                linear-gradient(135deg, var(--darker), #0b1e25);
+    background: radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 25%, transparent 75%), transparent 55%),
+                radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 18%, transparent 82%), transparent 50%),
+                linear-gradient(135deg, var(--hero-from), var(--hero-to));
   }
 
   .db-panel {
-    background: rgba(10, 20, 20, 0.94);
+    background: color-mix(in srgb, var(--glass-bg) 96%, transparent 4%);
     border-radius: 18px;
     padding: 2.25rem;
     width: min(1200px, 100%);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(0, 184, 148, 0.18);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent 80%);
     position: relative;
     z-index: 2;
     overflow: hidden;
@@ -31,7 +31,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg, rgba(33, 150, 243, 0.06), transparent 55%);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 8%, transparent 92%), transparent 55%);
     pointer-events: none;
   }
 
@@ -65,15 +65,15 @@
   .db-link {
     padding: 0.45rem 0.85rem;
     border-radius: 0.6rem;
-    border: 1px solid rgba(33, 150, 243, 0.4);
-    background: rgba(33, 150, 243, 0.12);
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent 55%);
+    background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
     color: var(--light);
     text-decoration: none;
     transition: var(--transition);
   }
 
   .db-link:hover {
-    background: rgba(33, 150, 243, 0.25);
+    background: color-mix(in srgb, var(--primary) 24%, transparent 76%);
   }
 
   .db-card {
@@ -86,8 +86,8 @@
   .stat-box {
     padding: 1rem 1.2rem;
     border-radius: 14px;
-    border: 1px solid rgba(0, 184, 148, 0.2);
-    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
+    background: var(--surface-muted);
   }
 
   .stat-label {
@@ -119,29 +119,29 @@
     width: 5rem;
     padding: 0.35rem 0.5rem;
     border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--muted-border);
+    background: var(--input-bg);
     color: var(--text);
   }
 
   .db-toolbar button {
     padding: 0.45rem 0.85rem;
     border-radius: 0.6rem;
-    border: 1px solid rgba(0, 184, 148, 0.4);
-    background: rgba(0, 184, 148, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
+    background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
     color: var(--light);
     cursor: pointer;
     transition: var(--transition);
   }
 
   .db-toolbar button:hover {
-    background: rgba(0, 184, 148, 0.25);
+    background: color-mix(in srgb, var(--accent) 24%, transparent 76%);
   }
 
   .db-table-wrapper {
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(6, 12, 14, 0.7);
+    border: 1px solid var(--muted-border);
+    background: color-mix(in srgb, var(--surface-1) 82%, transparent 18%);
     padding: 0.4rem;
     overflow-x: auto;
   }
@@ -149,8 +149,8 @@
   .copy-row-btn {
     padding: 0.25rem 0.6rem;
     border-radius: 0.5rem;
-    border: 1px solid rgba(33, 150, 243, 0.5);
-    background: rgba(33, 150, 243, 0.12);
+    border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
+    background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
     color: var(--light);
     cursor: pointer;
     font-size: 0.75rem;
@@ -158,7 +158,7 @@
   }
 
   .copy-row-btn:hover {
-    background: rgba(33, 150, 243, 0.25);
+    background: color-mix(in srgb, var(--primary) 24%, transparent 76%);
   }
 
   table {
@@ -171,7 +171,7 @@
 
   th, td {
     padding: 0.6rem 0.8rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--muted-border);
     vertical-align: top;
   }
 
@@ -201,15 +201,15 @@
   }
 
   .badge.ok {
-    background: rgba(67, 233, 123, 0.15);
+    background: color-mix(in srgb, var(--success) 15%, transparent 85%);
     color: var(--success);
-    border: 1px solid rgba(67, 233, 123, 0.4);
+    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent 55%);
   }
 
   .badge.err {
-    background: rgba(255, 118, 117, 0.15);
+    background: color-mix(in srgb, var(--danger) 15%, transparent 85%);
     color: var(--danger);
-    border: 1px solid rgba(255, 118, 117, 0.35);
+    border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent 60%);
   }
 
   .empty {
@@ -223,9 +223,9 @@
     margin-bottom: 1rem;
     padding: 0.75rem 1rem;
     border-radius: 0.7rem;
-    background: rgba(67, 233, 123, 0.12);
+    background: color-mix(in srgb, var(--success) 14%, transparent 86%);
     color: var(--success);
-    border: 1px solid rgba(67, 233, 123, 0.4);
+    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent 55%);
   }
 
   @media (max-width: 900px) {
@@ -254,11 +254,11 @@
     }
 
     tr {
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--muted-border);
       border-radius: 12px;
       margin-bottom: 0.9rem;
       padding: 0.6rem 0.8rem;
-      background: rgba(0, 0, 0, 0.28);
+      background: var(--surface-muted);
     }
 
     td {
@@ -291,7 +291,7 @@
           <div class="db-subtitle">Live view of recent database queries and diagnostics</div>
         </div>
         <div class="db-actions">
-          <a class="db-link" href="/mbkauthe/info">Back to info</a>
+          <a class="db-link" href="/mbkauthe/">Back</a>
         </div>
       </div>
 

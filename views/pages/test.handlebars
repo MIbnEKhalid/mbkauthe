@@ -8,14 +8,14 @@
 
     <style>
         .session-card {
-            background: rgba(10, 20, 20, 0.95);
+            background: var(--glass-bg);
             backdrop-filter: blur(10px);
             border-radius: var(--border-radius);
             padding: 2.5rem;
             width: 100%;
             max-width: 760px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 184, 148, 0.2);
+            border: 1px solid var(--glass-border);
             position: relative;
             z-index: 2;
             transition: var(--transition);
@@ -34,8 +34,10 @@
             width: 96px;
             height: 96px;
             border-radius: 50%;
-            background: linear-gradient(135deg, rgba(0, 184, 148, 0.2), rgba(33, 150, 243, 0.15));
-            border: 2px solid rgba(0, 184, 148, 0.3);
+                background: linear-gradient(135deg,
+                    color-mix(in srgb, var(--accent) 22%, transparent 78%),
+                    color-mix(in srgb, var(--primary) 18%, transparent 82%));
+                border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -83,6 +85,11 @@
             margin: 0;
         }
 
+        .session-role {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
         .session-sub {
             color: var(--text-light);
             font-size: 0.85rem;
@@ -90,8 +97,8 @@
         }
 
         .session-details {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(0, 184, 148, 0.15);
+            background: var(--input-bg);
+            border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
             border-radius: var(--border-radius);
             padding: 1rem 1.2rem;
             font-family: 'Courier New', monospace;
@@ -133,18 +140,18 @@
         }
 
         .btn-primary:hover {
-            background: #00a07f;
+            background: color-mix(in srgb, var(--accent) 88%, #000 12%);
             box-shadow: 0 4px 12px rgba(0, 184, 148, 0.4);
         }
 
         .btn-outline {
             background: transparent;
-            border: 1px solid rgba(0, 184, 148, 0.35);
+            border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
             color: var(--accent);
         }
 
         .btn-outline:hover {
-            background: rgba(0, 184, 148, 0.1);
+            background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
             border-color: var(--accent);
         }
 
@@ -180,13 +187,13 @@
                     title="{{displayName}}"
                     loading="lazy" decoding="async" width="96" height="96"
                     onerror="this.style.display='none';var s=this.nextElementSibling; if(s) s.style.display='flex';" />
-                <div class="initials" aria-hidden="true" style="display:none">{{initial}}</div>
+                <div class="initials" aria-hidden="true">{{initial}}</div>
             </div>
 
             <div class="session-meta">
                 <div>
                     <div class="session-status">✅ Authentication successful</div>
-                    <h3 class="session-title">{{username}} <small style="color:var(--text-light);font-weight:500">· {{role}}</small></h3>
+                    <h3 class="session-title">{{username}} <small class="session-role">· {{role}}</small></h3>
                     <p class="session-sub">ID: {{id}} · Session: {{sessionIdShort}}…</p>
                 </div>
 
@@ -210,12 +217,17 @@
                     <a class="btn btn-outline" href="/mbkauthe/info">
                         <i class="fas fa-info-circle"></i> Info Page
                     </a>
-                    <a class="btn btn-outline" href="/mbkauthe/validate-superadmin">
-                        <i class="fas fa-user-shield"></i> Validate SuperAdmin
-                    </a>
                     <a class="btn btn-outline" href="/mbkauthe/login">
                         <i class="fas fa-sign-in-alt"></i> Login Page
                     </a>
+                    {{#if (eq role "SuperAdmin")}}
+                    <a class="btn btn-outline" href="/mbkauthe/db">
+                        <i class="fas fa-database"></i> Database Logs
+                    </a>
+                    <a class="btn btn-outline" href="/mbkauthe/validate-superadmin">
+                        <i class="fas fa-user-shield"></i> Validate SuperAdmin
+                    </a>
+                    {{/if}}
                 </div>
             </div>
         </div>

@@ -12,6 +12,18 @@
     --success: #43e97b;
     --warning: #ffd166;
     --danger: #ff7675;
+    --surface-1: #0a1414;
+    --surface-2: #101c1c;
+    --surface-soft: rgba(255, 255, 255, 0.05);
+    --surface-muted: rgba(0, 0, 0, 0.25);
+    --glass-bg: rgba(10, 20, 20, 0.95);
+    --glass-border: rgba(0, 184, 148, 0.2);
+    --input-bg: rgba(0, 0, 0, .3);
+    --input-bg-focus: rgba(0, 0, 0, .4);
+    --input-border: rgba(0, 184, 148, 0.3);
+    --muted-border: rgba(255, 255, 255, 0.12);
+    --hero-from: #0a1414;
+    --hero-to: #1769aa;
     --border-radius: 8px;
     --box-shadow: 0 4px 10px rgba(33, 150, 243, 0.15);
     --transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
@@ -24,6 +36,29 @@
     --text-size-xl: 2rem;
 }
 
+[data-theme="light"] {
+    --dark: #f8fbfd;
+    --darker: #eef6fb;
+    --light: #06222f;
+    --text: #163041;
+    --text-light: #4a6475;
+    --text-dark: #0e2230;
+    --warning: #a66900;
+    --surface-1: rgba(255, 255, 255, 0.9);
+    --surface-2: #f8fbfd;
+    --surface-soft: rgba(255, 255, 255, 0.88);
+    --surface-muted: rgba(6, 34, 47, 0.06);
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(0, 184, 148, 0.22);
+    --input-bg: rgba(255, 255, 255, 0.84);
+    --input-bg-focus: rgba(255, 255, 255, 1);
+    --input-border: rgba(22, 48, 65, 0.2);
+    --muted-border: rgba(22, 48, 65, 0.14);
+    --hero-from: #e9f4fb;
+    --hero-to: #cbe7f7;
+    --box-shadow: 0 10px 28px rgba(8, 35, 51, 0.12);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -32,7 +67,7 @@
 }
 
 body {
-    background-color: var(--dark);
+    background: linear-gradient(180deg, var(--surface-2), var(--dark));
     color: var(--text);
     min-height: 100vh;
     display: flex;
@@ -41,13 +76,14 @@ body {
 }
 
 header {
-    background-color: var(--darker);
+    background-color: var(--surface-1);
     box-shadow: var(--box-shadow);
     position: fixed;
     width: 100%;
     z-index: 1000;
     transition: var(--transition);
-    border-bottom: .125rem solid rgba(255, 255, 255, .1);
+    border-bottom: .125rem solid var(--muted-border);
+    backdrop-filter: blur(8px);
 }
 
 .header-container {
@@ -100,7 +136,7 @@ header {
     padding: 120px 1.7rem 20px;
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, var(--darker), var(--primary-dark));
+    background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
 }
 
 .login-container::before {
@@ -116,14 +152,14 @@ header {
 }
 
 .login-box {
-    background: rgba(10, 20, 20, 0.95);
+    background: var(--glass-bg);
     backdrop-filter: blur(10px);
     border-radius: var(--border-radius);
     padding: 2.5rem;
     width: 100%;
     max-width: 450px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(0, 184, 148, 0.2);
+    border: 1px solid var(--glass-border);
     position: relative;
     z-index: 2;
     transition: var(--transition);
@@ -191,8 +227,8 @@ header {
 .form-input {
     width: 100%;
     padding: 14px 20px;
-    background: rgba(0, 0, 0, .3);
-    border: 2px solid rgba(0, 184, 148, 0.3);
+    background: var(--input-bg);
+    border: 2px solid var(--input-border);
     border-radius: var(--border-radius);
     color: var(--text);
     font-size: var(--text-size-md);
@@ -201,7 +237,7 @@ header {
 
 .form-input:focus {
     outline: none;
-    background: rgba(0, 0, 0, .4);
+    background: var(--input-bg-focus);
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.2);
 }
@@ -228,7 +264,7 @@ header {
     top: -10px;
     left: 15px;
     font-size: 0.8rem;
-    background: rgba(10, 20, 20, 0.95);
+    background: var(--glass-bg);
     padding: 0 5px;
     color: var(--accent);
 }
@@ -276,9 +312,9 @@ header {
     position: relative;
     z-index: 1;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-soft);
     color: var(--text);
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: var(--muted-border);
 }
 
 .swi:hover {
@@ -292,13 +328,13 @@ header {
 }
 
 .btn-login:hover {
-    background: var(--dark);
+    background: var(--surface-1);
     color: var(--accent);
     box-shadow: 0 6px 20px rgba(0, 184, 148, 0.3);
 }
 
 .btn-login:disabled {
-    background: var(--dark);
+    background: var(--surface-1);
     color: var(--accent);
     cursor: not-allowed;
     transform: none;
@@ -327,7 +363,7 @@ header {
 }
 
 .divider span {
-    background: rgba(10, 20, 20, 0.95);
+    background: var(--glass-bg);
     padding: 0 15px;
     color: var(--text-light);
     font-size: 0.9rem;
@@ -463,8 +499,8 @@ header {
     -webkit-appearance: none;
     width: 18px;
     height: 18px;
-    background: rgba(0, 0, 0, .3);
-    border: 2px solid rgba(0, 184, 148, 0.3);
+    background: var(--input-bg);
+    border: 2px solid var(--input-border);
     border-radius: var(--border-radius);
     margin-right: 10px;
     cursor: pointer;
@@ -507,7 +543,7 @@ header {
     width: 100%;
     margin: 1.5rem 0;
     padding: 1rem;
-    background: rgba(0, 184, 148, 0.05);
+    background: color-mix(in srgb, var(--accent) 7%, transparent 93%);
     border: 1px solid rgba(0, 184, 148, 0.2);
     border-radius: var(--border-radius);
     transition: var(--transition);
@@ -531,7 +567,7 @@ header {
     -webkit-appearance: none;
     width: 20px;
     height: 20px;
-    background: rgba(0, 0, 0, .3);
+    background: var(--input-bg);
     border: 2px solid rgba(0, 184, 148, 0.4);
     border-radius: 5px;
     cursor: pointer;
@@ -613,12 +649,12 @@ header {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: rgba(255, 255, 255, .1);
+    background: var(--surface-soft);
     color: var(--text-light);
     padding: 8px 12px;
     border-radius: var(--border-radius);
     font-size: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, .1);
+    border: 1px solid var(--muted-border);
     z-index: 999;
     transition: var(--transition);
     backdrop-filter: blur(5px);
@@ -649,7 +685,7 @@ header {
         width: 40%;
         background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(0, 184, 148, 0.08));
         padding: 2.5rem 2rem;
-        border-right: 1px solid rgba(0, 184, 148, 0.3);
+        border-right: 1px solid color-mix(in srgb, var(--accent) 32%, transparent 68%);
         position: relative;
         overflow: hidden;
     }
@@ -740,9 +776,9 @@ header {
     }
 
     .btn-google-side {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--surface-soft);
         color: var(--text);
-        border-color: rgba(255, 255, 255, 0.15);
+        border-color: var(--muted-border);
     }
 
     .btn-google-side:hover {
@@ -756,9 +792,9 @@ header {
     }
 
     .btn-switch-side {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--surface-soft);
         color: var(--text);
-        border-color: rgba(255, 255, 255, 0.15);
+        border-color: var(--muted-border);
     }
 
     .btn-switch-side:hover {
@@ -773,7 +809,7 @@ header {
         gap: 0.75rem;
         margin-top: auto;
         padding-top: 2rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-top: 1px solid var(--muted-border);
         position: relative;
         z-index: 1;
     }
@@ -809,7 +845,7 @@ header {
         display: flex;
         flex-direction: column;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--surface-muted);
     }
 
     .login-form {
@@ -841,6 +877,44 @@ header {
     .terms-info {
         margin-top: 2rem;
     }
+}
+
+.logo-centered {
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.form-row-split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+}
+
+.remember-me-inline {
+    margin-bottom: 0;
+}
+
+.login-link-nowrap {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.hidden-by-default {
+    display: none;
+}
+
+.btn-login-inline {
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 10px;
+    text-align: center;
+    line-height: 40px;
+}
+
+.link-no-decoration {
+    text-decoration: none;
 }
 
 @media (max-width: 400px) {

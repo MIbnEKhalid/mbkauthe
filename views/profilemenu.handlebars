@@ -18,6 +18,10 @@
                 <i class="fa fa-user-group"></i>
                 <span>Switch account</span>
             </a>
+            <button class="mbkauthe-profile-item" type="button" data-theme-toggle role="menuitem" title="Switch theme">
+                <i class="fas fa-circle-half-stroke"></i>
+                <span data-theme-label>Switch to light theme</span>
+            </button>
             <button class="mbkauthe-profile-item" type="button" data-action="logout" role="menuitem" title="Logout">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
@@ -25,7 +29,7 @@
         </div>
     </div>
     {{else}}
-    <a class="mbkauthe-btn-login" style="text-decoration: none;" href="/mbkauthe/login"><i
+    <a class="mbkauthe-btn-login link-no-decoration" href="/mbkauthe/login"><i
             class="fas fa-sign-in-alt"></i>
         Login</a>
     {{/if}}
@@ -41,7 +45,7 @@
     }
 
     .mbkauthe-btn-login:hover {
-        color: #ffffff;
+        color: var(--light);
     }
 
     .mbkauthe-btn-login:disabled {
@@ -67,8 +71,8 @@
         width: 45px;
         height: 45px;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--muted-border);
+        background: var(--surface-soft);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -91,24 +95,18 @@
         height: 40px;
         border-radius: 999px;
         object-fit: cover;
-        background: var(--dark);
+        background: var(--surface-1);
     }
 
-    /* Theme-aware dropdown variables and improved visuals */
     .mbkauthe-profile-dropdown {
-        --mbk-bg: var(--mbkauthe-dropdown-bg, #ffffff);
-        --mbk-border: var(--mbkauthe-dropdown-border, rgba(15, 23, 42, 0.06));
-        --mbk-item-hover: var(--mbkauthe-item-hover, rgba(15, 23, 42, 0.03));
-        --mbk-text: var(--mbkauthe-text, var(--text, #0f172a));
-
         position: absolute;
         right: 0;
         top: calc(100% + 0.5rem);
-        background: var(--mbk-bg);
-        border: 1px solid var(--mbk-border);
+        background: var(--surface-1);
+        border: 1px solid var(--muted-border);
         border-radius: var(--border-radius);
         min-width: 190px;
-        box-shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
+        box-shadow: var(--box-shadow);
         padding: 0;
         opacity: 0;
         visibility: hidden;
@@ -117,7 +115,7 @@
         z-index: 1000;
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
-        color: var(--mbk-text);
+        color: var(--text);
         overflow: hidden;
     }
 
@@ -131,9 +129,11 @@
 
     .mbkauthe-profile-item {
         width: 100%;
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
         padding: 0.85rem 1rem;
-        color: var(--mbk-text);
+        color: var(--text);
         background: transparent;
         border: none;
         text-decoration: none;
@@ -145,12 +145,12 @@
     }
 
     .mbkauthe-profile-item:hover {
-        background: var(--mbk-item-hover);
-        color: var(--color-accent, var(--accent, #0d9488));
+        background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+        color: var(--accent);
     }
 
     .mbkauthe-profile-item:focus-visible {
-        outline: 2px solid color-mix(in srgb, var(--color-accent, var(--accent, #0d9488)) 40%, transparent 60%);
+        outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent 60%);
         outline-offset: 2px;
     }
 
@@ -159,47 +159,43 @@
         cursor: not-allowed;
     }
 
-    /* Make trigger adapt to theme */
-    .mbkauthe-profile-trigger {
-        transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
-    }
-
-    .mbkauthe-profile-trigger:hover {
-    }
-
-    /* prefers-color-scheme fallbacks scoped to component */
-    @media (prefers-color-scheme: dark) {
-        .mbkauthe-profile-dropdown {
-            --mbk-bg: #0a2125;
-            --mbk-border: rgba(255, 255, 255, 0.06);
-            --mbk-item-hover: rgba(255, 255, 255, 0.03);
-            --mbk-text: #e6eef6;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
-        }
-
-        .mbkauthe-profile-trigger {
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            background: rgba(255, 255, 255, 0.02);
-        }
-    }
-
-    @media (prefers-color-scheme: light) {
-        .mbkauthe-profile-dropdown {
-            --mbk-bg: #ffffff;
-            --mbk-border: rgba(15, 23, 42, 0.06);
-            --mbk-item-hover: rgba(15, 23, 42, 0.03);
-            --mbk-text: var(--dark-color-ml, #0f172a);
-            box-shadow: 0 8px 22px rgba(2, 6, 23, 0.08);
-        }
-
-        .mbkauthe-profile-trigger {
-            border: 1px solid rgba(2, 6, 23, 0.06);
-            background: rgba(255, 255, 255, 0.96);
-        }
+    .mbkauthe-profile-item i {
+        width: 18px;
+        text-align: center;
     }
 </style>
 <script>
     (() => {
+        const html = document.documentElement;
+        const themeToggles = document.querySelectorAll('[data-theme-toggle]');
+
+        const getTheme = () => html.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+
+        const applyTheme = (theme) => {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('mbkauthe-theme', theme);
+
+            const isLight = theme === 'light';
+            themeToggles.forEach((btn) => {
+                const labelEl = btn.querySelector('[data-theme-label]');
+                btn.setAttribute('aria-label', isLight ? 'Switch to dark theme' : 'Switch to light theme');
+                btn.setAttribute('title', isLight ? 'Switch to dark theme' : 'Switch to light theme');
+                if (labelEl) {
+                    labelEl.textContent = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+                }
+            });
+        };
+
+        themeToggles.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const currentTheme = getTheme();
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(nextTheme);
+            });
+        });
+
+        applyTheme(getTheme());
+
         const mbkTrigger = document.querySelector('.mbkauthe-profile-trigger');
         const mbkDropdown = document.querySelector('.mbkauthe-profile-dropdown');
 

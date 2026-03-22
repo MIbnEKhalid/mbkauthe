@@ -54,8 +54,8 @@
     --input-bg-focus: rgba(255, 255, 255, 1);
     --input-border: rgba(22, 48, 65, 0.2);
     --muted-border: rgba(22, 48, 65, 0.14);
-    --hero-from: #e9f4fb;
-    --hero-to: #cbe7f7;
+    --hero-from: #d7e9f6;
+    --hero-to: #a7cde4;
     --box-shadow: 0 10px 28px rgba(8, 35, 51, 0.12);
 }
 
@@ -149,6 +149,13 @@ header {
     background: url(/mbkauthe/bg.webp) center/cover no-repeat;
     opacity: .1;
     z-index: 0;
+}
+
+[data-theme="light"] .login-container {
+    background:
+        radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--primary) 18%, transparent 82%), transparent 48%),
+        radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--accent) 14%, transparent 86%), transparent 54%),
+        linear-gradient(135deg, var(--hero-from), var(--hero-to));
 }
 
 .login-box {

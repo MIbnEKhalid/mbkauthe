@@ -37,14 +37,18 @@ async function selectiveCacheClear() {
       'sessionId',
       'mbkauthe.sid',
       'fullName',
-      '_csrf'
+      '_csrf',
+      'profileImageUser',
+      'profileImageUrl'
     ];
 
     const localStorageToClear = [
       'sessionId',
       'mbkauthe.sid',
       'fullName',
-      '_csrf'
+      '_csrf',
+      'profileImageUser',
+      'profileImageUrl'
     ];
 
     // 1. Clear selected localStorage keys

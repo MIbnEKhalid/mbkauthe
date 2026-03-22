@@ -46,7 +46,7 @@ app.engine("handlebars", engine({
             return Object.entries(obj).map(([key, value]) => ({ key, value }));
         },
         cacheBuster: function () {
-            return packageJson.version;
+            return "?v=" + packageJson.version;
         }
     }
 

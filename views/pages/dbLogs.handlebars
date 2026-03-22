@@ -142,8 +142,146 @@
     border-radius: 16px;
     border: 1px solid var(--muted-border);
     background: color-mix(in srgb, var(--surface-1) 82%, transparent 18%);
-    padding: 0.4rem;
-    overflow-x: auto;
+    padding: 0.75rem;
+    overflow: hidden;
+  }
+
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .log-card {
+    border: 1px solid var(--muted-border);
+    border-radius: 12px;
+    background: var(--surface-muted);
+    padding: 0.85rem;
+  }
+
+  .log-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .log-mainline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .log-index {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    border: 1px solid var(--muted-border);
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+  }
+
+  .log-time {
+    color: var(--text-light);
+    font-size: 0.8rem;
+  }
+
+  .log-query-block {
+    border: 1px solid var(--muted-border);
+    border-radius: 10px;
+    padding: 0.55rem;
+    margin-bottom: 0.65rem;
+    background: color-mix(in srgb, var(--surface-1) 50%, transparent 50%);
+  }
+
+  .log-return-block {
+    border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent 65%);
+    border-radius: 10px;
+    padding: 0.55rem;
+    margin-bottom: 0.65rem;
+    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
+  }
+
+  .log-return-block summary {
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 0.82rem;
+    user-select: none;
+    font-weight: 600;
+  }
+
+  .log-return-block[open] summary {
+    margin-bottom: 0.45rem;
+  }
+
+  .log-label {
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .log-query-block pre,
+  .log-return-block pre,
+  .log-detail-item pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .log-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .log-meta-item {
+    border: 1px solid var(--muted-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.55rem;
+    background: color-mix(in srgb, var(--surface-1) 35%, transparent 65%);
+  }
+
+  .log-meta-item span {
+    color: var(--text-light);
+    font-size: 0.72rem;
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+
+  .log-meta-item code {
+    font-size: 0.78rem;
+  }
+
+  .log-details {
+    border-top: 1px dashed var(--muted-border);
+    padding-top: 0.55rem;
+  }
+
+  .log-details summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.82rem;
+    user-select: none;
+  }
+
+  .log-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+  }
+
+  .log-detail-item {
+    border: 1px solid var(--muted-border);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    background: color-mix(in srgb, var(--surface-1) 35%, transparent 65%);
   }
 
   .copy-row-btn {
@@ -159,29 +297,6 @@
 
   .copy-row-btn:hover {
     background: color-mix(in srgb, var(--primary) 24%, transparent 76%);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    color: var(--text);
-    font-size: 0.9rem;
-    min-width: 900px;
-  }
-
-  th, td {
-    padding: 0.6rem 0.8rem;
-    border-bottom: 1px solid var(--muted-border);
-    vertical-align: top;
-  }
-
-  th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-light);
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
   }
 
   code {
@@ -228,6 +343,12 @@
     border: 1px solid color-mix(in srgb, var(--success) 45%, transparent 55%);
   }
 
+  .notification.warn {
+    background: color-mix(in srgb, var(--warning) 14%, transparent 86%);
+    color: var(--warning);
+    border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent 55%);
+  }
+
   @media (max-width: 900px) {
     .db-panel {
       padding: 1.5rem;
@@ -237,43 +358,12 @@
       width: 100%;
     }
 
-    table {
-      min-width: 100%;
-      display: block;
+    .db-table-wrapper {
+      padding: 0.6rem;
     }
 
-    thead {
-      display: none;
-    }
-
-    tbody,
-    tr,
-    td {
-      display: block;
-      width: 100%;
-    }
-
-    tr {
-      border: 1px solid var(--muted-border);
-      border-radius: 12px;
-      margin-bottom: 0.9rem;
-      padding: 0.6rem 0.8rem;
-      background: var(--surface-muted);
-    }
-
-    td {
-      border: none;
-      padding: 0.5rem 0;
-    }
-
-    td::before {
-      content: attr(data-label);
-      display: block;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-light);
-      margin-bottom: 0.25rem;
+    .log-detail-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>"}}
@@ -309,19 +399,21 @@
       <div class="db-toolbar">
         <form id="limit-form" action="/mbkauthe/db" method="get">
           <label for="limit">Limit</label>
-          <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" />
-          <button type="submit">Update</button>
+          <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
+          <button type="submit" {{#unless isDev}}disabled{{/unless}}>Update</button>
         </form>
-        <button id="reset-btn" type="button">Reset</button>
-        <button id="copy-btn" type="button">Copy Log</button>
+        <button id="reset-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Reset</button>
+        <button id="copy-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Copy Logs</button>
       </div>
 
-      {{#if resetDone}}
-        <div class="notification">Query log and count have been reset.</div>
-      {{/if}}
+      {{#unless isDev}}
+      <div class="notification warn" id="disabled-notice">{{disabledMessage}}</div>
+      {{/unless}}
+
+      <div class="notification" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>Query log and count have been reset.</div>
 
       <div id="query-log" class="db-table-wrapper">
-        <div class="empty">Loading query log...</div>
+        <div class="empty">{{#if isDev}}Loading query log...{{else}}DB logs are disabled.{{/if}}</div>
       </div>
     </div>
   </section>
@@ -333,9 +425,88 @@
       const queryLogEl = document.getElementById('query-log');
       const resetBtn = document.getElementById('reset-btn');
       const copyBtn = document.getElementById('copy-btn');
+      const resetNoticeEl = document.getElementById('reset-notice');
+      const isDev = {{#if isDev}}true{{else}}false{{/if}};
+      let latestQueryLog = [];
+
+      const showDisabledState = (message = 'DB logs are disabled.') => {
+        queryCountEl.textContent = '-';
+        latestQueryLog = [];
+        queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+      };
 
       const escapeHtml = (str) => String(str || '')
         .replace(/[&<>"'`]/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[s]);
+
+      const escapeMarkdownCell = (value) => String(value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|')
+        .replace(/\r?\n/g, '<br>');
+
+      const formatParamValues = (values, pretty = false) => {
+        if (!Array.isArray(values) || values.length === 0) return '';
+
+        if (pretty) {
+          return values
+            .map((v, i) => {
+              const printable = typeof v === 'string' ? v : JSON.stringify(v);
+              return `$${i + 1}: ${printable}`;
+            })
+            .join('\n');
+        }
+
+        return values
+          .map((v, i) => {
+            const printable = typeof v === 'string' ? v : JSON.stringify(v);
+            return `$${i + 1}: ${printable}`;
+          })
+          .join(' | ');
+      };
+
+      const toMarkdownReport = (queryLog, limit) => {
+        if (!Array.isArray(queryLog) || queryLog.length === 0) {
+          return '# DB Query Monitor\n\n_No queries recorded yet._';
+        }
+
+        const now = new Date().toISOString();
+        const header = [
+          '# DB Query Monitor',
+          '',
+          `- Exported: ${now}`,
+          `- Query Count: ${queryLog.length}`,
+          `- Limit: ${limit}`,
+          '',
+          '| # | Time | Name | Duration | Status | Query | Values | Return Value | Error | Request | Pool | Callsite |',
+          '|---:|---|---|---|---|---|---|---|---|---|---|---|'
+        ];
+
+        const rows = queryLog.map((entry, idx) => {
+          const durationText = typeof entry.durationMs === 'number'
+            ? `${entry.durationMs.toFixed(2)} ms`
+            : '';
+          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
+          const values = formatParamValues(entry.values, false);
+          const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue) : '';
+          const errorText = entry.error
+            ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
+            : '';
+          const requestText = entry.request
+            ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
+              `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
+              `\nip: ${entry.request.ip || ''}`
+            : '';
+          const poolText = entry.pool
+            ? `total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
+            : '';
+          const callsiteText = entry.callsite
+            ? `${entry.callsite.function || '(anonymous)'}\n${entry.callsite.file}:${entry.callsite.line}:${entry.callsite.column}`
+            : '';
+
+          return `| ${idx + 1} | ${escapeMarkdownCell(entry.time)} | ${escapeMarkdownCell(entry.name || '')} | ${escapeMarkdownCell(durationText)} | ${escapeMarkdownCell(statusText)} | ${escapeMarkdownCell(entry.query || '')} | ${escapeMarkdownCell(values)} | ${escapeMarkdownCell(returnValueText)} | ${escapeMarkdownCell(errorText)} | ${escapeMarkdownCell(requestText)} | ${escapeMarkdownCell(poolText)} | ${escapeMarkdownCell(callsiteText)} |`;
+        });
+
+        return [...header, ...rows].join('\n');
+      };
 
       const buildTable = (queryLog) => {
         if (!Array.isArray(queryLog) || queryLog.length === 0) {
@@ -343,21 +514,29 @@
           return;
         }
 
-        const rows = queryLog.map((entry, idx) => {
-          const values = Array.isArray(entry.values) ? escapeHtml(JSON.stringify(entry.values)) : '';
+        const cards = queryLog.map((entry, idx) => {
+          const values = formatParamValues(entry.values, true);
+          const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue, null, 2) : '';
+          const returnValueSummary = entry.returnValue
+            ? [
+              entry.returnValue.command ? `command: ${entry.returnValue.command}` : null,
+              typeof entry.returnValue.rowCount === 'number' ? `rowCount: ${entry.returnValue.rowCount}` : null,
+              typeof entry.returnValue.returnedRows === 'number' ? `rows: ${entry.returnValue.returnedRows}` : null
+            ].filter(Boolean).join(' | ')
+            : '';
           const callsite = entry.callsite || null;
           const callsiteText = callsite
             ? `${callsite.function || '(anonymous)'}\n${callsite.file}:${callsite.line}:${callsite.column}`
             : '';
           const durationText = typeof entry.durationMs === 'number'
             ? `${entry.durationMs.toFixed(2)} ms`
-            : '';
-          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
+            : 'n/a';
+          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : 'n/a';
           const statusBadge = statusText === 'OK'
             ? '<span class="badge ok">OK</span>'
             : statusText === 'ERR'
             ? '<span class="badge err">ERR</span>'
-            : '';
+            : '<span class="badge">N/A</span>';
           const errorText = entry.error
             ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
             : '';
@@ -370,83 +549,127 @@
             ? `total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
             : '';
 
+          const detailBlocks = [
+            values ? `<div class="log-detail-item"><div class="log-label">Values</div><pre><code>${escapeHtml(values)}</code></pre></div>` : '',
+            errorText ? `<div class="log-detail-item"><div class="log-label">Error</div><pre><code>${escapeHtml(errorText)}</code></pre></div>` : '',
+            requestText ? `<div class="log-detail-item"><div class="log-label">Request</div><pre><code>${escapeHtml(requestText)}</code></pre></div>` : '',
+            poolText ? `<div class="log-detail-item"><div class="log-label">Pool</div><pre><code>${escapeHtml(poolText)}</code></pre></div>` : '',
+            callsiteText ? `<div class="log-detail-item"><div class="log-label">Callsite</div><pre><code>${escapeHtml(callsiteText)}</code></pre></div>` : ''
+          ].filter(Boolean).join('');
+
           return `
-            <tr>
-              <td data-label="#">${idx + 1}</td>
-              <td data-label="Time">${escapeHtml(entry.time)}</td>
-              <td data-label="Name">${entry.name ? `<code>${escapeHtml(entry.name)}</code>` : ''}</td>
-              <td data-label="Duration">${durationText ? `<code>${escapeHtml(durationText)}</code>` : ''}</td>
-              <td data-label="Status">${statusBadge}</td>
-              <td data-label="Query"><code>${escapeHtml(entry.query)}</code></td>
-              <td data-label="Values">${values ? `<code>${values}</code>` : ''}</td>
-              <td data-label="Error">${errorText ? `<code>${escapeHtml(errorText)}</code>` : ''}</td>
-              <td data-label="Request">${requestText ? `<code>${escapeHtml(requestText)}</code>` : ''}</td>
-              <td data-label="Pool">${poolText ? `<code>${escapeHtml(poolText)}</code>` : ''}</td>
-              <td data-label="Callsite">${callsiteText ? `<code>${escapeHtml(callsiteText)}</code>` : ''}</td>
-              <td data-label="Copy"><button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button></td>
-            </tr>
+            <article class="log-card">
+              <div class="log-head">
+                <div class="log-mainline">
+                  <span class="log-index">#${idx + 1}</span>
+                  ${statusBadge}
+                  <span class="log-time">${escapeHtml(entry.time)}</span>
+                </div>
+                <button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button>
+              </div>
+
+              <div class="log-query-block">
+                <div class="log-label">Query</div>
+                <pre><code>${escapeHtml(entry.query || '')}</code></pre>
+              </div>
+
+              <div class="log-meta-grid">
+                <div class="log-meta-item"><span>Name</span><code>${escapeHtml(entry.name || 'n/a')}</code></div>
+                <div class="log-meta-item"><span>Duration</span><code>${escapeHtml(durationText)}</code></div>
+              </div>
+
+              ${returnValueText ? `<details class="log-return-block"><summary>Return Value${returnValueSummary ? ` (${escapeHtml(returnValueSummary)})` : ''}</summary><pre><code>${escapeHtml(returnValueText)}</code></pre></details>` : ''}
+
+              ${detailBlocks ? `<details class="log-details"><summary>More details</summary><div class="log-detail-grid">${detailBlocks}</div></details>` : ''}
+            </article>
           `;
         }).join('');
 
-        queryLogEl.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Time</th>
-                <th>Name</th>
-                <th>Duration</th>
-                <th>Status</th>
-                <th>Query</th>
-                <th>Values</th>
-                <th>Error</th>
-                <th>Request</th>
-                <th>Pool</th>
-                <th>Callsite</th>
-                <th>Copy</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows}
-            </tbody>
-          </table>
-        `;
+        queryLogEl.innerHTML = `<div class="log-list">${cards}</div>`;
       };
 
-      const loadLog = async (options = {}) => {
+      const loadLog = async () => {
+        if (!isDev) {
+          showDisabledState();
+          return;
+        }
+
         const limit = Number(limitInput.value) || 50;
         queryLimitEl.textContent = String(limit);
 
         const params = new URLSearchParams({ limit: String(limit) });
-        if (options.reset) params.set('reset', '1');
 
         const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
         if (!response.ok) {
-          queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+          let message = 'Failed to load query log.';
+          try {
+            const errorData = await response.json();
+            if (response.status === 403 || errorData?.isDev === false) {
+              showDisabledState(errorData?.message || 'DB logs are disabled.');
+              return;
+            }
+            if (errorData?.message) message = errorData.message;
+          } catch {
+            // Ignore parse errors and keep fallback message.
+          }
+
+          queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
           return;
         }
 
         const data = await response.json();
-        queryCountEl.textContent = data.queryCount ?? '-';
-        buildTable(data.queryLog);
-
-        if (options.reset) {
-          const next = new URLSearchParams({ limit: String(limit), resetDone: '1' });
-          window.location.assign(`/mbkauthe/db?${next.toString()}`);
+        if (data?.isDev === false) {
+          showDisabledState(data.message || 'DB logs are disabled.');
+          return;
         }
+
+        queryCountEl.textContent = data.queryCount ?? '-';
+        latestQueryLog = Array.isArray(data.queryLog) ? data.queryLog : [];
+        buildTable(data.queryLog);
       };
 
       resetBtn.addEventListener('click', () => {
-        loadLog({ reset: true }).catch(() => {
-          queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
-        });
+        if (!isDev) {
+          showDisabledState();
+          return;
+        }
+
+        fetch('/mbkauthe/db/reset', { method: 'POST' })
+          .then(async (response) => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              if (response.status === 403 || errorData?.isDev === false) {
+                showDisabledState(errorData?.message || 'DB logs are disabled.');
+                return;
+              }
+              throw new Error('reset failed');
+            }
+            const result = await response.json().catch(() => ({}));
+
+            if (resetNoticeEl) {
+              resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
+              resetNoticeEl.hidden = false;
+            }
+
+            return loadLog();
+          })
+          .catch(() => {
+            queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
+          });
       });
 
       copyBtn.addEventListener('click', () => {
-        const text = queryLogEl.innerText;
-        navigator.clipboard.writeText(text).then(() => {
+        if (!isDev) {
+          showDisabledState();
+          return;
+        }
+
+        const limit = Number(limitInput.value) || 50;
+        const markdown = toMarkdownReport(latestQueryLog, limit);
+
+        navigator.clipboard.writeText(markdown).then(() => {
           copyBtn.textContent = 'Copied!';
-          setTimeout(() => (copyBtn.textContent = 'Copy log'), 1200);
+          setTimeout(() => (copyBtn.textContent = 'Copy Logs'), 1200);
         });
       });
 
@@ -467,9 +690,13 @@
         });
       });
 
-      loadLog().catch(() => {
-        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
-      });
+      if (!isDev) {
+        showDisabledState();
+      } else {
+        loadLog().catch(() => {
+          queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+        });
+      }
     </script>
   {{> versionInfo}}
 </body>

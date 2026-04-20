@@ -22,7 +22,7 @@
 - PostgreSQL session management
 - Multi-session support (configurable concurrent sessions per user)
 - Optional TOTP-based 2FA with trusted devices
-- OAuth login (GitHub & Google)
+- Social login (GitHub App & Google OAuth)
 - Role-based access: SuperAdmin, NormalUser, Guest
 - CSRF protection & rate limiting
 - Easy Express.js integration
@@ -101,9 +101,9 @@ These are only mounted when `process.env.env === "dev"`:
 
 Enable via `MBKAUTH_TWO_FA_ENABLE=true`. Trusted devices can skip 2FA for a set duration.
 
-## 🔄 OAuth Integration
+## 🔄 Social Login Integration
 
-**GitHub / Google OAuth:** Configure apps and credentials via `.env` or `mbkautheVar`. Users must link accounts before login.
+**GitHub App / Google OAuth:** Configure credentials via `.env` or `mbkautheVar`. Users must link accounts before login.
 
 ## 🎨 Customization
 

@@ -396,12 +396,12 @@
 
         {{#if githubLoginEnabled }}
 
-        // GitHub login: Navigate directly to GitHub OAuth flow
+        // GitHub login: Navigate directly to GitHub App flow
         async function startGithubLogin() {
             const urlParams = new URLSearchParams(window.location.search);
             const redirect = urlParams.get('redirect') || '{{customURL}}';
 
-            // Navigate directly to the backend GET endpoint with redirect query
+            // Navigate directly to the backend GitHub App endpoint with redirect query
             window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
         }
 

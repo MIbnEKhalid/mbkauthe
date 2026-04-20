@@ -95,14 +95,26 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Required: No
 
 - GITHUB_LOGIN_ENABLED / GOOGLE_LOGIN_ENABLED
-  - Description: Enable OAuth providers.
+  - Description: Enable social login providers.
   - Default: `false`
-  - If `true`, corresponding `*_CLIENT_ID` and `*_CLIENT_SECRET` are required.
+  - If `GOOGLE_LOGIN_ENABLED=true`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are required.
+  - If `GITHUB_LOGIN_ENABLED=true`, GitHub App client credentials are required.
 
-- GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
-  - Description: OAuth credentials (put in `mbkautheVar` preferred, or `mbkauthShared`).
-  - Required when provider enabled.
-  - Create Github OAuth App: https://github.com/settings/developers
+- GITHUB_APP_SLUG
+  - Description: GitHub App slug (optional for login flow in this package; useful for install/link flows handled elsewhere).
+  - Required: No
+  - Create GitHub App: https://github.com/settings/apps
+
+- GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET
+  - Description: GitHub App OAuth credentials used for user sign-in.
+  - Required when `GITHUB_LOGIN_ENABLED=true`.
+
+- GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
+  - Description: Legacy fallback keys if app-prefixed keys are not provided.
+
+- GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+  - Description: Google OAuth credentials.
+  - Required when `GOOGLE_LOGIN_ENABLED=true`.
   - Create Google OAuth: https://console.cloud.google.com/
 
 ---

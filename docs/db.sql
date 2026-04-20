@@ -49,10 +49,16 @@ CREATE TABLE IF NOT EXISTS user_github (
     user_name VARCHAR(50) REFERENCES "Users"("UserName"),
     github_id VARCHAR(255) UNIQUE,
     github_username VARCHAR(255),
+    installation_id BIGINT,
+    installation_target_type VARCHAR(32),
     access_token TEXT,
     created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
     updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE user_github
+    ADD COLUMN IF NOT EXISTS installation_id BIGINT,
+    ADD COLUMN IF NOT EXISTS installation_target_type VARCHAR(32);
 
 -- Add indexes for performance optimization
 CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github (github_id);

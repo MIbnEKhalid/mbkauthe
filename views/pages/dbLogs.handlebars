@@ -183,6 +183,16 @@
     padding: 0.1rem 0.45rem;
   }
 
+  .log-pool {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    border: 1px solid var(--muted-border);
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
+    margin: 0 0.25rem;
+  }
+
   .log-time {
     color: var(--text-light);
     font-size: 0.8rem;
@@ -402,6 +412,10 @@
           <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
           <button type="submit" {{#unless isDev}}disabled{{/unless}}>Update</button>
         </form>
+        <label for="pool-filter">Pool</label>
+        <select id="pool-filter" {{#unless isDev}}disabled{{/unless}}>
+          <option value="">All Pools</option>
+        </select>
         <button id="reset-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Reset</button>
         <button id="copy-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Copy Logs</button>
       </div>
@@ -420,6 +434,7 @@
 
   <script>
       const limitInput = document.getElementById('limit');
+      const poolFilterEl = document.getElementById('pool-filter');
       const queryCountEl = document.getElementById('query-count');
       const queryLimitEl = document.getElementById('query-limit');
       const queryLogEl = document.getElementById('query-log');
@@ -428,6 +443,7 @@
       const resetNoticeEl = document.getElementById('reset-notice');
       const isDev = {{#if isDev}}true{{else}}false{{/if}};
       let latestQueryLog = [];
+      let currentPoolFilter = '';
 
       const showDisabledState = (message = 'DB logs are disabled.') => {
         queryCountEl.textContent = '-';
@@ -442,6 +458,35 @@
         .replace(/\\/g, '\\\\')
         .replace(/\|/g, '\\|')
         .replace(/\r?\n/g, '<br>');
+
+      const getUniquePoolNames = (log) => {
+        if (!Array.isArray(log)) return [];
+        const names = new Set();
+        for (const entry of log) {
+          const rawPoolName = entry?.pool?.name || 'default';
+          if (rawPoolName && rawPoolName !== 'default') {
+            names.add(rawPoolName);
+          }
+        }
+        return [...names].sort();
+      };
+
+      const renderPoolFilterOptions = (names) => {
+        if (!poolFilterEl) return;
+        const selected = poolFilterEl.value || '';
+        poolFilterEl.innerHTML = '<option value="">All Pools</option>' +
+          names.map((name) => `\n            <option value="${escapeHtml(name)}"${name === selected ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
+      };
+
+      const getFilteredLog = (log) => {
+        if (!Array.isArray(log) || !currentPoolFilter) return log;
+        return log.filter((entry) => (entry?.pool?.name || 'default') === currentPoolFilter);
+      };
+
+      poolFilterEl?.addEventListener('change', () => {
+        currentPoolFilter = poolFilterEl.value || '';
+        buildTable(getFilteredLog(latestQueryLog));
+      });
 
       const formatParamValues = (values, pretty = false) => {
         if (!Array.isArray(values) || values.length === 0) return '';
@@ -495,8 +540,10 @@
               `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
               `\nip: ${entry.request.ip || ''}`
             : '';
-          const poolText = entry.pool
-            ? `total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
+          const rawPoolName = entry.pool?.name || 'default';
+          const poolName = rawPoolName === 'default' ? '' : rawPoolName;
+          const poolText = entry.pool && poolName
+            ? `name:${poolName} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
             : '';
           const callsiteText = entry.callsite
             ? `${entry.callsite.function || '(anonymous)'}\n${entry.callsite.file}:${entry.callsite.line}:${entry.callsite.column}`
@@ -545,8 +592,10 @@
               `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
               `\nip: ${entry.request.ip || ''}`
             : '';
-          const poolText = entry.pool
-            ? `total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
+          const rawPoolName = entry.pool?.name || 'default';
+          const poolName = rawPoolName === 'default' ? '' : rawPoolName;
+          const poolText = entry.pool && poolName
+            ? `name:${poolName} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
             : '';
 
           const detailBlocks = [
@@ -563,6 +612,7 @@
                 <div class="log-mainline">
                   <span class="log-index">#${idx + 1}</span>
                   ${statusBadge}
+                  ${poolName ? `<span class="log-pool">${escapeHtml(poolName)}</span>` : ''}
                   <span class="log-time">${escapeHtml(entry.time)}</span>
                 </div>
                 <button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button>
@@ -625,7 +675,8 @@
 
         queryCountEl.textContent = data.queryCount ?? '-';
         latestQueryLog = Array.isArray(data.queryLog) ? data.queryLog : [];
-        buildTable(data.queryLog);
+        renderPoolFilterOptions(getUniquePoolNames(latestQueryLog));
+        buildTable(getFilteredLog(latestQueryLog));
       };
 
       resetBtn.addEventListener('click', () => {

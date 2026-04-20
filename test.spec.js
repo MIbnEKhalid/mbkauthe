@@ -107,10 +107,22 @@ describe('mbkauthe Routes', () => {
       const response = await request(BASE_URL).get('/mbkauthe/test');
       expect([200, 302, 401, 403, 429]).toContain(response.status);
     });
+
+    test('GET /mbkauthe/test with curl UA returns JSON 401', async () => {
+      const response = await request(BASE_URL)
+        .get('/mbkauthe/test')
+        .set('User-Agent', 'curl/8.0.1')
+        .set('Accept', '*/*');
+
+      expect(response.status).toBe(401);
+      expect(response.headers['content-type']).toContain('application/json');
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('errorCode');
+    });
   });
 
   describe('OAuth Routes', () => {
-    test('GET /mbkauthe/api/github/login handles GitHub OAuth', async () => {
+    test('GET /mbkauthe/api/github/login handles GitHub App flow', async () => {
       const response = await request(BASE_URL)
         .get('/mbkauthe/api/github/login')
         .redirects(0);
@@ -123,7 +135,7 @@ describe('mbkauthe Routes', () => {
       }
     });
 
-    test('GET /mbkauthe/api/github/login/callback handles callback', async () => {
+    test('GET /mbkauthe/api/github/login/callback handles GitHub App callback', async () => {
       const response = await request(BASE_URL).get('/mbkauthe/api/github/login/callback');
       expect([200, 302, 400, 401, 403, 429]).toContain(response.status);
     });

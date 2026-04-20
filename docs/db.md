@@ -85,7 +85,9 @@ CREATE TABLE IF NOT EXISTS user_github (
     user_name VARCHAR(50) REFERENCES "Users"("UserName"),
     github_id VARCHAR(255) UNIQUE,
     github_username VARCHAR(255),
-    access_token TEXT,
+    installation_id BIGINT,
+    installation_target_type VARCHAR(32),
+    access_token VARCHAR(255),
     created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
     updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
 );

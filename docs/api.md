@@ -179,7 +179,7 @@ Renders the main login page.
 **Response:** HTML page with login form
 
 **Template Variables:**
-- `githubLoginEnabled` - Whether GitHub OAuth is enabled
+- `githubLoginEnabled` - Whether GitHub App login is enabled
 - `googleLoginEnabled` - Whether Google OAuth is enabled
 - `customURL` - Redirect URL after login
 - `userLoggedIn` - Whether user is already authenticated
@@ -317,8 +317,8 @@ The endpoints below are active in the router but are not fully expanded above. U
 
 **OAuth:**
 
-- `GET /mbkauthe/api/github/login` - Starts GitHub OAuth login flow.
-- `GET /mbkauthe/api/github/login/callback` - GitHub OAuth callback.
+- `GET /mbkauthe/api/github/login` - Starts GitHub App login flow.
+- `GET /mbkauthe/api/github/login/callback` - GitHub App callback.
 - `GET /mbkauthe/api/google/login` - Starts Google OAuth login flow.
 - `GET /mbkauthe/api/google/login/callback` - Google OAuth callback.
 
@@ -1222,11 +1222,11 @@ GET /mbkauthe/test
 
 ### OAuth Endpoints
 
-#### GitHub OAuth
+#### GitHub App
 
 ##### `GET /mbkauthe/api/github/login`
 
-Initiates the GitHub OAuth authentication flow.
+Initiates the GitHub App authentication flow.
 
 **Rate Limit:** 10 requests per 5 minutes
 
@@ -1235,11 +1235,11 @@ Initiates the GitHub OAuth authentication flow.
 **Query Parameters:**
 - `redirect` (optional) - Relative URL to redirect after successful authentication (must start with `/` to prevent open redirect attacks)
 
-**Response:** Redirects to GitHub OAuth authorization page
+**Response:** Redirects to GitHub authorization page
 
 **Prerequisites:**
 - `GITHUB_LOGIN_ENABLED=true` in environment
-- Valid `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` configured
+- Valid `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` configured
 - User's GitHub account must be linked to an MBKAuth account in `user_github` table
 
 **Example:**
@@ -1250,9 +1250,9 @@ GET /mbkauthe/api/github/login?redirect=/dashboard
 **Workflow:**
 1. User clicks "Login with GitHub"
 2. CSRF token generated and stored in session
-3. Redirects to GitHub for authorization
-4. GitHub redirects back to callback URL
-5. System verifies GitHub account is linked
+3. Redirects to GitHub authorization page
+4. GitHub redirects back to callback URL with authorization `code`
+5. System verifies `github_id` is linked
 6. If 2FA enabled, prompts for 2FA
 7. Creates session and redirects to specified URL
 
@@ -1260,7 +1260,7 @@ GET /mbkauthe/api/github/login?redirect=/dashboard
 
 ##### `GET /mbkauthe/api/github/login/callback`
 
-Handles the OAuth callback from GitHub after user authorization.
+Handles the callback from GitHub after user authorization.
 
 **Rate Limit:** Inherited from OAuth rate limiter (10 requests per 5 minutes)
 
@@ -1277,7 +1277,7 @@ Handles the OAuth callback from GitHub after user authorization.
 - **GitHub Not Linked**: Returns error if GitHub account is not in `user_github` table
 - **Account Inactive**: Returns error if user account is deactivated
 - **Not Authorized**: Returns error if user is not allowed to access the application
-- **GitHub Auth Error**: Returns error for any OAuth-related failures
+- **GitHub Auth Error**: Returns error for provider authentication failures
 
 **Success Flow:**
 ```

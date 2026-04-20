@@ -55,8 +55,9 @@ declare module 'mbkauthe' {
     COOKIE_EXPIRE_TIME?: number;
     DEVICE_TRUST_DURATION_DAYS?: number;
     GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
-    GITHUB_CLIENT_ID?: string;
-    GITHUB_CLIENT_SECRET?: string;
+    GITHUB_APP_SLUG?: string;
+    GITHUB_APP_CLIENT_ID?: string;
+    GITHUB_APP_CLIENT_SECRET?: string;
     GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
@@ -66,8 +67,9 @@ declare module 'mbkauthe' {
 
   export interface OAuthConfig {
     GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
-    GITHUB_CLIENT_ID?: string;
-    GITHUB_CLIENT_SECRET?: string;
+    GITHUB_APP_SLUG?: string;
+    GITHUB_APP_CLIENT_ID?: string;
+    GITHUB_APP_CLIENT_SECRET?: string;
     GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
@@ -132,6 +134,8 @@ declare module 'mbkauthe' {
     user_name: string;
     github_id: string;
     github_username: string;
+    installation_id?: number;
+    installation_target_type?: string;
     access_token: string;
     created_at: Date;
     updated_at: Date;

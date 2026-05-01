@@ -23,7 +23,7 @@
 - Multi-session support (configurable concurrent sessions per user)
 - Optional TOTP-based 2FA with trusted devices
 - Social login (GitHub App & Google OAuth)
-- Role-based access: SuperAdmin, NormalUser, Guest
+- Role-based access: SuperAdmin, NormalUser, Guest, member
 - CSRF protection & rate limiting
 - Easy Express.js integration
 - Customizable Handlebars templates

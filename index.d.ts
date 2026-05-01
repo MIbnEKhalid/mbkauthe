@@ -242,6 +242,9 @@ declare module 'mbkauthe' {
     notAllowed?: UserRole
   ): AuthMiddleware;
 
+  export const sessVal: AuthMiddleware;
+  export const sessRole: AuthMiddleware;
+
   export const strictValidateSession: AuthMiddleware;
 
   export function strictValidateSessionAndRole(

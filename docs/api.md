@@ -1474,7 +1474,7 @@ These cookies allow front-end UI to display a friendly name without making extra
 Checks if the authenticated user has the required role.
 
 **Parameters:**
-- `requiredRole` (string) - Required role: `"SuperAdmin"`, `"NormalUser"`, `"Guest"`, or `"Any"`/`"any"`
+- `requiredRole` (string) - Required role: `"SuperAdmin"`, `"NormalUser"`, `"Guest"`, `"member"`, or `"Any"`/`"any"`
 - `notAllowed` (string, optional) - Role that is explicitly not allowed
 
 **Usage:**

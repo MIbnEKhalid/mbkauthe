@@ -12,7 +12,7 @@ The project uses a Postgres `ENUM` type for user roles:
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
+    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest', 'member');
   END IF;
 END
 $$;
@@ -319,7 +319,7 @@ To add new users to the `Users` table, use the following SQL queries:
 - Replace `support` and `test` with the desired usernames.
 - For raw passwords: Replace `12345678` with the actual plain text passwords.
 - For encrypted passwords: Use the hashPassword function to generate the hash before inserting.
-- Adjust the `Role` values as needed (`SuperAdmin`, `NormalUser`, or `Guest`).
+- Adjust the `Role` values as needed (`SuperAdmin`, `NormalUser`, `Guest`, or `member`).
 - Modify the `Active` and `HaveMailAccount` values as required.
 
 **Generating Encrypted Passwords:**

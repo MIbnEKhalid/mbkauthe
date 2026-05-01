@@ -2,7 +2,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest');
+    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest', 'member');
   END IF;
 END
 $$;
@@ -93,6 +93,24 @@ CREATE TABLE IF NOT EXISTS "Sessions" (
 -- Indexes optimized by username instead of numeric user id
 CREATE INDEX IF NOT EXISTS idx_sessions_username ON "Sessions" ("UserName");
 CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON "Sessions" ("UserName", created_at);
+
+-- Support expiry-based cleanup and validity checks
+CREATE INDEX IF NOT EXISTS idx_sessions_username_expires
+ON "Sessions" ("UserName", expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_expires
+ON "Sessions" (expires_at)
+WHERE expires_at IS NOT NULL;
+
+-- Optional (Postgres 11+): covering indexes for hot-path lookups (validateSession)
+-- These can enable index-only scans for the exact columns used in auth middleware.
+CREATE INDEX IF NOT EXISTS idx_sessions_id_cover
+ON "Sessions" (id)
+INCLUDE ("UserName", expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_users_username_cover
+ON "Users" ("UserName")
+INCLUDE ("Active", "Role");
 
 
 CREATE TABLE IF NOT EXISTS "session" (

@@ -84,6 +84,7 @@
             try {
                 const response = await fetch('/mbkauthe/api/verify-2fa', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json'
                     },

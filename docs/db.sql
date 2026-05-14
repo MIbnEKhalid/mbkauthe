@@ -10,7 +10,6 @@ $$;
 CREATE TABLE IF NOT EXISTS "Users" (
     id SERIAL PRIMARY KEY,
     "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Password" VARCHAR(255) NOT NULL,
     "Active" BOOLEAN DEFAULT FALSE,
     "Role" role DEFAULT 'NormalUser' NOT NULL,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
@@ -18,7 +17,8 @@ CREATE TABLE IF NOT EXISTS "Users" (
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "last_login" TIMESTAMP WITH TIME ZONE,
-    "PasswordEnc" VARCHAR(128),
+    -- Store password hashes only (PBKDF2 / future algorithms). Do not store plaintext passwords.
+    "PasswordEnc" VARCHAR(255),
     
     "FullName" VARCHAR(255),
     "email" TEXT DEFAULT 'support@mbktech.org',
@@ -157,13 +157,10 @@ CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices"("Use
 CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
 
 
--- No Encrypted password for 'support' user
-INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "FullName")
-VALUES ('support', '12345678', 'SuperAdmin', true, false, 'Support User')
-ON CONFLICT ("UserName") DO NOTHING;
-
-INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "FullName")
-VALUES ('admin', '12345678', 'SuperAdmin', true, false, 'Admin User')
+-- Seed users (hash-only). Default passwords are "12345678" for the sample accounts below.
+-- Hashes were generated using mbkauthe's `hashPassword(password, username)`.
+INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "FullName")
+VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false, 'Support User')
 ON CONFLICT ("UserName") DO NOTHING;
 
 

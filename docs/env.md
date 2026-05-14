@@ -50,12 +50,6 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"MBKAUTH_TWO_FA_ENABLE":"true"`
   - Required: Yes
 
-- EncPass
-  - Description: When `true`, use hashed password column (`PasswordEnc`) instead of plain `Password`.
-  - Default: `false` (recommended `true` in production)
-  - Example: `"EncPass":"true"`
-  - Required: No
-
 - COOKIE_EXPIRE_TIME
   - Description: Session cookie lifetime (days).
   - Default: `2`
@@ -123,14 +117,14 @@ This document describes the environment variables MBKAuth expects and keeps brie
 Development (.env):
 
 ```env
-mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","EncPass":"false","LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth_dev","MBKAUTH_TWO_FA_ENABLE":"false"}
+mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth_dev","MBKAUTH_TWO_FA_ENABLE":"false"}
 mbkauthShared={"GITHUB_LOGIN_ENABLED":"false"}
 ```
 
 Production (short):
 
 ```env
-mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"prod-token","SESSION_SECRET_KEY":"prod-secret","IS_DEPLOYED":"true","DOMAIN":"yourdomain.com","EncPass":"true","LOGIN_DB":"postgresql://dbuser:secure@db:5432/mbkauth_prod","MBKAUTH_TWO_FA_ENABLE":"true"}
+mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"prod-token","SESSION_SECRET_KEY":"prod-secret","IS_DEPLOYED":"true","DOMAIN":"yourdomain.com","LOGIN_DB":"postgresql://dbuser:secure@db:5432/mbkauth_prod","MBKAUTH_TWO_FA_ENABLE":"true"}
 ```
 
 ---

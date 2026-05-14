@@ -28,7 +28,6 @@ Stores user accounts and profile metadata.
 CREATE TABLE IF NOT EXISTS "Users" (
     id SERIAL PRIMARY KEY,
     "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Password" VARCHAR(255) NOT NULL,
     "Active" BOOLEAN DEFAULT FALSE,
     "Role" role DEFAULT 'NormalUser' NOT NULL,
     "HaveMailAccount" BOOLEAN DEFAULT FALSE,
@@ -36,7 +35,7 @@ CREATE TABLE IF NOT EXISTS "Users" (
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "last_login" TIMESTAMP WITH TIME ZONE,
-    "PasswordEnc" VARCHAR(128),
+    "PasswordEnc" VARCHAR(255),
 
     "FullName" VARCHAR(255),
     "email" TEXT DEFAULT 'support@mbktech.org',
@@ -66,9 +65,8 @@ CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING GIN ("Positi
 
 ### Password Storage
 
-- `Password` is used when `EncPass=false` (plain text / legacy).
-- `PasswordEnc` is used when `EncPass=true` (PBKDF2 hashed, stored as a 128-character hex string).
-- Only one of the two columns should be populated depending on the configuration.
+- Plain text passwords are not supported.
+- `PasswordEnc` stores a password hash (generated via `hashPassword(password, username)`) and is the only column used for login.
 
 
 ---
@@ -260,11 +258,11 @@ The `Permissions` column stores both scope and allowed apps in a single JSONB st
 
 ## 8. Seed Data
 
-The schema includes a default `support` user (no encrypted password) to ensure at least one SuperAdmin account exists:
+The schema includes a default `support` user with a **hashed** password to ensure at least one SuperAdmin account exists:
 
 ```sql
-INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount", "FullName")
-VALUES ('support', '12345678', 'SuperAdmin', true, false, 'Support User')
+INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "FullName")
+VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false, 'Support User')
 ON CONFLICT ("UserName") DO NOTHING;
 
 SELECT * FROM "Users" WHERE "UserName" = 'support';
@@ -295,35 +293,21 @@ CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("Expi
 
 To add new users to the `Users` table, use the following SQL queries:
 
-**For Raw Password Storage (EncPass=false):**
+**Hash-only Password Storage:**
 ```sql
-        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount")
-        VALUES ('support', '12345678', 'SuperAdmin', true, false);
-
-        INSERT INTO "Users" ("UserName", "Password", "Role", "Active", "HaveMailAccount")
-        VALUES ('test', '12345678', 'NormalUser', true, false);
-```
-
-**For Encrypted Password Storage (EncPass=true):**
-```sql
-        -- Note: You'll need to hash the password using the hashPassword function
-        -- Example with pre-hashed password (PBKDF2 with username as salt)
-        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount")
-        VALUES ('support', 'your_hashed_password_here', 'SuperAdmin', true, false);
-
-        INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount")
-        VALUES ('test', 'your_hashed_password_here', 'NormalUser', true, false);
+    -- Note: You'll need to hash the password using the hashPassword function
+    INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount")
+    VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false);
 ```
 
 **Configuration Notes:**
 - Replace `support` and `test` with the desired usernames.
-- For raw passwords: Replace `12345678` with the actual plain text passwords.
-- For encrypted passwords: Use the hashPassword function to generate the hash before inserting.
+- Use the hashPassword function to generate the hash before inserting (the username is used as the salt).
 - Adjust the `Role` values as needed (`SuperAdmin`, `NormalUser`, `Guest`, or `member`).
 - Modify the `Active` and `HaveMailAccount` values as required.
 
-**Generating Encrypted Passwords:**
-If you're using `EncPass=true`, you can generate encrypted passwords using the hashPassword function:
+**Generating Password Hashes:**
+Generate password hashes using the hashPassword function:
 ```javascript
 import { hashPassword } from 'mbkauthe';
 const encryptedPassword = hashPassword('12345678', 'support');

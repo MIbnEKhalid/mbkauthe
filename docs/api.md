@@ -1618,12 +1618,15 @@ app.post('/api/data', authenticate(process.env.API_TOKEN), (req, res) => {
 
 **Headers Required:**
 ```
-Authorization: your-secret-token
+Authorization: Bearer your-secret-token
 ```
+
+You can also send the raw token without the `Bearer` prefix.
 
 **Behavior:**
 - Checks `Authorization` header
-- Compares with provided token
+- Extracts the token (strips optional `Bearer` prefix)
+- Compares the provided token to the expected token using a timing-safe SHA-256 hash comparison
 - Returns 401 if token doesn't match
 
 ---

@@ -4,7 +4,7 @@ flowchart TD
   B -->|invalid| Aerr[400 - missing/invalid]
   B --> C[Query Users and TwoFA status]
   C -->|no user| U404[401 - invalid credentials]
-  C --> D[Compare password - EncPass or raw]
+  C --> D[Compare password hash (PasswordEnc)]
   D -->|fail| P401[401 - incorrect password]
   D -->|ok| E[Check account Active and app authorization]
   E -->|inactive| I403[403 - account inactive]

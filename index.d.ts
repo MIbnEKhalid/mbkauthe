@@ -62,7 +62,7 @@ declare module 'mbkauthe' {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     loginRedirectURL?: string;
-    EncPass?: 'true' | 'false' | 'f';
+    MAX_SESSIONS_PER_USER?: number;
   }
 
   export interface OAuthConfig {
@@ -100,7 +100,6 @@ declare module 'mbkauthe' {
   export interface DBUser {
     id: number;
     UserName: string;
-    Password?: string;
     PasswordEnc?: string;
     Role: UserRole;
     Active: boolean;

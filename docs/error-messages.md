@@ -558,7 +558,7 @@ router.post('/mbkauthe/api/login', async (req, res) => {
         res.json({ success: true, sessionId: '...' });
         
     } catch (error) {
-        console.error('[mbkauthe] Login error:', error);
+        console.error(`[mbkauthe] Login error:`, error);
         return res.status(500).json(
             createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR)
         );

@@ -327,7 +327,7 @@
                 .catch(error => {
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Login';
-                    console.error('[mbkauthe] Error:', error);
+                    console.error(`[mbkauthe] Error:`, error);
                     showMessage('An error occurred. Please try again.', 'Login Error');
                 });
         });

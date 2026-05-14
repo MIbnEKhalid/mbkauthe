@@ -58,7 +58,7 @@ const renderDevError = (res, req, code, error, message, page, details) => render
 });
 
 if (isDevMode) {
-    console.log("[mbkauthe] Dev mode is enabled. Starting server in dev mode.");
+    console.log(`[mbkauthe] Dev mode is enabled. Starting server in dev mode.`);
 
     app.get(["/dashboard", "/home", "/"], (req, res) => res.redirect("/mbkauthe/"));
 

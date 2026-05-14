@@ -1422,6 +1422,21 @@ app.get('/protected', validateSession, (req, res) => {
 - Verifies user is authorized for the current application
 - Redirects to login page if validation fails
 
+**JSON vs HTML error responses:**
+
+When `validateSession` fails, MBKAuthe will either render an HTML error/login page (browser flow) or return a JSON error response (API/AJAX flow). A request is treated as **JSON** when any of these are true:
+
+- URL/path starts with `/mbkauthe/api/` or `/api/`
+- `X-Requested-With: XMLHttpRequest`
+- `Accept` indicates JSON (e.g., `application/json`) and does not explicitly prefer `text/html`
+- `User-Agent` matches a non-browser client (e.g., `curl`, `wget`, `Postman`, `Insomnia`)
+- `User-Agent: json` (explicitly forces JSON responses)
+
+**Example (force JSON errors on a page route):**
+```bash
+curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
+```
+
 ### reloadSessionUser(req, res)
 
 Use this helper when you need to refresh the values stored in `req.session.user` from the authoritative database record (for example, after a profile update that changes FullName, or when session expiration policies are updated).

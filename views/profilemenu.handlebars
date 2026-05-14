@@ -277,7 +277,7 @@
                         alert(result.message || 'Logout failed. Please try again.');
                     }
                 } catch (error) {
-                    console.error('[mbkauthe] Error during logout:', error);
+                    console.error(`[mbkauthe] Error during logout:`, error);
                     alert('Logout failed. Please try again.');
                 } finally {
                     logoutButton.disabled = false;
@@ -299,7 +299,7 @@
                 switchAccountLink.href = baseHref + encodeURIComponent(currentUrl);
             } catch (err) {
                 // non-fatal, but log for debugging
-                console.error('[mbkauthe] Failed to set redirect URL for switch account link', err);
+                console.error(`[mbkauthe] Failed to set redirect URL for switch account link`, err);
             }
         })();
     })();

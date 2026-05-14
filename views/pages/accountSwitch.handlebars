@@ -362,7 +362,7 @@
                     emptyStateLink.href = `/mbkauthe/login${encoded ? `?redirect=${encoded}` : ''}`;
                 }
             } catch (err) {
-                console.error('[mbkauthe] Failed to set login hrefs with redirect query param:', err);
+                console.error(`[mbkauthe] Failed to set login hrefs with redirect query param:`, err);
             }
         })();
 
@@ -468,7 +468,7 @@
                 });
 
             } catch (err) {
-                console.error('[mbkauthe] Failed to load accounts:', err);
+                console.error(`[mbkauthe] Failed to load accounts:`, err);
                 list.innerHTML = '<div class="empty-state">Failed to load accounts.</div>';
             }
         }
@@ -501,7 +501,7 @@
                     loadAccounts();
                 }
             } catch (err) {
-                console.error('[mbkauthe] Switch failed:', err);
+                console.error(`[mbkauthe] Switch failed:`, err);
                 showMessage('Could not switch account right now. Please try again.', 'Switch Account');
             }
         }
@@ -521,7 +521,7 @@
                     showMessage(data.message || 'Could not sign out all accounts', 'Sign out');
                 }
             } catch (err) {
-                console.error('[mbkauthe] Sign-out-all failed:', err);
+                console.error(`[mbkauthe] Sign-out-all failed:`, err);
                 showMessage('Could not sign out all accounts right now. Please try again.', 'Sign out');
             }
         }

@@ -82,6 +82,23 @@ npm run dev
 - **Combined:** `validateSessionAndRole(['SuperAdmin', 'NormalUser'])`
 - **API Token Auth:** `authenticate(process.env.API_TOKEN)`
 
+## 🧾 JSON Responses (HTML vs JSON)
+
+Most browser page routes render HTML on auth errors, while API/AJAX-style requests receive JSON error responses.
+
+MBKAuthe treats a request as **JSON** (and returns JSON errors) when any of the following apply:
+
+- URL/path starts with `/mbkauthe/api/` or `/api/`
+- `X-Requested-With: XMLHttpRequest`
+- `Accept` indicates JSON (e.g., `application/json`) and does not explicitly prefer `text/html`
+- `User-Agent` looks like a non-browser client (e.g., `curl`, `wget`, `Postman`)
+- `User-Agent: json` (explicitly forces JSON responses)
+
+**Example (force JSON errors):**
+```bash
+curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
+```
+
 ## 🧰 Diagnostics (dev only)
 
 These are only mounted when `process.env.env === "dev"`:

@@ -25,7 +25,7 @@ async function logout() {
       alert(result.message);
     }
   } catch (error) {
-    console.error("[mbkauthe] Error during logout:", error);
+    console.error(`[mbkauthe] Error during logout:`, error);
     alert(`Logout failed: ${error.message}`);
   }
 }
@@ -67,7 +67,7 @@ async function selectiveCacheClear() {
     window.location.reload();
 
   } catch (error) {
-    console.error('[mbkauthe] selective cache clear failed:', error);
+    console.error(`[mbkauthe] selective cache clear failed:`, error);
     window.location.reload();
   }
 }
@@ -86,7 +86,7 @@ function checkSession() {
         window.location.reload(); // Reload the page to update the session status
       }
     })
-    .catch((error) => console.error("[mbkauthe] Error checking session:", error));
+    .catch((error) => console.error(`[mbkauthe] Error checking session:`, error));
 }
 // Call validateSession every 2 minutes (120000 milliseconds)
 // setInterval(checkSession, validateSessionInterval);

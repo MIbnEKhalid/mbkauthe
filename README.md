@@ -11,7 +11,9 @@
   <img height="64px" src="./public/logo.png" alt="MBKAuthe" />
 </p>
 
-**MBKAuthe** is a production-ready authentication system for Node.js with Express and PostgreSQL. Features include secure login, 2FA, role-based access, OAuth (GitHub & Google), multi-session support, and multi-app user management.
+**MBKAuthe** is an open source package focused on login, authentication, and validating sessions for your desired apps in Node.js with Express and PostgreSQL. It provides secure login, session validation, 2FA, role/app access checks, OAuth (GitHub & Google), multi-session support, and related authentication flows.
+
+> **Note:** MBKAuthe is intentionally limited to authentication and session validation. The full user/permission/dashboard management system is a separate product called **MBKCore**, developed by MBKTech and not currently open source. Access to MBKCore is currently available only to the MBKTech team, and we may refine it and consider open sourcing it in the future.
 
 ## Todo
 - Currently, for every request to a protected page, a database query is made to retrieve authentication information (allowed apps, username, session ID, role, etc.). We should implement a caching mechanism to reduce this overhead, but also find a way to allow administrators to log users out and update permissions in near real-time.
@@ -54,15 +56,15 @@ Run [docs/db.sql](docs/db.sql) to create tables and a default SuperAdmin (`suppo
 
 ```javascript
 import express from 'express';
-import mbkauthe, { validateSession, checkRolePermission } from 'mbkauthe';
+import mbkauthe, { sessVal, roleChk } from 'mbkauthe';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
 app.use(mbkauthe);
 
-app.get('/dashboard', validateSession, (req, res) => res.send(`Welcome ${req.session.user.username}!`));
-app.get('/admin', validateSession, checkRolePermission(['SuperAdmin']), (req, res) => res.send('Admin Panel'));
+app.get('/dashboard', sessVal, (req, res) => res.send(`Welcome ${req.session.user.username}!`));
+app.get('/admin', sessVal, roleChk(['SuperAdmin']), (req, res) => res.send('Admin Panel'));
 
 app.listen(3000);
 ```
@@ -78,8 +80,8 @@ npm run dev
 ## 🔧 Core API
 
 - **Session Validation:** `validateSession`
-- **Role Check:** `checkRolePermission(['Role'])`
-- **Combined:** `validateSessionAndRole(['SuperAdmin', 'NormalUser'])`
+- **Role Check:** `checkRolePermission(['Role'])`/`roleChk(['Role'])`
+- **Combined:** `validateSessionAndRole(['SuperAdmin', 'NormalUser'])`/`sessRole(['SuperAdmin', 'NormalUser'])`
 - **API Token Auth:** `authenticate(process.env.API_TOKEN)`
 
 ## 🧾 JSON Responses (HTML vs JSON)

@@ -1,239 +1,55 @@
 # Database Schema
 
-This document describes the database schema used by **mbkauthe**. The schema is defined in `docs/db.sql` and is expected to match the database structure used by the application.
+**Executable DDL lives only in [`docs/db.sql`](db.sql).** This file explains what that script creates and how the app uses it. Run the script against Postgres when bootstrapping or aligning a database (for example `psql $DATABASE_URL -f docs/db.sql`). The app can also apply it via `lib/createTable.js`, which reads `docs/db.sql`.
 
 ---
 
 ## 1. Roles
 
-The project uses a Postgres `ENUM` type for user roles:
-
-```sql
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest', 'member');
-  END IF;
-END
-$$;
-```
+Postgres enum `role`: `SuperAdmin`, `NormalUser`, `Guest`, `member`. The script creates the type only if it does not already exist. `Users."Role"` defaults to `NormalUser`.
 
 ---
 
-## 2. Users Table
+## 2. Users
 
-Stores user accounts and profile metadata.
+Core accounts table (`"Users"`): username, activation flag, role, mail flag, `AllowedApps` and `Positions` as JSONB, timestamps, optional `last_login`, and password hash column `PasswordEnc` (no plaintext passwords).
 
-```sql
-CREATE TABLE IF NOT EXISTS "Users" (
-    id SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Active" BOOLEAN DEFAULT FALSE,
-    "Role" role DEFAULT 'NormalUser' NOT NULL,
-    "HaveMailAccount" BOOLEAN DEFAULT FALSE,
-    "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
-    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "last_login" TIMESTAMP WITH TIME ZONE,
-    "PasswordEnc" VARCHAR(255),
+Profile-style columns include `FullName`, `email`, `Image`, `Bio`, `SocialAccounts`, and password-reset fields (`resetToken`, `resetTokenExpires`, `resetAttempts`, `lastResetAttempt`).
 
-    "FullName" VARCHAR(255),
-    "email" TEXT DEFAULT 'support@mbktech.org',
-    "Image" TEXT DEFAULT 'https://portal.mbktech.org/Assets/Images/M.png',
-    "Bio" TEXT DEFAULT 'I am ....',
-    "SocialAccounts" TEXT DEFAULT '{}',
-    "Positions" jsonb DEFAULT '{"Not_Permanent":"Member Is Not Permanent"}',
-    "resetToken" TEXT,
-    "resetTokenExpires" TimeStamp,
-    "resetAttempts" INTEGER DEFAULT '0',
-    "lastResetAttempt" TimeStamp WITH TIME ZONE
-);
-```
-
-### Indexes
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" USING BTREE ("UserName");
-CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING BTREE ("Role");
-CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING BTREE ("Active");
-CREATE INDEX IF NOT EXISTS idx_users_email ON "Users" USING BTREE ("email");
-CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING BTREE (last_login);
--- JSONB GIN indexes for common filters/queries on JSON fields
-CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING GIN ("AllowedApps");
-CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING GIN ("Positions");
-```
-
-### Password Storage
-
-- Plain text passwords are not supported.
-- `PasswordEnc` stores a password hash (generated via `hashPassword(password, username)`) and is the only column used for login.
-
+Indexes cover username, role, active, email, last login, and GIN indexes on JSONB for `AllowedApps` and `Positions`. The SQL file also adds optional covering indexes used on hot auth paths.
 
 ---
 
-## 3. OAuth Link Tables (GitHub / Google)
+## 3. OAuth: `user_github` and `user_google`
 
-OAuth link tables store associations between an existing user account and an OAuth provider.
-
-### GitHub
-
-```sql
-CREATE TABLE IF NOT EXISTS user_github (
-    id SERIAL PRIMARY KEY,
-    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
-    github_id VARCHAR(255) UNIQUE,
-    github_username VARCHAR(255),
-    installation_id BIGINT,
-    installation_target_type VARCHAR(32),
-    access_token VARCHAR(255),
-    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
-    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github (github_id);
-CREATE INDEX IF NOT EXISTS idx_user_github_user_name ON user_github (user_name);
-```
-
-### Google
-
-```sql
-CREATE TABLE IF NOT EXISTS user_google (
-    id SERIAL PRIMARY KEY,
-    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
-    google_id VARCHAR(255) UNIQUE,
-    google_email VARCHAR(255),
-    access_token TEXT,
-    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
-    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_google_google_id ON user_google (google_id);
-CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google (user_name);
-```
+Link rows from `"Users"("UserName")` to GitHub or Google identities (provider ids, usernames/emails, tokens, timestamps). `user_github` may be altered by the script to add `installation_id` and `installation_target_type` if missing (idempotent migrations).
 
 ---
 
-## 4. Session Tables
+## 4. Sessions
 
-### Application Sessions (`Sessions`)
-
-Stores application sessions and supports multiple concurrent sessions per user.
-
-```sql
-CREATE TABLE IF NOT EXISTS "Sessions" (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- requires pgcrypto or uuid-ossp
-  "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  expires_at TIMESTAMP WITH TIME ZONE,
-  meta JSONB
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_username ON "Sessions" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON "Sessions" ("UserName", created_at);
-```
-
-### Express Session Store (`session`)
-
-Used by `express-session` when configured to store sessions in Postgres.
-
-```sql
-CREATE TABLE IF NOT EXISTS "session" (
-    sid VARCHAR(33) PRIMARY KEY NOT NULL,
-    sess JSONB NOT NULL,
-    expire TimeStamp WITH TIME ZONE NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_session_expire ON "session" ("expire");
-CREATE INDEX IF NOT EXISTS idx_session_user_id ON "session" ((sess->'user'->>'id'));
-```
+- **`"Sessions"`** — App session rows: UUID `id`, `UserName`, `created_at`, optional `expires_at`, optional `meta` JSONB. Requires `gen_random_uuid()` (e.g. `pgcrypto`). Extra indexes support expiry cleanup and middleware lookups.
+- **`"session"`** — `express-session` Postgres store: `sid`, `sess` JSONB, `expire`, plus `username` and `last_activity` as in `db.sql`.
 
 ---
 
-## 5. Two-Factor Authentication (2FA)
+## 5. Two-factor: `TwoFA`
 
-```sql
-CREATE TABLE IF NOT EXISTS "TwoFA" (
-    "UserName" VARCHAR(50) primary key REFERENCES "Users"("UserName"),
-    "TwoFAStatus" boolean NOT NULL,
-    "TwoFASecret" TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_twofa_username_status ON "TwoFA" ("UserName", "TwoFAStatus");
-```
+Per-user 2FA flag and secret, keyed by `UserName`.
 
 ---
 
-## 6. Trusted Devices
+## 6. Trusted devices: `TrustedDevices`
 
-Stores trusted device tokens used to remember a device and bypass 2FA challenges.
-
-```sql
-CREATE TABLE IF NOT EXISTS "TrustedDevices" (
-    "id" SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "DeviceToken" VARCHAR(64) UNIQUE NOT NULL,
-    "DeviceName" VARCHAR(255),
-    "UserAgent" TEXT,
-    "IpAddress" VARCHAR(45),
-    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
-    "LastUsed" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON "TrustedDevices"("DeviceToken");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices"("UserName");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
-```
+Remembered devices (token, optional name, user agent, IP, created/expires/last-used) to skip repeated 2FA when valid.
 
 ---
 
-## 7. API Tokens
+## 7. API tokens: `ApiTokens`
 
-Stores long-lived API tokens used for programmatic access.
+Named tokens per user: hash and prefix for lookup, optional expiry, `LastUsed`, and `Permissions` JSONB with constraints defined in SQL.
 
-```sql
-CREATE TABLE IF NOT EXISTS "ApiTokens" (
-    "id" SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "Name" VARCHAR(255) NOT NULL CHECK (LENGTH(TRIM("Name")) > 0),
-    "TokenHash" VARCHAR(128) NOT NULL UNIQUE,
-    "Prefix" VARCHAR(32) NOT NULL,
-    "Permissions" JSONB NOT NULL DEFAULT '{"scope":"read-only","allowedApps":null}'::jsonb
-        CHECK ("Permissions"->>'scope' IN ('read-only', 'write')),
-    "LastUsed" TIMESTAMP WITH TIME ZONE,
-    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE
-        CHECK ("ExpiresAt" IS NULL OR "ExpiresAt" > "CreatedAt")
-);
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash 
-ON "ApiTokens" ("TokenHash");
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_username 
-ON "ApiTokens" ("UserName");
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash_expires 
-ON "ApiTokens" ("TokenHash", "ExpiresAt") 
-WHERE "ExpiresAt" IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_username_created 
-ON "ApiTokens" ("UserName", "CreatedAt" DESC);
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_expires 
-ON "ApiTokens" ("ExpiresAt") 
-WHERE "ExpiresAt" IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_gin 
-ON "ApiTokens" USING GIN ("Permissions");
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_scope 
-ON "ApiTokens" (("Permissions"->>'scope'));
-```
-
-### Token Permissions (JSONB)
-
-The `Permissions` column stores both scope and allowed apps in a single JSONB structure:
+### `Permissions` shape (JSONB)
 
 ```json
 {
@@ -242,74 +58,34 @@ The `Permissions` column stores both scope and allowed apps in a single JSONB st
 }
 ```
 
-**Scope Values:**
-- `read-only`: Allows only safe, read-only HTTP methods (GET, HEAD, OPTIONS)
-- `write`: Allows all HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
+- **`scope`:** `read-only` limits to safe methods (GET, HEAD, OPTIONS); `write` allows mutating methods.
+- **`allowedApps`:** `null` inherits the user’s `AllowedApps` from `"Users"`; a string array restricts to those apps (subset of the user’s apps); `["*"]` means all of the user’s apps (SuperAdmin: system-wide); `[]` effectively disables app access.
 
-**AllowedApps Values:**
-- `null` (default): Token inherits allowed apps from user's `AllowedApps` in Users table
-- `["app1", "app2"]`: Token is restricted to specific apps (must be subset of user's apps)
-- `["*"]`: Token has access to all user's apps (for non-SuperAdmin) or all apps in system (SuperAdmin only)
-- `[]` (empty array): Token has no app access (effectively disabled)
-
-**Note**: SuperAdmin users bypass all app permission checks, so their tokens work on any app regardless of the `allowedApps` value.
+SuperAdmin users bypass app checks in the app layer; token `allowedApps` still matters for non–SuperAdmin users.
 
 ---
 
-## 8. Seed Data
+## 8. Seed data
 
-The schema includes a default `support` user with a **hashed** password to ensure at least one SuperAdmin account exists:
+`db.sql` inserts a default `support` user with a precomputed hash (documented there). Change that password immediately in production.
 
-```sql
-INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "FullName")
-VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false, 'Support User')
-ON CONFLICT ("UserName") DO NOTHING;
+---
 
-SELECT * FROM "Users" WHERE "UserName" = 'support';
-```
+## 9. Other tables in `db.sql`
 
+- **`todos`** — Tasks keyed by `username` → `"Users"`, with type (`personal` / `admin`), completion, assignment fields, and several btree indexes for listing/filtering.
+- **`plan_upgrade_requests`** — Role/plan upgrade workflow: requester, requested role/plan, reason, optional links, status (`pending` / `approved` / `rejected`), admin review fields, timestamps, and indexes for admin queues.
 
-- **Schema:**
-```sql
-CREATE TABLE "TrustedDevices" (
-    "id" SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "DeviceToken" VARCHAR(64) UNIQUE NOT NULL,
-    "DeviceName" VARCHAR(255),
-    "UserAgent" TEXT,
-    "IpAddress" VARCHAR(45),
-    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
-    "LastUsed" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+---
 
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON "TrustedDevices"("DeviceToken");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices"("UserName");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
-```
+## Adding users without duplicating SQL
 
-### Query to Add a User
+Use `hashPassword(password, username)` from the library so `PasswordEnc` matches login verification (username participates as salt input).
 
-To add new users to the `Users` table, use the following SQL queries:
-
-**Hash-only Password Storage:**
-```sql
-    -- Note: You'll need to hash the password using the hashPassword function
-    INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount")
-    VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false);
-```
-
-**Configuration Notes:**
-- Replace `support` and `test` with the desired usernames.
-- Use the hashPassword function to generate the hash before inserting (the username is used as the salt).
-- Adjust the `Role` values as needed (`SuperAdmin`, `NormalUser`, `Guest`, or `member`).
-- Modify the `Active` and `HaveMailAccount` values as required.
-
-**Generating Password Hashes:**
-Generate password hashes using the hashPassword function:
 ```javascript
-import { hashPassword } from 'mbkauthe';
-const encryptedPassword = hashPassword('12345678', 'support');
-console.log(encryptedPassword); // Use this value for PasswordEnc column
+import { hashPassword } from "mbkauthe";
+const encryptedPassword = hashPassword("your-password", "newusername");
+// INSERT ... "PasswordEnc" = encryptedPassword (see column list in db.sql)
 ```
+
+Replace usernames, roles (`SuperAdmin`, `NormalUser`, `Guest`, `member`), and flags (`Active`, `HaveMailAccount`) to match your needs.

@@ -1,10 +1,10 @@
 %%{init: {"themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "primaryTextColor": "#333333", "secondaryTextColor": "#333333", "background": "#ffffff"}}}%%
 flowchart TD
-  A[Client POST /api/login - payload: username password redirect] --> B[Validate input length & format]
+  A[Client POST /mbkauthe/api/login - payload: username password redirect] --> B[Validate input length & format]
   B -->|invalid| Aerr[400 - missing/invalid]
   B --> C[Query Users and TwoFA status]
   C -->|no user| U404[401 - invalid credentials]
-  C --> D[Compare password hash (PasswordEnc)]
+  C --> D[Compare password hash ]
   D -->|fail| P401[401 - incorrect password]
   D -->|ok| E[Check account Active and app authorization]
   E -->|inactive| I403[403 - account inactive]
@@ -27,7 +27,7 @@ flowchart TD
   Gtrust --> RESP
 
 %% 2FA
-  A2[Client POST /api/verify-2fa - payload: token trustDevice] --> B2[Ensure req.session.preAuthUser exists]
+  A2[Client POST /mbkauthe/api/verify-2fa - payload: token trustDevice] --> B2[Ensure req.session.preAuthUser exists]
   B2 -->|missing| Err401[401 - session not found]
   B2 --> C2[Validate token format - 6 digits]
   C2 --> D2[Fetch TwoFA secret from DB for username]
@@ -39,7 +39,7 @@ flowchart TD
 %% completeLoginProcess & validateSession kept separate for clarity
 
 %% Logout
-  L1[Client POST /api/logout] --> L2{req.session.user exists?}
+  L1[Client POST /mbkauthe/api/logout] --> L2{req.session.user exists?}
   L2 -->|no| Lerr[400 - Not logged in]
   L2 -->|yes| L3[Delete app Sessions row and session store row]
   L3 --> L4[removeAccountFromCookie]
@@ -47,7 +47,7 @@ flowchart TD
   L5 --> LResp[200 - logout successful]
 
 %% Account-sessions
-  AS1[Client GET /api/account-sessions] --> AS2[readAccountListFromCookie]
+  AS1[Client GET /mbkauthe/api/account-sessions] --> AS2[readAccountListFromCookie]
   AS2 -->|empty| ASresp[Return empty accounts and currentSessionId]
   AS2 --> AS3[For each stored account: validate each stored session via fetchActiveSession]
   AS3 -->|invalid| AS4[invalidate DB session and remove account from cookie]
@@ -55,7 +55,7 @@ flowchart TD
   AS5 --> ASresp2[Return accounts and currentSessionId]
 
 %% Switch session
-  SS1[Client POST /api/switch-session] --> SS2[Validate sessionId format]
+  SS1[Client POST /mbkauthe/api/switch-session] --> SS2[Validate sessionId format]
   SS2 -->|invalid| SSerr400[400 - Invalid session id]
   SS2 --> SS3[Check sessionId in readAccountListFromCookie]
   SS3 -->|missing| SSerr403[403 - Account not available on this device]
@@ -66,7 +66,7 @@ flowchart TD
   SS6 --> SSresp[200 - success with username fullName redirect]
 
 %% Logout-all
-  LA1[Client POST /api/logout-all] --> LA2[readAccountListFromCookie]
+  LA1[Client POST /mbkauthe/api/logout-all] --> LA2[readAccountListFromCookie]
   LA2 --> LA3[Collect sessionIds; add currentSession if present]
   LA3 --> LA4[Delete Sessions rows by ids]
   LA4 --> LA5[Delete session store row for current session]
@@ -74,9 +74,9 @@ flowchart TD
   LA6 --> LAresp[200 - All accounts logged out]
 
 %% OAuth
-  O1[Client GET /api/provider/login?redirect=...] --> O2[Server create CSRF token and save to session.oauthCsrfToken and oauthRedirect]
+  O1[Client GET /mbkauthe/api/github/login or /mbkauthe/api/google/login?redirect=...] --> O2[Server create CSRF token and save to session.oauthCsrfToken and oauthRedirect]
   O2 --> O3[passport.authenticate -> redirect to provider auth page]
-  O3 --> O4[Provider redirects back to /api/provider/login/callback with state and auth code]
+  O3 --> O4[Provider redirects back to /mbkauthe/api/github/login/callback or /mbkauthe/api/google/login/callback with state and auth code]
   O4 --> O5[validateOAuthCallback: compare state with session.oauthCsrfToken]
   O5 -->|invalid| Oerr[403 - CSRF mismatch]
   O5 -->|valid| O6[passport.authenticate -> locate linked user record]

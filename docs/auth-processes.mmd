@@ -1,0 +1,71 @@
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    participant DB as Database
+
+    rect rgb(235, 245, 255)
+        Note over C, DB: Authentication Flow
+
+        C->>S: POST /login (username, password)
+        S->>S: Validate payload format
+        S->>DB: Query User & 2FA status
+        DB-->>S: User Data (Password Hash, 2FA Enabled)
+        S->>S: Compare Hash (PasswordEnc)
+
+        alt 2FA Enabled & Device Not Trusted
+            S-->>C: 200 (twoFactorRequired: true)
+
+            C->>S: POST /verify-2fa (TOTP Token)
+            S->>DB: Fetch TOTP Secret
+            DB-->>S: Secret Key
+            S->>S: Verify TOTP
+        end
+
+        Note over S, DB: completeLoginProcess
+
+        S->>DB: Delete old sessions & Prune max sessions
+        S->>S: Regenerate Session ID
+        S->>DB: Insert new Session row
+        S->>DB: Update Users.last_login
+
+        S-->>C: 200 Success (Set Encrypted Cookies)
+    end
+
+    rect rgb(245, 245, 245)
+        Note over C, DB: Request Authentication Middleware Flow
+
+        C->>S: Request + Auth (Cookie or Bearer Token)
+
+        rect rgb(240, 240, 240)
+            Note over S, DB: Token Path (API)
+
+            alt Header: Bearer mbk_token
+                S->>S: Hash Token
+                S->>DB: Query ApiTokens JOIN Users
+
+                alt Valid & Not Expired
+                    S->>DB: Update last_used
+                    S->>S: Authorize Scope
+                else Invalid/Expired
+                    S-->>C: 401 Unauthorized
+                end
+            end
+        end
+
+        rect rgb(220, 230, 250)
+            Note over S, DB: Session Path (Web)
+
+            alt Cookie: sessionId exists
+                S->>DB: Query Sessions JOIN Users
+                DB-->>S: Session Data + User Status
+
+                alt Session Valid & User Active
+                    S->>S: Sync Cookies & Update session.user
+                    S->>S: Proceed to Route
+                else Session Expired/User Inactive
+                    S->>S: Destroy Session & Clear Cookies
+                    S-->>C: 403 Forbidden
+                end
+            end
+        end
+    end

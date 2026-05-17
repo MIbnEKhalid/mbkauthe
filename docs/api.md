@@ -57,12 +57,12 @@ Authorization: Bearer <your_api_token>
 
 **1. Backend Implementation (Express):**
 
-Even when using API tokens, the `validateSession` middleware hydrates `req.session.user` for consistency, allowing you to use the same route logic for both browser and API clients.
+Even when using API tokens, the `validateSession`/`sessVal` middleware hydrates `req.session.user` for consistency, allowing you to use the same route logic for both browser and API clients.
 
 ```javascript
-import { validateSession } from 'mbkauthe';
+import { sessVal } from 'mbkauthe';
 
-app.get('/api/protected-resource', validateSession, (req, res) => {
+app.get('/api/protected-resource', sessVal, (req, res) => {
   // Access user info populated from the token
   const user = req.session.user; // { id, username, role, ... }
   
@@ -1398,15 +1398,15 @@ Both GitHub and Google OAuth implementations include:
 
 ## Middleware Reference
 
-### `validateSession`
+### `validateSession`/`sessRole`
 
 Validates that the user has an active session.
 
 **Usage:**
 ```javascript
-import { validateSession } from 'mbkauthe';
+import { sessRole } from 'mbkauthe';
 
-app.get('/protected', validateSession, (req, res) => {
+app.get('/protected', sessRole, (req, res) => {
   // User is authenticated
   const user = req.session.user;
   // user contains: { id, username, UserName, role, Role, sessionId }
@@ -1455,7 +1455,7 @@ Use this helper when you need to refresh the values stored in `req.session.user`
 import { reloadSessionUser } from 'mbkauthe';
 
 // After updating profile data
-app.post('/mbkauthe/api/update-profile', validateSession, async (req, res) => {
+app.post('/mbkauthe/api/update-profile', sessRole, async (req, res) => {
   // ... update profiledata.FullName in DB ...
   const refreshed = await reloadSessionUser(req, res);
   if (!refreshed) {
@@ -1484,7 +1484,7 @@ req.session.user = {
 These cookies allow front-end UI to display a friendly name without making extra requests to the server.
 ---
 
-### `checkRolePermission(requiredRole, notAllowed)`
+### `checkRolePermission(requiredRole, notAllowed)`/`roleChk `
 
 Checks if the authenticated user has the required role.
 
@@ -1494,15 +1494,15 @@ Checks if the authenticated user has the required role.
 
 **Usage:**
 ```javascript
-import { validateSession, checkRolePermission } from 'mbkauthe';
+import { sessVal, roleChk } from 'mbkauthe';
 
 // Only SuperAdmin can access
-app.get('/admin', validateSession, checkRolePermission('SuperAdmin'), (req, res) => {
+app.get('/admin', sessVal, roleChk('SuperAdmin'), (req, res) => {
   res.send('Admin panel');
 });
 
 // Any authenticated user except Guest
-app.get('/content', validateSession, checkRolePermission('Any', 'Guest'), (req, res) => {
+app.get('/content', sessVal, roleChk('Any', 'Guest'), (req, res) => {
   res.send('Protected content');
 });
 ```
@@ -1516,7 +1516,7 @@ app.get('/content', validateSession, checkRolePermission('Any', 'Guest'), (req, 
 
 ---
 
-### `validateSessionAndRole(requiredRole, notAllowed)`
+### `validateSessionAndRole(requiredRole, notAllowed)`/`sessRole`
 
 Combined middleware for session validation and role checking.
 
@@ -1526,17 +1526,17 @@ Combined middleware for session validation and role checking.
 
 **Usage:**
 ```javascript
-import { validateSessionAndRole } from 'mbkauthe';
+import { sessRole, roleChk } from 'mbkauthe';
 
 // Validate session AND check role in one middleware
-app.get('/moderator', validateSessionAndRole('SuperAdmin'), (req, res) => {
+app.get('/moderator', sessRole('SuperAdmin'), (req, res) => {
   res.send('Moderator panel');
 });
 ```
 
 **Equivalent to:**
 ```javascript
-app.get('/moderator', validateSession, checkRolePermission('SuperAdmin'), (req, res) => {
+app.get('/moderator', sessVal, roleChk('SuperAdmin'), (req, res) => {
   res.send('Moderator panel');
 });
 ```
@@ -1676,7 +1676,7 @@ const app = express();
 app.use(mbkauthe);
 
 // Protected route
-app.get('/dashboard', validateSession, (req, res) => {
+app.get('/dashboard', sessVal, (req, res) => {
   res.send(`Welcome ${req.session.user.username}!`);
 });
 
@@ -1690,12 +1690,12 @@ app.listen(3000, () => {
 ### Role-Based Access Control
 
 ```javascript
-import { validateSession, checkRolePermission, validateSessionAndRole } from 'mbkauthe';
+import { sessVal, roleChk, sessRole } from 'mbkauthe';
 
 // Method 1: Separate middleware
 app.get('/admin', 
-  validateSession, 
-  checkRolePermission('SuperAdmin'), 
+  sessVal, 
+  roleChk('SuperAdmin'), 
   (req, res) => {
     res.send('Admin panel');
   }
@@ -1703,7 +1703,7 @@ app.get('/admin',
 
 // Method 2: Combined middleware
 app.get('/admin', 
-  validateSessionAndRole('SuperAdmin'), 
+  sessRole('SuperAdmin'), 
   (req, res) => {
     res.send('Admin panel');
   }
@@ -1711,8 +1711,8 @@ app.get('/admin',
 
 // Allow any role except Guest
 app.get('/content', 
-  validateSession,
-  checkRolePermission('Any', 'Guest'),
+  sessVal,
+  roleChk('Any', 'Guest'),
   (req, res) => {
     res.send('Content for registered users');
   }
@@ -1720,7 +1720,7 @@ app.get('/content',
 
 // Multiple roles (using separate middleware)
 app.get('/moderator',
-  validateSession,
+  sessVal,
   (req, res, next) => {
     if (['SuperAdmin', 'NormalUser'].includes(req.session.user.role)) {
       next();
@@ -1761,7 +1761,7 @@ app.post('/api/admin/terminate-sessions',
 
 // Protected API endpoint (requires session)
 app.get('/api/user/profile', 
-  validateSession,
+  sessVal,
   async (req, res) => {
     const { username } = req.session.user;
     
@@ -1853,7 +1853,7 @@ async function logout() {
 import { dblogin } from 'mbkauthe';
 
 // Custom query using the database pool
-app.get('/api/users', validateSession, checkRolePermission('SuperAdmin'), async (req, res) => {
+app.get('/api/users', sessVal, roleChk('SuperAdmin'), async (req, res) => {
   try {
     const result = await dblogin.query(
       'SELECT id, "UserName", "Role", "Active" FROM "Users" ORDER BY id'

@@ -455,9 +455,9 @@ function LoginForm() {
 You can create custom error responses while maintaining the standard format:
 
 ```javascript
-import { createErrorResponse } from 'mbkauthe';
+import { createErrorResponse, sessVal } from 'mbkauthe';
 
-app.post('/custom-action', validateSession, async (req, res) => {
+app.post('/custom-action', sessVal, async (req, res) => {
     try {
         // Your logic...
         

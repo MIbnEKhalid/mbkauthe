@@ -20,6 +20,7 @@
 
 ## ✨ Key Features
 
+- Compatible With Serverless Function (Vercel)
 - Secure password authentication (PBKDF2)
 - PostgreSQL session management
 - Multi-session support (configurable concurrent sessions per user)

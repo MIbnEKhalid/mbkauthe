@@ -31,7 +31,9 @@
                         title="Token must be exactly 6 digits" maxlength="6" minlength="6" autocomplete="off" autofocus
                         required />
                     <label class="form-label">2FA Token</label>
-                    <i class="fas fa-info-circle input-icon" onclick="tokeninfo()"></i>
+                    <button type="button" class="icon-button input-icon" onclick="tokeninfo()" aria-label="What is the 2FA token?">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
                 </div>
 
                 <div class="trust-device-container">
@@ -40,8 +42,10 @@
                         <span class="checkbox-custom"></span>
                         <span class="checkbox-text">Trust this device for {{DEVICE_TRUST_DURATION_DAYS}} days</span>
                     </label>
-                    <i class="fas fa-info-circle trust-device-info" onclick="trustDeviceInfo()"
-                        title="Learn more about trusted devices"></i>
+                    <button type="button" class="icon-button trust-device-info" onclick="trustDeviceInfo()"
+                        title="Learn more about trusted devices" aria-label="Learn more about trusted devices">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
                 </div>
 
                 <button type="submit" class="btn-login" id="loginButton">
@@ -50,10 +54,10 @@
 
                 <p class="terms-info">
                     By logging in, you agree to our
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Terms &
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Terms &
                         Conditions</a>
                     and
-                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Privacy Policy</a>.
+                    <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Privacy Policy</a>.
                 </p>
             </form>
         </div>

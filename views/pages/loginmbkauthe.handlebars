@@ -97,20 +97,18 @@
 
                         <div class="sidebar-actions">
                             {{#if githubLoginEnabled }}
-                            <a type="button" id="githubLoginBtn" class="btn-social btn-switch-side last-used-parent">
+                            <button type="button" id="githubLoginBtn" class="btn-social btn-switch-side last-used-parent">
                                 <i class="fab fa-github"></i>
                                 <span>Login with GitHub</span>
-                                {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
-                                    title="Last used">Last</span>{{/if}}
-                            </a>
+                                {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                            </button>
                             {{/if}}
                             {{#if googleLoginEnabled }}
-                            <a type="button" id="googleLoginBtn" class="btn-social btn-google-side last-used-parent">
+                            <button type="button" id="googleLoginBtn" class="btn-social btn-google-side last-used-parent">
                                 <i class="fab fa-google"></i>
                                 <span>Login with Google</span>
-                                {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
-                                    title="Last used">Last</span>{{/if}}
-                            </a>
+                                {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                            </button>
                             {{/if}}
                             <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
                                 <i class="fa fa-user-group"></i>
@@ -119,10 +117,10 @@
                         </div>
 
                         <div class="sidebar-links">
-                            <a href="https://portal.mbktech.org/forgot-password" class="sidebar-link">
+                            <a href="https://portal.mbktech.org/forgot-password" class="sidebar-link" rel="noopener noreferrer">
                                 <i class="fas fa-key"></i> Forgot Password?
                             </a>
-                            <a href="https://mbktech.org/Support" target="_blank" class="sidebar-link">
+                            <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer" class="sidebar-link">
                                 <i class="fas fa-life-ring"></i> Need Help?
                             </a>
                         </div>
@@ -133,6 +131,18 @@
                 <div class="login-main">
                     <h1 class="login-title">Login</h1>
 
+                    {{#if showLoggedOutMessage}}
+                    <div class="WarningboxInfo" style="margin-bottom: 20px; border-left-color: #ff3b30;">
+                        <strong>Authentication Required</strong>
+                        <div>You have been redirected here because you are not logged in or your session has expired. Please log in to continue.</div>
+                        {{#if redirectTarget}}
+                        <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.9;">
+                            <strong>Attempted URL:</strong> <code>{{redirectTarget}}</code>
+                        </div>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+
                     <form id="loginForm" method="POST" class="login-form">
                         <input type="hidden" name="_csrf" value="{{csrfToken}}">
                         <div class="form-group">
@@ -141,14 +151,18 @@
                                 title="Username must contain lowercase letters, numbers, and periods only, no spaces, no special characters."
                                 oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9.]/g, '')" />
                             <label class="form-label">Username</label>
-                            <i class="fas fa-info-circle input-icon" onclick="usernameinfo()"></i>
+                            <button type="button" class="icon-button input-icon" onclick="usernameinfo()" aria-label="What is my username?">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
                         </div>
 
                         <div class="form-group">
                             <input id="loginPassword" class="form-input" type="password" name="Password" placeholder=""
                                 required minlength="8" title="Password must be at least 8 characters long" />
                             <label class="form-label">Password</label>
-                            <i class="fas fa-eye input-icon" id="togglePassword"></i>
+                            <button type="button" class="icon-button input-icon" id="togglePassword" aria-label="Show password">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
 
                         <div class="form-row-split">
@@ -185,18 +199,18 @@
                                     <span>or</span>
                                 </div>
                                 <div class="social-icons-row">
-                                    <a type="button" class="swi s mobile-github-btn last-used-parent"
-                                        title="Login with GitHub">
+                                    <button type="button" class="swi s mobile-github-btn last-used-parent"
+                                        title="Login with GitHub" aria-label="Login with GitHub">
                                         <i class="fab fa-github"></i>
                                         {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
                                             title="Last used">Last</span>{{/if}}
-                                    </a>
-                                    <a type="button" class="swi s mobile-google-btn last-used-parent"
-                                        title="Login with Google">
+                                    </button>
+                                    <button type="button" class="swi s mobile-google-btn last-used-parent"
+                                        title="Login with Google" aria-label="Login with Google">
                                         <i class="fab fa-google"></i>
                                         {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
                                             title="Last used">Last</span>{{/if}}
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                             {{/if}}
@@ -219,10 +233,10 @@
 
                         <p class="terms-info">
                             By logging in, you agree to our
-                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Terms &
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Terms &
                                 Conditions</a>
                             and
-                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" class="terms-link">Privacy
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Privacy
                                 Policy</a>.
                         </p>
                     </form>
@@ -238,21 +252,23 @@
         // Toggle password visibility
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('loginPassword');
+        const togglePasswordIcon = togglePassword.querySelector('i');
 
         togglePassword.addEventListener('click', function () {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
-            togglePassword.classList.toggle('fa-eye');
-            togglePassword.classList.toggle('fa-eye-slash');
+            togglePassword.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
+            togglePasswordIcon.classList.toggle('fa-eye');
+            togglePasswordIcon.classList.toggle('fa-eye-slash');
         });
 
         function fpass() {
-            showMessage(`If you have forgotten your password, please contact support at <a href="https://mbktech.org/Support" target="_blank">https://mbktech.org/Support</a> to reset it.`, `Forgot Password`);
+            showMessage(`If you have forgotten your password, please contact support at <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer">https://mbktech.org/Support</a> to reset it.`, `Forgot Password`);
         }
 
         // Info dialogs
         function usernameinfo() {
-            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support">Support</a>.`, `What is my username?`);
+            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support" rel="noopener noreferrer">Support</a>.`, `What is my username?`);
         }
 
         function tokeninfo() {
@@ -284,7 +300,8 @@
             loginButtonText.textContent = 'Authenticating...';
 
             // Pass redirect query param through to server so it can be used by 2FA flow
-            const pageRedirect = new URLSearchParams(window.location.search).get('redirect');
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageRedirect = urlParams.get('redirect');
             fetch('/mbkauthe/api/login', {
                 method: 'POST',
                 credentials: 'include',

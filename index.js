@@ -98,5 +98,6 @@ export * from "./lib/routes/auth.js";
 export * from "./lib/utils/errors.js";
 export * from "./lib/config/cookies.js";
 export * from "./lib/config/security.js";
+export * from "./lib/db/AuthRepository.js";
 export { mbkautheVar } from "#config.js";
 export default app;

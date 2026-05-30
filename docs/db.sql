@@ -1,276 +1,186 @@
+-- imports
 
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-    CREATE TYPE role AS ENUM ('SuperAdmin', 'NormalUser', 'Guest', 'member');
-  END IF;
-END
-$$;
-
-CREATE TABLE IF NOT EXISTS "Users" (
-    id SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL UNIQUE,
-    "Active" BOOLEAN DEFAULT FALSE,
-    "Role" role DEFAULT 'NormalUser' NOT NULL,
-    "HaveMailAccount" BOOLEAN DEFAULT FALSE,
-    "AllowedApps" JSONB DEFAULT '["mbkauthe", "portal"]',
-    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "last_login" TIMESTAMP WITH TIME ZONE,
-    -- Store password hashes only (PBKDF2 / future algorithms). Do not store plaintext passwords.
-    "PasswordEnc" VARCHAR(255),
-    
-    "FullName" VARCHAR(255),
-    "email" TEXT DEFAULT 'support@mbktech.org',
-    "Image" TEXT DEFAULT 'https://portal.mbktech.org/Assets/Images/M.png',
-    "Bio" TEXT DEFAULT 'I am ....',
-    "SocialAccounts" TEXT DEFAULT '{}',
-    "Positions" jsonb DEFAULT '{"Not_Permanent":"Member Is Not Permanent"}',
-    "resetToken" TEXT,
-    "resetTokenExpires" TimeStamp,
-    "resetAttempts" INTEGER DEFAULT '0',
-    "lastResetAttempt" TimeStamp WITH TIME ZONE
-);
-
-
-CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" USING BTREE ("UserName");
-CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING BTREE ("Role");
-CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING BTREE ("Active");
-CREATE INDEX IF NOT EXISTS idx_users_email ON "Users" USING BTREE ("email");
-CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING BTREE (last_login);
--- JSONB GIN indexes for common filters/queries on JSON fields
-CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING GIN ("AllowedApps");
-CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING GIN ("Positions");
-
--- OAuth user tables (depend on "Users")
--- GitHub users table
-CREATE TABLE IF NOT EXISTS user_github (
-    id SERIAL PRIMARY KEY,
-    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
-    github_id VARCHAR(255) UNIQUE,
-    github_username VARCHAR(255),
-    installation_id BIGINT,
-    installation_target_type VARCHAR(32),
-    access_token TEXT,
-    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
-    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
-);
-
-ALTER TABLE user_github
-    ADD COLUMN IF NOT EXISTS installation_id BIGINT,
-    ADD COLUMN IF NOT EXISTS installation_target_type VARCHAR(32);
-
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github (github_id);
-CREATE INDEX IF NOT EXISTS idx_user_github_user_name ON user_github (user_name);
-
--- Google users table
-CREATE TABLE IF NOT EXISTS user_google (
-    id SERIAL PRIMARY KEY,
-    user_name VARCHAR(50) REFERENCES "Users"("UserName"),
-    google_id VARCHAR(255) UNIQUE,
-    google_email VARCHAR(255),
-    access_token TEXT,
-    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
-    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
-);
-
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_user_google_google_id ON user_google (google_id);
-CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google (user_name);
-
-
--- Application Sessions table (stores multiple concurrent sessions per user)
--- Note: this is separate from the express-session store table named "session"
-CREATE TABLE IF NOT EXISTS "Sessions" (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- requires pgcrypto or uuid-ossp
-  "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  expires_at TIMESTAMP WITH TIME ZONE,
-    meta JSONB
-);
-
--- Indexes optimized by username instead of numeric user id
-CREATE INDEX IF NOT EXISTS idx_sessions_username ON "Sessions" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON "Sessions" ("UserName", created_at);
-
--- Support expiry-based cleanup and validity checks
-CREATE INDEX IF NOT EXISTS idx_sessions_username_expires
-ON "Sessions" ("UserName", expires_at);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_expires
-ON "Sessions" (expires_at)
-WHERE expires_at IS NOT NULL;
-
--- Optional (Postgres 11+): covering indexes for hot-path lookups (validateSession)
--- These can enable index-only scans for the exact columns used in auth middleware.
-CREATE INDEX IF NOT EXISTS idx_sessions_id_cover
-ON "Sessions" (id)
-INCLUDE ("UserName", expires_at);
-
-CREATE INDEX IF NOT EXISTS idx_users_username_cover
-ON "Users" ("UserName")
-INCLUDE ("Active", "Role");
-
-
-CREATE TABLE IF NOT EXISTS "session" (
-    sid VARCHAR(33) PRIMARY KEY NOT NULL,
-    sess JSONB NOT NULL,
-    expire TimeStamp WITH TIME ZONE NOT NULL,
-    username TEXT,
-    last_activity TimeStamp WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_session_expire ON "session" ("expire");
-CREATE INDEX IF NOT EXISTS idx_session_user_id ON "session" ((sess->'user'->>'id'));
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 
 
-CREATE TABLE IF NOT EXISTS "TwoFA" (
-    "UserName" VARCHAR(50) primary key REFERENCES "Users"("UserName"),
-    "TwoFAStatus" boolean NOT NULL,
-    "TwoFASecret" TEXT
-);
+-- ============================================================
+-- Database: pool
+-- ============================================================
 
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" ("UserName");
-CREATE INDEX IF NOT EXISTS idx_twofa_username_status ON "TwoFA" ("UserName", "TwoFAStatus");
+-- Table: Users
+CREATE TABLE IF NOT EXISTS "Users" (id integer GENERATED ALWAYS AS IDENTITY NOT NULL, "UserName" text, "Password" text DEFAULT '12345670'::text, "Active" boolean DEFAULT false, "Role" text DEFAULT 'NormalUser'::text, "HaveMailAccount" boolean DEFAULT false, "AllowedApps" jsonb DEFAULT '["Portal", "mbkauthe"]'::jsonb, created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP, updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP, last_login timestamp with time zone, "PasswordEnc" character varying(255), "FullName" character varying(100), email text DEFAULT 'support@mbktech.org'::text, "Image" text DEFAULT 'https://portal.mbktech.org/icon.svg'::text, "Bio" text DEFAULT 'I am ....'::text, "SocialAccounts" text DEFAULT '{}'::text, "Positions" jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb, "resetToken" text, "resetTokenExpires" timestamp without time zone, "resetAttempts" integer DEFAULT 0, "lastResetAttempt" timestamp with time zone, CONSTRAINT "Users_pkey" PRIMARY KEY (id), CONSTRAINT "Users_UserName_key" UNIQUE ("UserName"));
+CREATE UNIQUE INDEX IF NOT EXISTS "Users_UserName_key" ON "Users" USING btree ("UserName");
+CREATE UNIQUE INDEX IF NOT EXISTS "Users_pkey" ON "Users" USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING btree ("Active");
+CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING gin ("AllowedApps");
+CREATE INDEX IF NOT EXISTS idx_users_email ON "Users" USING btree (email);
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING btree (last_login);
+CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING gin ("Positions");
+CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING btree ("Role");
+CREATE INDEX IF NOT EXISTS idx_users_username ON "Users" USING btree ("UserName");
+CREATE INDEX IF NOT EXISTS idx_users_username_cover ON "Users" USING btree ("UserName") INCLUDE ("Active", "Role");
+CREATE INDEX IF NOT EXISTS idx_users_username_role ON "Users" USING btree ("UserName", "Role");
+COMMENT ON TABLE "Users" IS '[core]';
+
+-- Table: ApiTokens
+CREATE TABLE IF NOT EXISTS "ApiTokens" (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, "UserName" character varying(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, "Name" character varying(255) NOT NULL, "TokenHash" character varying(128) NOT NULL, "Prefix" character varying(32) NOT NULL, "Permissions" jsonb DEFAULT '{"scope": "read-only", "allowedApps": null}'::jsonb NOT NULL, "LastUsed" timestamp with time zone, "CreatedAt" timestamp with time zone DEFAULT now(), "ExpiresAt" timestamp with time zone, CONSTRAINT "ApiTokens_pkey" PRIMARY KEY (id), CONSTRAINT "ApiTokens_TokenHash_key" UNIQUE ("TokenHash"), CONSTRAINT chk_apitokens_permissions_scope CHECK ((("Permissions" ->> 'scope'::text) = ANY (ARRAY['read-only'::text, 'write'::text]))), CONSTRAINT chk_apitokens_name_not_empty CHECK ((length(TRIM(BOTH FROM "Name")) > 0)), CONSTRAINT chk_apitokens_expires_future CHECK ((("ExpiresAt" IS NULL) OR ("ExpiresAt" > "CreatedAt"))));
+CREATE UNIQUE INDEX IF NOT EXISTS "ApiTokens_TokenHash_key" ON "ApiTokens" USING btree ("TokenHash");
+CREATE UNIQUE INDEX IF NOT EXISTS "ApiTokens_pkey" ON "ApiTokens" USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_apitokens_expires ON "ApiTokens" USING btree ("ExpiresAt") WHERE ("ExpiresAt" IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_gin ON "ApiTokens" USING gin ("Permissions");
+CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_scope ON "ApiTokens" USING btree ((("Permissions" ->> 'scope'::text)));
+CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash ON "ApiTokens" USING btree ("TokenHash");
+CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash_expires ON "ApiTokens" USING btree ("TokenHash", "ExpiresAt") WHERE ("ExpiresAt" IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_apitokens_username ON "ApiTokens" USING btree ("UserName");
+CREATE INDEX IF NOT EXISTS idx_apitokens_username_created ON "ApiTokens" USING btree ("UserName", "CreatedAt" DESC);
+COMMENT ON TABLE "ApiTokens" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: PasswordResets
+CREATE TABLE IF NOT EXISTS "PasswordResets" (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, "UserName" character varying(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, "resetToken" text, "resetTokenExpires" timestamp with time zone, "resetAttempts" integer DEFAULT 0, "lastResetAttempt" timestamp with time zone, created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "PasswordResets_pkey" PRIMARY KEY (id));
+CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResets_pkey" ON "PasswordResets" USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON "PasswordResets" USING btree ("resetToken");
+CREATE INDEX IF NOT EXISTS idx_password_resets_username ON "PasswordResets" USING btree ("UserName");
+COMMENT ON TABLE "PasswordResets" IS '[core]';
+
+-- Table: Sessions
+CREATE TABLE IF NOT EXISTS "Sessions" (id uuid DEFAULT gen_random_uuid() NOT NULL, "UserName" character varying(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, created_at timestamp with time zone DEFAULT now(), expires_at timestamp with time zone, meta jsonb, CONSTRAINT "Sessions_pkey" PRIMARY KEY (id));
+CREATE UNIQUE INDEX IF NOT EXISTS "Sessions_pkey" ON "Sessions" USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON "Sessions" USING btree (expires_at) WHERE (expires_at IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_sessions_id_cover ON "Sessions" USING btree (id) INCLUDE ("UserName", expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON "Sessions" USING btree ("UserName", created_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_username ON "Sessions" USING btree ("UserName");
+CREATE INDEX IF NOT EXISTS idx_sessions_username_expires ON "Sessions" USING btree ("UserName", expires_at);
+COMMENT ON TABLE "Sessions" IS '[core]';
+
+-- Table: TrustedDevices
+CREATE TABLE IF NOT EXISTS "TrustedDevices" (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, "UserName" character varying(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, "DeviceToken" character varying(64) NOT NULL, "DeviceName" character varying(255), "UserAgent" text, "IpAddress" character varying(45), "CreatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP, "ExpiresAt" timestamp with time zone NOT NULL, "LastUsed" timestamp with time zone DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "TrustedDevices_pkey" PRIMARY KEY (id), CONSTRAINT "TrustedDevices_DeviceToken_key" UNIQUE ("DeviceToken"));
+CREATE UNIQUE INDEX IF NOT EXISTS "TrustedDevices_DeviceToken_key" ON "TrustedDevices" USING btree ("DeviceToken");
+CREATE UNIQUE INDEX IF NOT EXISTS "TrustedDevices_pkey" ON "TrustedDevices" USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices" USING btree ("ExpiresAt");
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON "TrustedDevices" USING btree ("DeviceToken");
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices" USING btree ("UserName");
+COMMENT ON TABLE "TrustedDevices" IS '[core]';
+
+-- Table: TwoFA
+CREATE TABLE IF NOT EXISTS "TwoFA" ("UserName" text NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, "TwoFAStatus" boolean DEFAULT false NOT NULL, "TwoFASecret" text, CONSTRAINT "TwoFA_pkey" PRIMARY KEY ("UserName"));
+CREATE UNIQUE INDEX IF NOT EXISTS "TwoFA_pkey" ON "TwoFA" USING btree ("UserName");
+CREATE INDEX IF NOT EXISTS idx_twofa_username ON "TwoFA" USING btree ("UserName");
+CREATE INDEX IF NOT EXISTS idx_twofa_username_status ON "TwoFA" USING btree ("UserName", "TwoFAStatus");
+COMMENT ON TABLE "TwoFA" IS '[core]';
 
 
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: app_access_requests
+CREATE TABLE IF NOT EXISTS app_access_requests (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, username character varying(255) NOT NULL, app character varying(255) NOT NULL, message text, status character varying(20) DEFAULT 'pending'::character varying, admin_notes text, reviewed_by character varying(255), created_at timestamp without time zone DEFAULT now(), updated_at timestamp without time zone DEFAULT now(), CONSTRAINT app_access_requests_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying])::text[]))), CONSTRAINT app_access_requests_pkey PRIMARY KEY (id));
+CREATE UNIQUE INDEX IF NOT EXISTS app_access_requests_pkey ON app_access_requests USING btree (id);
+COMMENT ON TABLE "app_access_requests" IS '[core]';
 
-CREATE TABLE IF NOT EXISTS "TrustedDevices" (
-    "id" SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "DeviceToken" VARCHAR(64) UNIQUE NOT NULL,
-    "DeviceName" VARCHAR(255),
-    "UserAgent" TEXT,
-    "IpAddress" VARCHAR(45),
-    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
-    "LastUsed" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: plan_upgrade_requests
+CREATE TABLE IF NOT EXISTS plan_upgrade_requests (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, username character varying(255) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, curr_role character varying(50) NOT NULL, requested_plan character varying(50) NOT NULL, req_role character varying(50) NOT NULL, reason text NOT NULL, experience text, portfolio character varying(500), linkedin character varying(500), github character varying(500), additional_info text, status character varying(20) DEFAULT 'pending'::character varying, admin_notes text, reviewed_by character varying(255), created_at timestamp without time zone DEFAULT now(), updated_at timestamp without time zone DEFAULT now(), CONSTRAINT plan_upgrade_requests_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying])::text[]))), CONSTRAINT plan_upgrade_requests_pkey PRIMARY KEY (id));
+CREATE INDEX IF NOT EXISTS idx_created_at ON plan_upgrade_requests USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_req_role_status ON plan_upgrade_requests USING btree (req_role, status);
+CREATE INDEX IF NOT EXISTS idx_requested_plan ON plan_upgrade_requests USING btree (requested_plan);
+CREATE INDEX IF NOT EXISTS idx_status ON plan_upgrade_requests USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_status_created_at ON plan_upgrade_requests USING btree (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_username ON plan_upgrade_requests USING btree (username);
+CREATE INDEX IF NOT EXISTS idx_username_status ON plan_upgrade_requests USING btree (username, status);
+CREATE UNIQUE INDEX IF NOT EXISTS plan_upgrade_requests_pkey ON plan_upgrade_requests USING btree (id);
+COMMENT ON TABLE "plan_upgrade_requests" IS '[core]';
 
--- Add indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON "TrustedDevices"("DeviceToken");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_username ON "TrustedDevices"("UserName");
-CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON "TrustedDevices"("ExpiresAt");
+-- Table: profiledata
+CREATE TABLE IF NOT EXISTS profiledata ("UserName" character varying(100) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE, "FullName" character varying(100), email character varying(100) DEFAULT 'support@mbktech.org'::character varying, "Image" text DEFAULT 'http://portal.mbktech.org/icon.svg'::text, "Bio" text DEFAULT 'I am .....'::text, "SocialAccounts" text DEFAULT '{}'::text, "Positions" jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb, theme character varying(10) DEFAULT 'light'::character varying, "resetToken" text, "resetTokenExpires" timestamp without time zone, "resetAttempts" integer DEFAULT 0, "lastResetAttempt" timestamp with time zone, CONSTRAINT profiledata_pkey PRIMARY KEY ("UserName"));
+CREATE UNIQUE INDEX IF NOT EXISTS profiledata_pkey ON profiledata USING btree ("UserName");
+COMMENT ON TABLE "profiledata" IS '[core]';
+
+-- Table: session
+CREATE TABLE IF NOT EXISTS session (sid character varying NOT NULL, sess json NOT NULL, expire timestamp(6) without time zone NOT NULL, username text REFERENCES "Users"("UserName") ON DELETE CASCADE, last_activity timestamp with time zone DEFAULT CURRENT_TIMESTAMP, CONSTRAINT session_pkey PRIMARY KEY (sid));
+CREATE INDEX IF NOT EXISTS idx_session_expire ON session USING btree (expire);
+CREATE INDEX IF NOT EXISTS idx_session_last_activity ON session USING btree (last_activity);
+CREATE INDEX IF NOT EXISTS idx_session_user_id ON session USING btree ((((sess -> 'user'::text) ->> 'id'::text)));
+CREATE UNIQUE INDEX IF NOT EXISTS session_pkey ON session USING btree (sid);
+COMMENT ON TABLE "session" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: todos
+CREATE TABLE IF NOT EXISTS todos (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, username character varying(50) NOT NULL REFERENCES "Users"("UserName"), title character varying(255) NOT NULL, description text, completed boolean DEFAULT false, type character varying(20) DEFAULT 'personal'::character varying, assigned boolean DEFAULT false, assigneduser character varying(50) DEFAULT 'none'::character varying, created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP, updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP, CONSTRAINT todos_type_check CHECK (((type)::text = ANY ((ARRAY['personal'::character varying, 'admin'::character varying])::text[]))), CONSTRAINT todos_pkey PRIMARY KEY (id));
+CREATE INDEX IF NOT EXISTS idx_todos_assigned ON todos USING btree (assigned);
+CREATE INDEX IF NOT EXISTS idx_todos_assigneduser ON todos USING btree (assigneduser);
+CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos USING btree (completed);
+CREATE INDEX IF NOT EXISTS idx_todos_description ON todos USING btree (description);
+CREATE INDEX IF NOT EXISTS idx_todos_title ON todos USING btree (title);
+CREATE INDEX IF NOT EXISTS idx_todos_type ON todos USING btree (type);
+CREATE INDEX IF NOT EXISTS idx_todos_type_completed ON todos USING btree (type, completed);
+CREATE INDEX IF NOT EXISTS idx_todos_username ON todos USING btree (username);
+CREATE INDEX IF NOT EXISTS idx_todos_username_type ON todos USING btree (username, type);
+CREATE UNIQUE INDEX IF NOT EXISTS todos_pkey ON todos USING btree (id);
+COMMENT ON TABLE "todos" IS '[core]';
+
+
+-- Table: user_github
+CREATE TABLE IF NOT EXISTS user_github (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, user_name text REFERENCES "Users"("UserName") ON DELETE CASCADE, github_id character varying(255), github_username character varying(255), access_token text, created_at timestamp without time zone DEFAULT now(), updated_at timestamp without time zone DEFAULT now(), installation_id bigint, installation_target_type character varying(32), CONSTRAINT user_github_pkey PRIMARY KEY (id), CONSTRAINT user_github_github_id_key UNIQUE (github_id));
+CREATE INDEX IF NOT EXISTS idx_user_github_github_id ON user_github USING btree (github_id);
+CREATE INDEX IF NOT EXISTS idx_user_github_user_name ON user_github USING btree (user_name);
+CREATE UNIQUE INDEX IF NOT EXISTS user_github_github_id_key ON user_github USING btree (github_id);
+CREATE UNIQUE INDEX IF NOT EXISTS user_github_pkey ON user_github USING btree (id);
+COMMENT ON TABLE "user_github" IS '[core]';
+
+-- Table: user_google
+CREATE TABLE IF NOT EXISTS user_google (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, user_name character varying(50) REFERENCES "Users"("UserName"), google_id character varying(255), google_email character varying(255), access_token text, created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), CONSTRAINT user_google_pkey PRIMARY KEY (id), CONSTRAINT user_google_google_id_key UNIQUE (google_id));
+CREATE INDEX IF NOT EXISTS idx_user_google_google_id ON user_google USING btree (google_id);
+CREATE INDEX IF NOT EXISTS idx_user_google_user_name ON user_google USING btree (user_name);
+CREATE UNIQUE INDEX IF NOT EXISTS user_google_google_id_key ON user_google USING btree (google_id);
+CREATE UNIQUE INDEX IF NOT EXISTS user_google_pkey ON user_google USING btree (id);
+COMMENT ON TABLE "user_google" IS '[core]';
+
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: categories
+CREATE TABLE IF NOT EXISTS categories (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, name character varying(255) NOT NULL, slug character varying(255) NOT NULL, description text, image_url character varying(255), created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP, updated_at timestamp without time zone, CONSTRAINT categories_pkey PRIMARY KEY (id), CONSTRAINT categories_name_key UNIQUE (name), CONSTRAINT categories_slug_key UNIQUE (slug));
+CREATE UNIQUE INDEX IF NOT EXISTS categories_name_key ON categories USING btree (name);
+CREATE UNIQUE INDEX IF NOT EXISTS categories_pkey ON categories USING btree (id);
+CREATE UNIQUE INDEX IF NOT EXISTS categories_slug_key ON categories USING btree (slug);
+CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories USING btree (slug);
+COMMENT ON TABLE "categories" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: markdowns
+CREATE TABLE IF NOT EXISTS markdowns (category character varying(255) NOT NULL, filename character varying(255) NOT NULL, content text, CONSTRAINT markdowns_pkey PRIMARY KEY (category, filename));
+CREATE INDEX IF NOT EXISTS idx_markdowns_category ON markdowns USING btree (category);
+CREATE INDEX IF NOT EXISTS idx_markdowns_filename ON markdowns USING btree (filename);
+CREATE UNIQUE INDEX IF NOT EXISTS markdowns_pkey ON markdowns USING btree (category, filename);
+COMMENT ON TABLE "markdowns" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: notifications
+CREATE TABLE IF NOT EXISTS notifications (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, username character varying(50) NOT NULL, type character varying(20) NOT NULL, message text NOT NULL, is_read boolean DEFAULT false, created_at timestamp with time zone DEFAULT (now() AT TIME ZONE 'UTC'::text), CONSTRAINT notifications_type_check CHECK (((type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'error'::character varying, 'success'::character varying])::text[]))), CONSTRAINT notifications_pkey PRIMARY KEY (id));
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_username ON notifications USING btree (username);
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_pkey ON notifications USING btree (id);
+COMMENT ON TABLE "notifications" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: profile_content
+CREATE TABLE IF NOT EXISTS profile_content (username character varying(255) NOT NULL, filename character varying(255) NOT NULL, content text, CONSTRAINT profile_content_pkey PRIMARY KEY (username, filename));
+CREATE UNIQUE INDEX IF NOT EXISTS profile_content_pkey ON profile_content USING btree (username, filename);
+COMMENT ON TABLE "profile_content" IS '[core]';
+
+-- Not Required for mbkauthe but do need for mbkcore
+-- Table: website_access_logs
+CREATE TABLE IF NOT EXISTS website_access_logs (log_id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, ip_address character varying(50), page_url text, user_agent text, referrer text, method character varying(10), status_code integer, browser_language character varying(255), user_id integer, action_type character varying(255), access_timestamp timestamp with time zone DEFAULT CURRENT_TIMESTAMP, username character varying(255), session_id text, created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP, CONSTRAINT website_access_logs_pkey PRIMARY KEY (log_id));
+CREATE INDEX IF NOT EXISTS idx_website_access_logs_action_type ON website_access_logs USING btree (action_type);
+CREATE INDEX IF NOT EXISTS idx_website_access_logs_session_id ON website_access_logs USING btree (session_id);
+CREATE INDEX IF NOT EXISTS idx_website_access_logs_timestamp ON website_access_logs USING btree (access_timestamp);
+CREATE INDEX IF NOT EXISTS idx_website_access_logs_user_id ON website_access_logs USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS website_access_logs_pkey ON website_access_logs USING btree (log_id);
+COMMENT ON TABLE "website_access_logs" IS '[core]';
+
 
 
 -- Seed users (hash-only). Default passwords are "12345678" for the sample accounts below.
--- Hashes were generated using mbkauthe's `hashPassword(password, username)`.
+-- Hashes were generated using mbkauthe's "hashPassword(password, username)" function.
 INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "FullName")
 VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false, 'Support User')
 ON CONFLICT ("UserName") DO NOTHING;
-
-
--- API Tokens for persistent programmatic access
-CREATE TABLE IF NOT EXISTS "ApiTokens" (
-    "id" SERIAL PRIMARY KEY,
-    "UserName" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE,
-    "Name" VARCHAR(255) NOT NULL CHECK (LENGTH(TRIM("Name")) > 0),
-    "TokenHash" VARCHAR(128) NOT NULL UNIQUE,
-    "Prefix" VARCHAR(32) NOT NULL,
-    "Permissions" JSONB NOT NULL DEFAULT '{"scope":"read-only","allowedApps":null}'::jsonb
-        CHECK ("Permissions"->>'scope' IN ('read-only', 'write')),
-    "LastUsed" TIMESTAMP WITH TIME ZONE,
-    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    "ExpiresAt" TIMESTAMP WITH TIME ZONE
-        CHECK ("ExpiresAt" IS NULL OR "ExpiresAt" > "CreatedAt")
-);
-
--- Basic indexes
-CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash 
-ON "ApiTokens" ("TokenHash");
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_username 
-ON "ApiTokens" ("UserName");
-
--- Performance indexes
-CREATE INDEX IF NOT EXISTS idx_apitokens_tokenhash_expires 
-ON "ApiTokens" ("TokenHash", "ExpiresAt") 
-WHERE "ExpiresAt" IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_username_created 
-ON "ApiTokens" ("UserName", "CreatedAt" DESC);
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_expires 
-ON "ApiTokens" ("ExpiresAt") 
-WHERE "ExpiresAt" IS NOT NULL;
-
--- JSONB indexes for fast permission queries
-CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_gin 
-ON "ApiTokens" USING GIN ("Permissions");
-
-CREATE INDEX IF NOT EXISTS idx_apitokens_permissions_scope 
-ON "ApiTokens" (("Permissions"->>'scope'));
-
-
-
-
-
-
-
-
-
-
-
-
-
--- WebPortal user table
-
--- todos table for user tasks, with indexes for performance optimization
-CREATE TABLE IF NOT EXISTS "todos" (
-    "id" SERIAL PRIMARY KEY,
-    "username" VARCHAR(50) NOT NULL REFERENCES "Users"("UserName"),
-    "title" VARCHAR(255) NOT NULL,
-    "description" TEXT,
-    "completed" BOOLEAN DEFAULT false,
-    "type" VARCHAR(20) DEFAULT 'personal' CHECK ("type" IN ('personal', 'admin')),
-    "assigned" BOOLEAN DEFAULT false,
-    "assigneduser" VARCHAR(50) DEFAULT 'none',
-    "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_todos_username ON "todos" USING BTREE ("username");
-CREATE INDEX IF NOT EXISTS idx_todos_type ON "todos" USING BTREE ("type");
-CREATE INDEX IF NOT EXISTS idx_todos_completed ON "todos" USING BTREE ("completed");
-CREATE INDEX IF NOT EXISTS idx_todos_type_completed ON "todos" USING BTREE ("type", "completed");
-CREATE INDEX IF NOT EXISTS idx_todos_assigned ON "todos" USING BTREE ("assigned");
-CREATE INDEX IF NOT EXISTS idx_todos_assigneduser ON "todos" USING BTREE ("assigneduser");
-CREATE INDEX IF NOT EXISTS idx_todos_username_type ON "todos" USING BTREE ("username", "type");
-CREATE INDEX IF NOT EXISTS idx_todos_title ON "todos" USING BTREE ("title");
-CREATE INDEX IF NOT EXISTS idx_todos_description ON "todos" USING BTREE ("description");
-
-
-
-
-
--- Plan upgrade requests table
-CREATE TABLE IF NOT EXISTS plan_upgrade_requests (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) REFERENCES "Users"("UserName"),
-    curr_role VARCHAR(50) NOT NULL,
-    requested_plan VARCHAR(50) NOT NULL,
-    req_role VARCHAR(50) NOT NULL,
-    reason TEXT NOT NULL,
-    experience TEXT,
-    portfolio VARCHAR(500),
-    linkedin VARCHAR(500),
-    github VARCHAR(500),
-    additional_info TEXT,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    admin_notes TEXT,
-    reviewed_by VARCHAR(255),
-    created_at TimeStamp WITH TIME ZONE DEFAULT NOW(),
-    updated_at TimeStamp WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_username ON plan_upgrade_requests("username");
-CREATE INDEX IF NOT EXISTS idx_status ON plan_upgrade_requests(status);
-CREATE INDEX IF NOT EXISTS idx_created_at ON plan_upgrade_requests(created_at);
-CREATE INDEX IF NOT EXISTS idx_requested_plan ON plan_upgrade_requests(requested_plan);
-CREATE INDEX IF NOT EXISTS idx_status_created_at ON plan_upgrade_requests(status, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_username_status ON plan_upgrade_requests("username", status);
-CREATE INDEX IF NOT EXISTS idx_req_role_status ON plan_upgrade_requests("req_role", status);

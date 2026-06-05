@@ -10,10 +10,18 @@ const __dirname = path.dirname(__filename);
 
 process.env.test = 'dev';
 process.env.env = 'dev';
+process.env.dbLogs = 'true';
+process.env.dbLogsCallsite = 'false';
 
 const { default: router } = await import('./lib/main.js');
 const { packageJson } = await import('./lib/config/index.js');
 const { dblogin } = await import('./lib/pool.js');
+const {
+  attachDevQueryLogger,
+  resetQueryCount,
+  resetQueryLog,
+  runWithRequestContext
+} = await import('./lib/utils/dbQueryLogger.js');
 
 const viewsPath = path.join(__dirname, 'views');
 
@@ -97,7 +105,67 @@ const getCSRFTokenAndCookies = async () => {
   };
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const createFakePool = ({ name = 'fake-db-pool' } = {}) => {
+  const pool = {
+    totalCount: 1,
+    idleCount: 1,
+    waitingCount: 0,
+    options: { application_name: name },
+    async connect() {
+      pool.idleCount = 0;
+
+      return {
+        async query(configOrText, maybeValues) {
+          const text = typeof configOrText === 'string' ? configOrText : configOrText?.text || '';
+          const values = Array.isArray(maybeValues)
+            ? maybeValues
+            : Array.isArray(configOrText?.values)
+            ? configOrText.values
+            : [];
+
+          if (text.includes('slow_table')) {
+            await sleep(6);
+          }
+
+          if (text.includes('broken_table')) {
+            const error = new Error('broken query');
+            error.code = 'FAKE_ERR';
+            throw error;
+          }
+
+          return {
+            command: 'SELECT',
+            rowCount: values.length ? 1 : 0,
+            rows: values.length ? [{ value: values[0] }] : [],
+          };
+        },
+        release() {
+          pool.idleCount = 1;
+        }
+      };
+    },
+    async query(configOrText, maybeValues) {
+      const client = await this.connect();
+      try {
+        return await client.query(configOrText, maybeValues);
+      } finally {
+        client.release();
+      }
+    }
+  };
+
+  attachDevQueryLogger(pool);
+  return pool;
+};
+
 describe('mbkauthe Routes', () => {
+  beforeEach(() => {
+    resetQueryCount();
+    resetQueryLog();
+  });
+
   describe('Redirect Routes', () => {
     test('GET /login redirects to /mbkauthe/login', async () => {
       const response = await request(app)
@@ -163,6 +231,18 @@ describe('mbkauthe Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.text).toMatch(/id\s*=\s*["']error-603["']/i);
+    });
+
+    test('GET /mbkauthe/db renders DB monitor filters and summary sections', async () => {
+      const response = await request(app).get('/mbkauthe/db');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('DB Query Monitor');
+      expect(response.text).toContain('Top Repeated Query Shapes');
+      expect(response.text).toContain('Slowest Recent Queries');
+      expect(response.text).toMatch(/name="username"/i);
+      expect(response.text).toMatch(/name="url"/i);
+      expect(response.text).toMatch(/name="success"/i);
     });
   });
 
@@ -270,6 +350,130 @@ describe('mbkauthe Routes', () => {
   });
 
   describe('API Endpoints', () => {
+    test('GET /mbkauthe/db.json returns newest-first logs with summary stats and fingerprints', async () => {
+      const fakePool = createFakePool({ name: 'reporting-db' });
+
+      await runWithRequestContext(
+        {
+          method: 'POST',
+          originalUrl: '/mbkauthe/api/login',
+          url: '/mbkauthe/api/login',
+          ip: '127.0.0.1',
+          session: { user: { id: '1', username: 'support' } }
+        },
+        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [1], name: 'userLookup' })
+      );
+
+      await sleep(4);
+
+      await runWithRequestContext(
+        {
+          method: 'POST',
+          originalUrl: '/mbkauthe/api/login',
+          url: '/mbkauthe/api/login',
+          ip: '127.0.0.1',
+          session: { user: { id: '1', username: 'support' } }
+        },
+        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [2], name: 'userLookup' })
+      );
+
+      await sleep(4);
+
+      await runWithRequestContext(
+        {
+          method: 'GET',
+          originalUrl: '/mbkauthe/api/audit',
+          url: '/mbkauthe/api/audit',
+          ip: '127.0.0.1',
+          session: { user: { id: '2', username: 'auditor' } }
+        },
+        () => fakePool.query({ text: 'SELECT * FROM slow_table WHERE team_id = $1', values: [55], name: 'slowAudit' })
+      );
+
+      await sleep(4);
+
+      await runWithRequestContext(
+        {
+          method: 'GET',
+          originalUrl: '/mbkauthe/api/admin',
+          url: '/mbkauthe/api/admin',
+          ip: '127.0.0.1',
+          session: { user: { id: '3', username: 'admin' } }
+        },
+        async () => {
+          await fakePool.query({ text: 'SELECT * FROM broken_table WHERE id = $1', values: [99], name: 'brokenLookup' })
+            .catch(() => {});
+        }
+      );
+
+      const response = await request(app).get('/mbkauthe/db.json?limit=10');
+
+      expect(response.status).toBe(200);
+      expect(response.body.isDev).toBe(true);
+      expect(response.body.queryCount).toBe(4);
+      expect(response.body.summary.totalVisible).toBe(4);
+      expect(response.body.summary.errorCount).toBe(1);
+      expect(response.body.queryLog).toHaveLength(4);
+      expect(response.body.queryLog[0].query).toContain('broken_table');
+      expect(response.body.queryLog[1].query).toContain('slow_table');
+      expect(response.body.queryLog[0].fingerprint).toMatch(/^[0-9a-f]{12}$/);
+      expect(response.body.queryLog[0].poolWait).toMatchObject({
+        source: 'pool.query',
+        captured: true
+      });
+      expect(response.body.summary.slowestQueries[0].query).toContain('slow_table');
+      expect(response.body.summary.repeatedGroups[0]).toMatchObject({
+        count: 2,
+        sampleName: 'userLookup'
+      });
+      expect(response.body.summary.repeatedGroups[0].fingerprint).toMatch(/^[0-9a-f]{12}$/);
+    });
+
+    test('GET /mbkauthe/db.json filters by username, url, and success', async () => {
+      const fakePool = createFakePool({ name: 'filter-db' });
+
+      await runWithRequestContext(
+        {
+          method: 'POST',
+          originalUrl: '/mbkauthe/api/login',
+          url: '/mbkauthe/api/login',
+          ip: '127.0.0.1',
+          session: { user: { id: '1', username: 'support' } }
+        },
+        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [7], name: 'loginLookup' })
+      );
+
+      await runWithRequestContext(
+        {
+          method: 'GET',
+          originalUrl: '/mbkauthe/api/reports',
+          url: '/mbkauthe/api/reports',
+          ip: '127.0.0.1',
+          session: { user: { id: '2', username: 'auditor' } }
+        },
+        async () => {
+          await fakePool.query({ text: 'SELECT * FROM broken_table WHERE id = $1', values: [8], name: 'badLookup' })
+            .catch(() => {});
+        }
+      );
+
+      const usernameResponse = await request(app).get('/mbkauthe/db.json?username=support');
+      expect(usernameResponse.status).toBe(200);
+      expect(usernameResponse.body.queryLog).toHaveLength(1);
+      expect(usernameResponse.body.queryLog[0].request.username).toBe('support');
+
+      const urlResponse = await request(app).get('/mbkauthe/db.json?url=/mbkauthe/api/reports');
+      expect(urlResponse.status).toBe(200);
+      expect(urlResponse.body.queryLog).toHaveLength(1);
+      expect(urlResponse.body.queryLog[0].request.url).toBe('/mbkauthe/api/reports');
+
+      const successResponse = await request(app).get('/mbkauthe/db.json?success=false');
+      expect(successResponse.status).toBe(200);
+      expect(successResponse.body.queryLog).toHaveLength(1);
+      expect(successResponse.body.queryLog[0].success).toBe(false);
+      expect(successResponse.body.summary.errorCount).toBe(1);
+    });
+
     test('POST /mbkauthe/api/login handles login API', async () => {
       const response = await request(app)
         .post('/mbkauthe/api/login')

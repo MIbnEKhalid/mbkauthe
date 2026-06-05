@@ -19,7 +19,7 @@
     background: color-mix(in srgb, var(--glass-bg) 96%, transparent 4%);
     border-radius: 18px;
     padding: 2.25rem;
-    width: min(1200px, 100%);
+    width: min(1280px, 100%);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent 80%);
     position: relative;
@@ -33,6 +33,16 @@
     inset: 0;
     background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 8%, transparent 92%), transparent 55%);
     pointer-events: none;
+  }
+
+  .db-header,
+  .db-stack,
+  .db-toolbar,
+  .db-grid,
+  .db-list,
+  .log-list {
+    position: relative;
+    z-index: 1;
   }
 
   .db-header {
@@ -62,32 +72,42 @@
     gap: 0.6rem;
   }
 
-  .db-link {
+  .db-link,
+  .db-toolbar button {
     padding: 0.45rem 0.85rem;
     border-radius: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent 55%);
-    background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
+    background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
     color: var(--light);
     text-decoration: none;
+    cursor: pointer;
     transition: var(--transition);
   }
 
-  .db-link:hover {
-    background: color-mix(in srgb, var(--primary) 24%, transparent 76%);
+  .db-link:hover,
+  .db-toolbar button:hover {
+    background: color-mix(in srgb, var(--accent) 24%, transparent 76%);
   }
 
   .db-card {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
   }
 
-  .stat-box {
-    padding: 1rem 1.2rem;
+  .stat-box,
+  .summary-card,
+  .summary-list-card,
+  .db-table-wrapper {
     border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
-    background: var(--surface-muted);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--surface-1) 80%, transparent 20%);
+  }
+
+  .stat-box,
+  .summary-card {
+    padding: 1rem 1.2rem;
   }
 
   .stat-label {
@@ -103,47 +123,105 @@
     color: var(--light);
   }
 
-  .db-toolbar {
+  .db-stack {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .db-toolbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 0.75rem;
-    align-items: center;
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.2rem;
   }
 
-  .db-toolbar label {
+  .toolbar-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .toolbar-field label {
     color: var(--text-light);
+    font-size: 0.84rem;
   }
 
-  .db-toolbar input {
-    width: 5rem;
-    padding: 0.35rem 0.5rem;
-    border-radius: 0.5rem;
+  .toolbar-field input,
+  .toolbar-field select {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.6rem;
     border: 1px solid var(--muted-border);
     background: var(--input-bg);
     color: var(--text);
   }
 
-  .db-toolbar button {
-    padding: 0.45rem 0.85rem;
-    border-radius: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
-    background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
-    color: var(--light);
-    cursor: pointer;
-    transition: var(--transition);
+  .toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: end;
   }
 
-  .db-toolbar button:hover {
-    background: color-mix(in srgb, var(--accent) 24%, transparent 76%);
+  .db-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
   }
 
+  .summary-list-card,
   .db-table-wrapper {
-    border-radius: 16px;
+    padding: 0.9rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+    color: var(--light);
+    margin-bottom: 0.7rem;
+  }
+
+  .summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .summary-item {
     border: 1px solid var(--muted-border);
-    background: color-mix(in srgb, var(--surface-1) 82%, transparent 18%);
+    border-radius: 12px;
     padding: 0.75rem;
-    overflow: hidden;
+    background: var(--surface-muted);
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.45rem;
+  }
+
+  .summary-metrics {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-meta {
+    color: var(--text-light);
+    font-size: 0.8rem;
+  }
+
+  .summary-snippet,
+  .log-query-block pre,
+  .log-return-block pre,
+  .log-detail-item pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
   .log-list {
@@ -175,22 +253,19 @@
     flex-wrap: wrap;
   }
 
-  .log-index {
+  .log-index,
+  .log-pool,
+  .chip {
     font-size: 0.75rem;
     color: var(--text-light);
     border: 1px solid var(--muted-border);
     border-radius: 999px;
-    padding: 0.1rem 0.45rem;
+    padding: 0.12rem 0.48rem;
   }
 
-  .log-pool {
-    font-size: 0.75rem;
-    color: var(--text-light);
-    border: 1px solid var(--muted-border);
-    border-radius: 999px;
-    padding: 0.1rem 0.45rem;
+  .log-pool,
+  .chip {
     background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
-    margin: 0 0.25rem;
   }
 
   .log-time {
@@ -198,27 +273,35 @@
     font-size: 0.8rem;
   }
 
-  .log-query-block {
+  .log-query-block,
+  .log-return-block,
+  .log-meta-item,
+  .log-detail-item {
     border: 1px solid var(--muted-border);
     border-radius: 10px;
-    padding: 0.55rem;
-    margin-bottom: 0.65rem;
     background: color-mix(in srgb, var(--surface-1) 50%, transparent 50%);
   }
 
+  .log-query-block,
   .log-return-block {
-    border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent 65%);
-    border-radius: 10px;
     padding: 0.55rem;
     margin-bottom: 0.65rem;
+  }
+
+  .log-return-block {
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent 65%);
     background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
   }
 
-  .log-return-block summary {
+  .log-return-block summary,
+  .log-details summary {
     cursor: pointer;
+    user-select: none;
+  }
+
+  .log-return-block summary {
     color: var(--primary);
     font-size: 0.82rem;
-    user-select: none;
     font-weight: 600;
   }
 
@@ -234,27 +317,20 @@
     margin-bottom: 0.35rem;
   }
 
-  .log-query-block pre,
-  .log-return-block pre,
-  .log-detail-item pre {
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-wrap: anywhere;
+  .log-meta-grid,
+  .log-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.45rem;
   }
 
   .log-meta-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.45rem;
     margin-bottom: 0.65rem;
   }
 
-  .log-meta-item {
-    border: 1px solid var(--muted-border);
-    border-radius: 8px;
-    padding: 0.4rem 0.55rem;
-    background: color-mix(in srgb, var(--surface-1) 35%, transparent 65%);
+  .log-meta-item,
+  .log-detail-item {
+    padding: 0.45rem 0.55rem;
   }
 
   .log-meta-item span {
@@ -264,34 +340,14 @@
     margin-bottom: 0.2rem;
   }
 
-  .log-meta-item code {
-    font-size: 0.78rem;
-  }
-
   .log-details {
     border-top: 1px dashed var(--muted-border);
     padding-top: 0.55rem;
   }
 
   .log-details summary {
-    cursor: pointer;
     color: var(--accent);
     font-size: 0.82rem;
-    user-select: none;
-  }
-
-  .log-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 0.45rem;
-    margin-top: 0.55rem;
-  }
-
-  .log-detail-item {
-    border: 1px solid var(--muted-border);
-    border-radius: 8px;
-    padding: 0.45rem 0.55rem;
-    background: color-mix(in srgb, var(--surface-1) 35%, transparent 65%);
   }
 
   .copy-row-btn {
@@ -302,17 +358,6 @@
     color: var(--light);
     cursor: pointer;
     font-size: 0.75rem;
-    transition: var(--transition);
-  }
-
-  .copy-row-btn:hover {
-    background: color-mix(in srgb, var(--primary) 24%, transparent 76%);
-  }
-
-  code {
-    font-family: var(--font-mono);
-    white-space: pre-wrap;
-    word-break: break-word;
   }
 
   .badge {
@@ -337,15 +382,7 @@
     border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent 60%);
   }
 
-  .empty {
-    font-style: italic;
-    color: var(--text-light);
-    padding: 1.5rem;
-    text-align: center;
-  }
-
   .notification {
-    margin-bottom: 1rem;
     padding: 0.75rem 1rem;
     border-radius: 0.7rem;
     background: color-mix(in srgb, var(--success) 14%, transparent 86%);
@@ -359,20 +396,25 @@
     border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent 55%);
   }
 
-  @media (max-width: 900px) {
+  .empty {
+    font-style: italic;
+    color: var(--text-light);
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  @media (max-width: 980px) {
     .db-panel {
       padding: 1.5rem;
     }
 
-    .db-actions {
-      width: 100%;
-    }
-
-    .db-table-wrapper {
-      padding: 0.6rem;
-    }
-
-    .log-detail-grid {
+    .db-grid {
       grid-template-columns: 1fr;
     }
   }
@@ -388,7 +430,7 @@
       <div class="db-header">
         <div>
           <div class="db-title">DB Query Monitor</div>
-          <div class="db-subtitle">Live view of recent database queries and diagnostics</div>
+          <div class="db-subtitle">Recent queries first, plus repeat groups, slowest work, and pool wait pressure.</div>
         </div>
         <div class="db-actions">
           <a class="db-link" href="/mbkauthe/">Back</a>
@@ -401,354 +443,476 @@
           <div class="stat-value" id="query-count">-</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Limit</div>
-          <div class="stat-value" id="query-limit">{{queryLimit}}</div>
+          <div class="stat-label">Visible</div>
+          <div class="stat-value" id="visible-count">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg Total</div>
+          <div class="stat-value" id="avg-duration">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg Wait</div>
+          <div class="stat-value" id="avg-wait">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Errors</div>
+          <div class="stat-value" id="error-count">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Pool Pressure</div>
+          <div class="stat-value" id="pressured-count">-</div>
         </div>
       </div>
 
-      <div class="db-toolbar">
-        <form id="limit-form" action="/mbkauthe/db" method="get">
-          <label for="limit">Limit</label>
-          <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
-          <button type="submit" {{#unless isDev}}disabled{{/unless}}>Update</button>
+      <div class="db-stack">
+        <form id="filter-form" class="db-toolbar" action="/mbkauthe/db" method="get">
+          <div class="toolbar-field">
+            <label for="limit">Limit</label>
+            <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
+          </div>
+          <div class="toolbar-field">
+            <label for="pool-filter">Pool</label>
+            <select id="pool-filter" name="pool" {{#unless isDev}}disabled{{/unless}}>
+              <option value="">All Pools</option>
+            </select>
+          </div>
+          <div class="toolbar-field">
+            <label for="username-filter">Username</label>
+            <input id="username-filter" name="username" type="text" value="{{filters.username}}" placeholder="support" {{#unless isDev}}disabled{{/unless}} />
+          </div>
+          <div class="toolbar-field">
+            <label for="url-filter">Request URL</label>
+            <input id="url-filter" name="url" type="text" value="{{filters.url}}" placeholder="/mbkauthe/api/login" {{#unless isDev}}disabled{{/unless}} />
+          </div>
+          <div class="toolbar-field">
+            <label for="success-filter">Result</label>
+            <select id="success-filter" name="success" {{#unless isDev}}disabled{{/unless}}>
+              <option value="" {{#if filters.successAny}}selected{{/if}}>Any</option>
+              <option value="true" {{#if filters.successTrue}}selected{{/if}}>Success</option>
+              <option value="false" {{#if filters.successFalse}}selected{{/if}}>Error</option>
+            </select>
+          </div>
+          <div class="toolbar-actions">
+            <button type="submit" {{#unless isDev}}disabled{{/unless}}>Apply</button>
+            <button id="reset-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Reset Logs</button>
+            <button id="copy-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Copy Report</button>
+          </div>
         </form>
-        <label for="pool-filter">Pool</label>
-        <select id="pool-filter" {{#unless isDev}}disabled{{/unless}}>
-          <option value="">All Pools</option>
-        </select>
-        <button id="reset-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Reset</button>
-        <button id="copy-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Copy Logs</button>
-      </div>
 
-      {{#unless isDev}}
-      <div class="notification warn" id="disabled-notice">{{disabledMessage}}</div>
-      {{/unless}}
+        {{#unless isDev}}
+        <div class="notification warn" id="disabled-notice">{{disabledMessage}}</div>
+        {{/unless}}
 
-      <div class="notification" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>Query log and count have been reset.</div>
+        <div class="notification" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>Query log and count have been reset.</div>
 
-      <div id="query-log" class="db-table-wrapper">
-        <div class="empty">{{#if isDev}}Loading query log...{{else}}DB logs are disabled.{{/if}}</div>
+        <div class="db-grid">
+          <div class="summary-list-card">
+            <div class="section-title">Top Repeated Query Shapes</div>
+            <div id="repeat-groups" class="summary-list">
+              <div class="empty">Loading summary...</div>
+            </div>
+          </div>
+          <div class="summary-list-card">
+            <div class="section-title">Slowest Recent Queries</div>
+            <div id="slow-queries" class="summary-list">
+              <div class="empty">Loading summary...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="query-log" class="db-table-wrapper">
+          <div class="empty">{{#if isDev}}Loading query log...{{else}}DB logs are disabled.{{/if}}</div>
+        </div>
       </div>
     </div>
   </section>
 
   <script>
-      const limitInput = document.getElementById('limit');
-      const poolFilterEl = document.getElementById('pool-filter');
-      const queryCountEl = document.getElementById('query-count');
-      const queryLimitEl = document.getElementById('query-limit');
-      const queryLogEl = document.getElementById('query-log');
-      const resetBtn = document.getElementById('reset-btn');
-      const copyBtn = document.getElementById('copy-btn');
-      const resetNoticeEl = document.getElementById('reset-notice');
-      const isDev = {{#if isDev}}true{{else}}false{{/if}};
-      let latestQueryLog = [];
-      let currentPoolFilter = '';
+    const filterForm = document.getElementById('filter-form');
+    const limitInput = document.getElementById('limit');
+    const poolFilterEl = document.getElementById('pool-filter');
+    const usernameFilterEl = document.getElementById('username-filter');
+    const urlFilterEl = document.getElementById('url-filter');
+    const successFilterEl = document.getElementById('success-filter');
+    const queryCountEl = document.getElementById('query-count');
+    const visibleCountEl = document.getElementById('visible-count');
+    const avgDurationEl = document.getElementById('avg-duration');
+    const avgWaitEl = document.getElementById('avg-wait');
+    const errorCountEl = document.getElementById('error-count');
+    const pressuredCountEl = document.getElementById('pressured-count');
+    const slowQueriesEl = document.getElementById('slow-queries');
+    const repeatGroupsEl = document.getElementById('repeat-groups');
+    const queryLogEl = document.getElementById('query-log');
+    const resetBtn = document.getElementById('reset-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const resetNoticeEl = document.getElementById('reset-notice');
+    const isDev = {{#if isDev}}true{{else}}false{{/if}};
+    let latestPayload = null;
 
-      const showDisabledState = (message = 'DB logs are disabled.') => {
-        queryCountEl.textContent = '-';
-        latestQueryLog = [];
-        queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
-      };
+    const escapeHtml = (str) => String(str || '')
+      .replace(/[&<>"'`]/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[s]);
 
-      const escapeHtml = (str) => String(str || '')
-        .replace(/[&<>"'`]/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[s]);
+    const escapeMarkdownCell = (value) => String(value || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\|/g, '\\|')
+      .replace(/\r?\n/g, '<br>');
 
-      const escapeMarkdownCell = (value) => String(value || '')
-        .replace(/\\/g, '\\\\')
-        .replace(/\|/g, '\\|')
-        .replace(/\r?\n/g, '<br>');
+    const formatMs = (value) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)} ms` : '0.00 ms';
 
-      const getUniquePoolNames = (log) => {
-        if (!Array.isArray(log)) return [];
-        const names = new Set();
-        for (const entry of log) {
-          const rawPoolName = entry?.pool?.name || 'default';
-          if (rawPoolName && rawPoolName !== 'default') {
-            names.add(rawPoolName);
-          }
+    const formatCompactRequest = (request) => {
+      if (!request) return '';
+      const user = request.username || request.userId || 'anonymous';
+      return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${user}`;
+    };
+
+    const getFilterParams = () => {
+      const params = new URLSearchParams();
+      const limit = Number(limitInput.value) || 50;
+      params.set('limit', String(limit));
+
+      if (poolFilterEl.value) params.set('pool', poolFilterEl.value);
+      if (usernameFilterEl.value.trim()) params.set('username', usernameFilterEl.value.trim());
+      if (urlFilterEl.value.trim()) params.set('url', urlFilterEl.value.trim());
+      if (successFilterEl.value) params.set('success', successFilterEl.value);
+
+      return params;
+    };
+
+    const renderPoolFilterOptions = (queryLog, selectedPool = '') => {
+      const names = [...new Set((Array.isArray(queryLog) ? queryLog : [])
+        .map((entry) => entry?.pool?.name)
+        .filter(Boolean))]
+        .sort();
+
+      poolFilterEl.innerHTML = '<option value="">All Pools</option>' +
+        names.map((name) => `<option value="${escapeHtml(name)}"${name === selectedPool ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
+    };
+
+    const renderSummaryList = (target, items, renderItem, emptyText) => {
+      if (!Array.isArray(items) || items.length === 0) {
+        target.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
+        return;
+      }
+
+      target.innerHTML = items.map(renderItem).join('');
+    };
+
+    const renderSummary = (payload) => {
+      const summary = payload?.summary || {};
+      queryCountEl.textContent = payload?.queryCount ?? '-';
+      visibleCountEl.textContent = summary.totalVisible ?? 0;
+      avgDurationEl.textContent = formatMs(summary.avgDurationMs);
+      avgWaitEl.textContent = formatMs(summary.avgWaitMs);
+      errorCountEl.textContent = summary.errorCount ?? 0;
+      pressuredCountEl.textContent = summary.pressuredQueries ?? 0;
+
+      renderSummaryList(
+        repeatGroupsEl,
+        summary.repeatedGroups,
+        (group) => `
+          <article class="summary-item">
+            <div class="summary-row">
+              <div class="summary-metrics">
+                ${group.fingerprint ? `<span class="chip">fp:${escapeHtml(group.fingerprint)}</span>` : ''}
+                <span class="chip">${escapeHtml(String(group.count))}x</span>
+                <span class="chip">${escapeHtml(formatMs(group.avgDurationMs))}</span>
+              </div>
+              <div class="summary-meta">${escapeHtml(group.lastSeen || '')}</div>
+            </div>
+            <div class="summary-meta">${escapeHtml(group.sampleName || 'unnamed')} ${group.requestUrl ? `| ${escapeHtml(group.requestUrl)}` : ''}</div>
+            <pre class="summary-snippet"><code>${escapeHtml(group.normalizedQuery || group.sampleQuery || '')}</code></pre>
+          </article>
+        `,
+        'No repeated query shapes yet.'
+      );
+
+      renderSummaryList(
+        slowQueriesEl,
+        summary.slowestQueries,
+        (entry) => `
+          <article class="summary-item">
+            <div class="summary-row">
+              <div class="summary-metrics">
+                <span class="chip">${escapeHtml(formatMs(entry.durationMs))}</span>
+                <span class="chip">exec ${escapeHtml(formatMs(entry.executionDurationMs))}</span>
+                <span class="chip">wait ${escapeHtml(formatMs(entry.waitMs))}</span>
+              </div>
+              <div class="summary-meta">${escapeHtml(entry.time || '')}</div>
+            </div>
+            <div class="summary-meta">${escapeHtml(formatCompactRequest(entry.request) || 'No request context')}</div>
+            <pre class="summary-snippet"><code>${escapeHtml(entry.query || '')}</code></pre>
+          </article>
+        `,
+        'No queries recorded yet.'
+      );
+    };
+
+    const formatParamValues = (values, pretty = false) => {
+      if (!Array.isArray(values) || values.length === 0) return '';
+
+      return values
+        .map((v, i) => {
+          const printable = typeof v === 'string' ? v : JSON.stringify(v);
+          return pretty ? `$${i + 1}: ${printable}` : `$${i + 1}: ${printable}`;
+        })
+        .join(pretty ? '\n' : ' | ');
+    };
+
+    const toMarkdownReport = (payload) => {
+      const queryLog = payload?.queryLog || [];
+      const summary = payload?.summary || {};
+      const filters = payload?.filters || {};
+
+      const lines = [
+        '# DB Query Monitor',
+        '',
+        `- Exported: ${new Date().toISOString()}`,
+        `- Query Count: ${payload?.queryCount ?? 0}`,
+        `- Visible: ${summary.totalVisible ?? 0}`,
+        `- Limit: ${payload?.queryLimit ?? 0}`,
+        `- Avg Total: ${formatMs(summary.avgDurationMs)}`,
+        `- Avg Wait: ${formatMs(summary.avgWaitMs)}`,
+        `- Errors: ${summary.errorCount ?? 0}`,
+        `- Filters: pool=${filters.pool || '*'}, username=${filters.username || '*'}, url=${filters.url || '*'}, success=${filters.success === null || filters.success === undefined ? '*' : filters.success}`,
+        '',
+      ];
+
+      if (Array.isArray(summary.repeatedGroups) && summary.repeatedGroups.length > 0) {
+        lines.push('## Top Repeated Query Shapes', '');
+        for (const group of summary.repeatedGroups) {
+          lines.push(`- ${group.count}x | ${group.fingerprint || 'no-fp'} | avg ${formatMs(group.avgDurationMs)} | ${group.normalizedQuery || group.sampleQuery || ''}`);
         }
-        return [...names].sort();
-      };
+        lines.push('');
+      }
 
-      const renderPoolFilterOptions = (names) => {
-        if (!poolFilterEl) return;
-        const selected = poolFilterEl.value || '';
-        poolFilterEl.innerHTML = '<option value="">All Pools</option>' +
-          names.map((name) => `\n            <option value="${escapeHtml(name)}"${name === selected ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
-      };
+      if (!queryLog.length) {
+        lines.push('_No queries recorded yet._');
+        return lines.join('\n');
+      }
 
-      const getFilteredLog = (log) => {
-        if (!Array.isArray(log) || !currentPoolFilter) return log;
-        return log.filter((entry) => (entry?.pool?.name || 'default') === currentPoolFilter);
-      };
+      lines.push('| # | Time | Duration | Wait | Status | Fingerprint | Request | Query |');
+      lines.push('|---:|---|---|---|---|---|---|---|');
 
-      poolFilterEl?.addEventListener('change', () => {
-        currentPoolFilter = poolFilterEl.value || '';
-        buildTable(getFilteredLog(latestQueryLog));
+      queryLog.forEach((entry, idx) => {
+        const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
+        lines.push(
+          `| ${idx + 1} | ${escapeMarkdownCell(entry.time)} | ${escapeMarkdownCell(formatMs(entry.durationMs))} | ${escapeMarkdownCell(formatMs(entry.poolWait?.waitMs || 0))} | ${escapeMarkdownCell(statusText)} | ${escapeMarkdownCell(entry.fingerprint || '')} | ${escapeMarkdownCell(formatCompactRequest(entry.request))} | ${escapeMarkdownCell(entry.query || '')} |`
+        );
       });
 
-      const formatParamValues = (values, pretty = false) => {
-        if (!Array.isArray(values) || values.length === 0) return '';
+      return lines.join('\n');
+    };
 
-        if (pretty) {
-          return values
-            .map((v, i) => {
-              const printable = typeof v === 'string' ? v : JSON.stringify(v);
-              return `$${i + 1}: ${printable}`;
-            })
-            .join('\n');
-        }
+    const buildTable = (queryLog) => {
+      if (!Array.isArray(queryLog) || queryLog.length === 0) {
+        queryLogEl.innerHTML = '<div class="empty">No queries recorded yet.</div>';
+        return;
+      }
 
-        return values
-          .map((v, i) => {
-            const printable = typeof v === 'string' ? v : JSON.stringify(v);
-            return `$${i + 1}: ${printable}`;
-          })
-          .join(' | ');
-      };
+      const cards = queryLog.map((entry, idx) => {
+        const values = formatParamValues(entry.values, true);
+        const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue, null, 2) : '';
+        const returnValueSummary = entry.returnValue
+          ? [
+            entry.returnValue.command ? `command: ${entry.returnValue.command}` : null,
+            typeof entry.returnValue.rowCount === 'number' ? `rowCount: ${entry.returnValue.rowCount}` : null,
+            typeof entry.returnValue.returnedRows === 'number' ? `rows: ${entry.returnValue.returnedRows}` : null
+          ].filter(Boolean).join(' | ')
+          : '';
+        const callsite = entry.callsite || null;
+        const callsiteText = callsite
+          ? `${callsite.function || '(anonymous)'}\n${callsite.file}:${callsite.line}:${callsite.column}`
+          : '';
+        const statusBadge = entry.success === true
+          ? '<span class="badge ok">OK</span>'
+          : entry.success === false
+          ? '<span class="badge err">ERR</span>'
+          : '<span class="badge">N/A</span>';
+        const errorText = entry.error
+          ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
+          : '';
+        const requestText = entry.request
+          ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
+            `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
+            `\nip: ${entry.request.ip || ''}`
+          : '';
+        const poolText = entry.pool
+          ? `name:${entry.pool.name || ''} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
+          : '';
+        const waitText = entry.poolWait
+          ? `source:${entry.poolWait.source || 'n/a'}\nwait:${formatMs(entry.poolWait.waitMs || 0)}\nwaitingBefore:${entry.poolWait.waitingBefore || 0}\nwaitingAfter:${entry.poolWait.waitingAfter || 0}\npressure:${entry.poolWait.hadPoolPressure ? 'yes' : 'no'}`
+          : '';
+        const detailBlocks = [
+          entry.fingerprint ? `<div class="log-detail-item"><div class="log-label">Fingerprint</div><pre><code>${escapeHtml(entry.fingerprint)}</code></pre></div>` : '',
+          entry.normalizedQuery ? `<div class="log-detail-item"><div class="log-label">Normalized Query</div><pre><code>${escapeHtml(entry.normalizedQuery)}</code></pre></div>` : '',
+          values ? `<div class="log-detail-item"><div class="log-label">Values</div><pre><code>${escapeHtml(values)}</code></pre></div>` : '',
+          errorText ? `<div class="log-detail-item"><div class="log-label">Error</div><pre><code>${escapeHtml(errorText)}</code></pre></div>` : '',
+          requestText ? `<div class="log-detail-item"><div class="log-label">Request</div><pre><code>${escapeHtml(requestText)}</code></pre></div>` : '',
+          poolText ? `<div class="log-detail-item"><div class="log-label">Pool</div><pre><code>${escapeHtml(poolText)}</code></pre></div>` : '',
+          waitText ? `<div class="log-detail-item"><div class="log-label">Pool Wait</div><pre><code>${escapeHtml(waitText)}</code></pre></div>` : '',
+          callsiteText ? `<div class="log-detail-item"><div class="log-label">Callsite</div><pre><code>${escapeHtml(callsiteText)}</code></pre></div>` : ''
+        ].filter(Boolean).join('');
 
-      const toMarkdownReport = (queryLog, limit) => {
-        if (!Array.isArray(queryLog) || queryLog.length === 0) {
-          return '# DB Query Monitor\n\n_No queries recorded yet._';
-        }
-
-        const now = new Date().toISOString();
-        const header = [
-          '# DB Query Monitor',
-          '',
-          `- Exported: ${now}`,
-          `- Query Count: ${queryLog.length}`,
-          `- Limit: ${limit}`,
-          '',
-          '| # | Time | Name | Duration | Status | Query | Values | Return Value | Error | Request | Pool | Callsite |',
-          '|---:|---|---|---|---|---|---|---|---|---|---|---|'
-        ];
-
-        const rows = queryLog.map((entry, idx) => {
-          const durationText = typeof entry.durationMs === 'number'
-            ? `${entry.durationMs.toFixed(2)} ms`
-            : '';
-          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
-          const values = formatParamValues(entry.values, false);
-          const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue) : '';
-          const errorText = entry.error
-            ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
-            : '';
-          const requestText = entry.request
-            ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
-              `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
-              `\nip: ${entry.request.ip || ''}`
-            : '';
-          const rawPoolName = entry.pool?.name || 'default';
-          const poolName = rawPoolName === 'default' ? '' : rawPoolName;
-          const poolText = entry.pool && poolName
-            ? `name:${poolName} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
-            : '';
-          const callsiteText = entry.callsite
-            ? `${entry.callsite.function || '(anonymous)'}\n${entry.callsite.file}:${entry.callsite.line}:${entry.callsite.column}`
-            : '';
-
-          return `| ${idx + 1} | ${escapeMarkdownCell(entry.time)} | ${escapeMarkdownCell(entry.name || '')} | ${escapeMarkdownCell(durationText)} | ${escapeMarkdownCell(statusText)} | ${escapeMarkdownCell(entry.query || '')} | ${escapeMarkdownCell(values)} | ${escapeMarkdownCell(returnValueText)} | ${escapeMarkdownCell(errorText)} | ${escapeMarkdownCell(requestText)} | ${escapeMarkdownCell(poolText)} | ${escapeMarkdownCell(callsiteText)} |`;
-        });
-
-        return [...header, ...rows].join('\n');
-      };
-
-      const buildTable = (queryLog) => {
-        if (!Array.isArray(queryLog) || queryLog.length === 0) {
-          queryLogEl.innerHTML = '<div class="empty">No queries recorded yet.</div>';
-          return;
-        }
-
-        const cards = queryLog.map((entry, idx) => {
-          const values = formatParamValues(entry.values, true);
-          const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue, null, 2) : '';
-          const returnValueSummary = entry.returnValue
-            ? [
-              entry.returnValue.command ? `command: ${entry.returnValue.command}` : null,
-              typeof entry.returnValue.rowCount === 'number' ? `rowCount: ${entry.returnValue.rowCount}` : null,
-              typeof entry.returnValue.returnedRows === 'number' ? `rows: ${entry.returnValue.returnedRows}` : null
-            ].filter(Boolean).join(' | ')
-            : '';
-          const callsite = entry.callsite || null;
-          const callsiteText = callsite
-            ? `${callsite.function || '(anonymous)'}\n${callsite.file}:${callsite.line}:${callsite.column}`
-            : '';
-          const durationText = typeof entry.durationMs === 'number'
-            ? `${entry.durationMs.toFixed(2)} ms`
-            : 'n/a';
-          const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : 'n/a';
-          const statusBadge = statusText === 'OK'
-            ? '<span class="badge ok">OK</span>'
-            : statusText === 'ERR'
-            ? '<span class="badge err">ERR</span>'
-            : '<span class="badge">N/A</span>';
-          const errorText = entry.error
-            ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
-            : '';
-          const requestText = entry.request
-            ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
-              `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
-              `\nip: ${entry.request.ip || ''}`
-            : '';
-          const rawPoolName = entry.pool?.name || 'default';
-          const poolName = rawPoolName === 'default' ? '' : rawPoolName;
-          const poolText = entry.pool && poolName
-            ? `name:${poolName} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
-            : '';
-
-          const detailBlocks = [
-            values ? `<div class="log-detail-item"><div class="log-label">Values</div><pre><code>${escapeHtml(values)}</code></pre></div>` : '',
-            errorText ? `<div class="log-detail-item"><div class="log-label">Error</div><pre><code>${escapeHtml(errorText)}</code></pre></div>` : '',
-            requestText ? `<div class="log-detail-item"><div class="log-label">Request</div><pre><code>${escapeHtml(requestText)}</code></pre></div>` : '',
-            poolText ? `<div class="log-detail-item"><div class="log-label">Pool</div><pre><code>${escapeHtml(poolText)}</code></pre></div>` : '',
-            callsiteText ? `<div class="log-detail-item"><div class="log-label">Callsite</div><pre><code>${escapeHtml(callsiteText)}</code></pre></div>` : ''
-          ].filter(Boolean).join('');
-
-          return `
-            <article class="log-card">
-              <div class="log-head">
-                <div class="log-mainline">
-                  <span class="log-index">#${idx + 1}</span>
-                  ${statusBadge}
-                  ${poolName ? `<span class="log-pool">${escapeHtml(poolName)}</span>` : ''}
-                  <span class="log-time">${escapeHtml(entry.time)}</span>
-                </div>
-                <button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button>
+        return `
+          <article class="log-card">
+            <div class="log-head">
+              <div class="log-mainline">
+                <span class="log-index">#${idx + 1}</span>
+                ${statusBadge}
+                ${entry.pool?.name ? `<span class="log-pool">${escapeHtml(entry.pool.name)}</span>` : ''}
+                ${entry.fingerprint ? `<span class="chip">fp:${escapeHtml(entry.fingerprint)}</span>` : ''}
+                <span class="log-time">${escapeHtml(entry.time || '')}</span>
               </div>
+              <button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button>
+            </div>
 
-              <div class="log-query-block">
-                <div class="log-label">Query</div>
-                <pre><code>${escapeHtml(entry.query || '')}</code></pre>
-              </div>
+            <div class="log-query-block">
+              <div class="log-label">Query</div>
+              <pre><code>${escapeHtml(entry.query || '')}</code></pre>
+            </div>
 
-              <div class="log-meta-grid">
-                <div class="log-meta-item"><span>Name</span><code>${escapeHtml(entry.name || 'n/a')}</code></div>
-                <div class="log-meta-item"><span>Duration</span><code>${escapeHtml(durationText)}</code></div>
-              </div>
+            <div class="log-meta-grid">
+              <div class="log-meta-item"><span>Name</span><code>${escapeHtml(entry.name || 'n/a')}</code></div>
+              <div class="log-meta-item"><span>Total Duration</span><code>${escapeHtml(formatMs(entry.durationMs))}</code></div>
+              <div class="log-meta-item"><span>Execution</span><code>${escapeHtml(formatMs(entry.executionDurationMs))}</code></div>
+              <div class="log-meta-item"><span>Pool Wait</span><code>${escapeHtml(formatMs(entry.poolWait?.waitMs || 0))}</code></div>
+            </div>
 
-              ${returnValueText ? `<details class="log-return-block"><summary>Return Value${returnValueSummary ? ` (${escapeHtml(returnValueSummary)})` : ''}</summary><pre><code>${escapeHtml(returnValueText)}</code></pre></details>` : ''}
+            ${returnValueText ? `<details class="log-return-block"><summary>Return Value${returnValueSummary ? ` (${escapeHtml(returnValueSummary)})` : ''}</summary><pre><code>${escapeHtml(returnValueText)}</code></pre></details>` : ''}
+            ${detailBlocks ? `<details class="log-details"><summary>More details</summary><div class="log-detail-grid">${detailBlocks}</div></details>` : ''}
+          </article>
+        `;
+      }).join('');
 
-              ${detailBlocks ? `<details class="log-details"><summary>More details</summary><div class="log-detail-grid">${detailBlocks}</div></details>` : ''}
-            </article>
-          `;
-        }).join('');
+      queryLogEl.innerHTML = `<div class="log-list">${cards}</div>`;
+    };
 
-        queryLogEl.innerHTML = `<div class="log-list">${cards}</div>`;
-      };
+    const showDisabledState = (message = 'DB logs are disabled.') => {
+      queryCountEl.textContent = '-';
+      visibleCountEl.textContent = '-';
+      avgDurationEl.textContent = '-';
+      avgWaitEl.textContent = '-';
+      errorCountEl.textContent = '-';
+      pressuredCountEl.textContent = '-';
+      latestPayload = null;
+      repeatGroupsEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+      slowQueriesEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+      queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+    };
 
-      const loadLog = async () => {
-        if (!isDev) {
-          showDisabledState();
-          return;
-        }
+    const loadLog = async () => {
+      if (!isDev) {
+        showDisabledState();
+        return;
+      }
 
-        const limit = Number(limitInput.value) || 50;
-        queryLimitEl.textContent = String(limit);
+      const params = getFilterParams();
+      const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
 
-        const params = new URLSearchParams({ limit: String(limit) });
+      if (!response.ok) {
+        let message = 'Failed to load query log.';
+        try {
+          const errorData = await response.json();
+          if (response.status === 403 || errorData?.isDev === false) {
+            showDisabledState(errorData?.message || 'DB logs are disabled.');
+            return;
+          }
+          if (errorData?.message) message = errorData.message;
+        } catch {}
 
-        const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
-        if (!response.ok) {
-          let message = 'Failed to load query log.';
-          try {
-            const errorData = await response.json();
+        queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+        return;
+      }
+
+      const data = await response.json();
+      if (data?.isDev === false) {
+        showDisabledState(data.message || 'DB logs are disabled.');
+        return;
+      }
+
+      latestPayload = data;
+      renderPoolFilterOptions(data.queryLog, data.filters?.pool || '');
+      renderSummary(data);
+      buildTable(data.queryLog);
+      window.history.replaceState({}, '', `/mbkauthe/db?${params.toString()}`);
+    };
+
+    filterForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      loadLog().catch(() => {
+        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+      });
+    });
+
+    resetBtn?.addEventListener('click', () => {
+      if (!isDev) {
+        showDisabledState();
+        return;
+      }
+
+      fetch('/mbkauthe/db/reset', { method: 'POST' })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
             if (response.status === 403 || errorData?.isDev === false) {
               showDisabledState(errorData?.message || 'DB logs are disabled.');
               return;
             }
-            if (errorData?.message) message = errorData.message;
-          } catch {
-            // Ignore parse errors and keep fallback message.
+            throw new Error('reset failed');
           }
 
-          queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
-          return;
-        }
+          const result = await response.json().catch(() => ({}));
+          if (resetNoticeEl) {
+            resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
+            resetNoticeEl.hidden = false;
+          }
 
-        const data = await response.json();
-        if (data?.isDev === false) {
-          showDisabledState(data.message || 'DB logs are disabled.');
-          return;
-        }
-
-        queryCountEl.textContent = data.queryCount ?? '-';
-        latestQueryLog = Array.isArray(data.queryLog) ? data.queryLog : [];
-        renderPoolFilterOptions(getUniquePoolNames(latestQueryLog));
-        buildTable(getFilteredLog(latestQueryLog));
-      };
-
-      resetBtn.addEventListener('click', () => {
-        if (!isDev) {
-          showDisabledState();
-          return;
-        }
-
-        fetch('/mbkauthe/db/reset', { method: 'POST' })
-          .then(async (response) => {
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              if (response.status === 403 || errorData?.isDev === false) {
-                showDisabledState(errorData?.message || 'DB logs are disabled.');
-                return;
-              }
-              throw new Error('reset failed');
-            }
-            const result = await response.json().catch(() => ({}));
-
-            if (resetNoticeEl) {
-              resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
-              resetNoticeEl.hidden = false;
-            }
-
-            return loadLog();
-          })
-          .catch(() => {
-            queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
-          });
-      });
-
-      copyBtn.addEventListener('click', () => {
-        if (!isDev) {
-          showDisabledState();
-          return;
-        }
-
-        const limit = Number(limitInput.value) || 50;
-        const markdown = toMarkdownReport(latestQueryLog, limit);
-
-        navigator.clipboard.writeText(markdown).then(() => {
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => (copyBtn.textContent = 'Copy Logs'), 1200);
+          return loadLog();
+        })
+        .catch(() => {
+          queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
         });
-      });
+    });
 
-      queryLogEl.addEventListener('click', (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) return;
-        if (!target.classList.contains('copy-row-btn')) return;
-
-        const payload = target.getAttribute('data-copy');
-        if (!payload) return;
-
-        navigator.clipboard.writeText(payload).then(() => {
-          const original = target.textContent;
-          target.textContent = 'Copied';
-          setTimeout(() => {
-            target.textContent = original || 'Copy';
-          }, 1200);
-        });
-      });
-
+    copyBtn?.addEventListener('click', () => {
       if (!isDev) {
         showDisabledState();
-      } else {
-        loadLog().catch(() => {
-          queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
-        });
+        return;
       }
-    </script>
+
+      const markdown = toMarkdownReport(latestPayload);
+      navigator.clipboard.writeText(markdown).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy Report';
+        }, 1200);
+      });
+    });
+
+    queryLogEl.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('copy-row-btn')) return;
+
+      const payload = target.getAttribute('data-copy');
+      if (!payload) return;
+
+      navigator.clipboard.writeText(payload).then(() => {
+        const original = target.textContent;
+        target.textContent = 'Copied';
+        setTimeout(() => {
+          target.textContent = original || 'Copy';
+        }, 1200);
+      });
+    });
+
+    if (!isDev) {
+      showDisabledState();
+    } else {
+      loadLog().catch(() => {
+        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
+      });
+    }
+  </script>
   {{> versionInfo}}
 </body>
 </html>

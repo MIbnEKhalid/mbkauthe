@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { renderError, renderPage } from "#response.js";
 import { packageJson } from "#config.js";
+import { createLogger } from "./lib/utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +13,7 @@ const isDevMode = process.env.test === "dev";
 const DEV_PORT = 5555;
 const viewsPath = path.join(__dirname, "views");
 const packageVersion = packageJson.version;
+const logServer = createLogger("server");
 
 const app = express();
 
@@ -58,7 +60,7 @@ const renderDevError = (res, req, code, error, message, page, details) => render
 });
 
 if (isDevMode) {
-    console.log(`[mbkauthe] Dev mode is enabled. Starting server in dev mode.`);
+    logServer(`Dev mode is enabled. Starting server in dev mode.`);
 
     app.get(["/dashboard", "/home", "/"], (req, res) => res.redirect("/mbkauthe/"));
 
@@ -75,12 +77,12 @@ if (isDevMode) {
     ));
 
     app.use((req, res) => {
-        console.log(`[mbkauthe] Path not found: ${req.method} ${req.url}`);
+        logServer(`Path not found: ${req.method} ${req.url}`);
         renderDevError(res, req, 404, "Not Found", "The requested page was not found.", "/mbkauthe/login");
     });
 
     app.listen(DEV_PORT, () => {
-        console.log(`[mbkauthe] Server running on http://localhost:${DEV_PORT}`);
+        logServer(`Server running on http://localhost:${DEV_PORT}`);
     });
 }
 

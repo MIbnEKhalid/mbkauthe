@@ -421,6 +421,10 @@ describe('mbkauthe Routes', () => {
         source: 'pool.query',
         captured: true
       });
+      expect(response.body.queryLog[0].trigger).toMatchObject({
+        type: 'request',
+        source: 'route'
+      });
       expect(response.body.summary.slowestQueries[0].query).toContain('slow_table');
       expect(response.body.summary.repeatedGroups[0]).toMatchObject({
         count: 2,
@@ -466,12 +470,42 @@ describe('mbkauthe Routes', () => {
       expect(urlResponse.status).toBe(200);
       expect(urlResponse.body.queryLog).toHaveLength(1);
       expect(urlResponse.body.queryLog[0].request.url).toBe('/mbkauthe/api/reports');
+      expect(urlResponse.body.queryLog[0].trigger.label).toContain('/mbkauthe/api/reports');
 
       const successResponse = await request(app).get('/mbkauthe/db.json?success=false');
       expect(successResponse.status).toBe(200);
       expect(successResponse.body.queryLog).toHaveLength(1);
       expect(successResponse.body.queryLog[0].success).toBe(false);
       expect(successResponse.body.summary.errorCount).toBe(1);
+    });
+
+    test('session-store-shaped queries are labeled as session-store triggers during a request', async () => {
+      const fakePool = createFakePool({ name: 'session-db' });
+
+      await runWithRequestContext(
+        {
+          method: 'GET',
+          originalUrl: '/mbkauthe/db.json?limit=50',
+          url: '/mbkauthe/db.json?limit=50',
+          ip: '127.0.0.1',
+          session: {}
+        },
+        () => fakePool.query({
+          text: 'SELECT sess FROM "session" WHERE sid = $1 AND expire >= to_timestamp($2)',
+          values: ['abc', 123],
+          name: 'sessionLookup'
+        })
+      );
+
+      const response = await request(app).get('/mbkauthe/db.json?limit=10');
+
+      expect(response.status).toBe(200);
+      expect(response.body.queryLog[0].trigger).toMatchObject({
+        type: 'request',
+        source: 'session-store',
+        route: 'GET /mbkauthe/db.json?limit=50'
+      });
+      expect(response.body.queryLog[0].trigger.label).toContain('Session store during GET /mbkauthe/db.json?limit=50');
     });
 
     test('POST /mbkauthe/api/login handles login API', async () => {

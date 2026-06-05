@@ -214,6 +214,21 @@
     font-size: 0.8rem;
   }
 
+  .route-pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent 55%);
+    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
+    color: var(--light);
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .summary-snippet,
   .log-query-block pre,
   .log-return-block pre,
@@ -565,6 +580,21 @@
       return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${user}`;
     };
 
+    const formatCodeTrigger = (callsite) => {
+      if (!callsite) return 'Code trigger (callsite unavailable)';
+      const fnName = callsite.function || '(anonymous)';
+      const location = callsite.file
+        ? `${callsite.file}:${callsite.line}:${callsite.column}`
+        : 'callsite unavailable';
+      return `Code trigger: ${fnName} @ ${location}`;
+    };
+
+    const formatRouteTrigger = (request, callsite) => {
+      if (!request) return formatCodeTrigger(callsite);
+      const routeText = `${request.method || ''} ${request.url || ''}`.trim();
+      return routeText || formatCodeTrigger(callsite);
+    };
+
     const getFilterParams = () => {
       const params = new URLSearchParams();
       const limit = Number(limitInput.value) || 50;
@@ -619,7 +649,8 @@
               </div>
               <div class="summary-meta">${escapeHtml(group.lastSeen || '')}</div>
             </div>
-            <div class="summary-meta">${escapeHtml(group.sampleName || 'unnamed')} ${group.requestUrl ? `| ${escapeHtml(group.requestUrl)}` : ''}</div>
+            <div class="summary-meta">${escapeHtml(group.sampleName || 'unnamed')}</div>
+            <div class="summary-meta"><span class="route-pill">${escapeHtml(group.requestUrl || 'Code trigger')}</span></div>
             <pre class="summary-snippet"><code>${escapeHtml(group.normalizedQuery || group.sampleQuery || '')}</code></pre>
           </article>
         `,
@@ -640,6 +671,7 @@
               <div class="summary-meta">${escapeHtml(entry.time || '')}</div>
             </div>
             <div class="summary-meta">${escapeHtml(formatCompactRequest(entry.request) || 'No request context')}</div>
+            <div class="summary-meta"><span class="route-pill">${escapeHtml(formatRouteTrigger(entry.request, entry.callsite))}</span></div>
             <pre class="summary-snippet"><code>${escapeHtml(entry.query || '')}</code></pre>
           </article>
         `,
@@ -736,6 +768,7 @@
             `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
             `\nip: ${entry.request.ip || ''}`
           : '';
+        const routeTrigger = formatRouteTrigger(entry.request, entry.callsite);
         const poolText = entry.pool
           ? `name:${entry.pool.name || ''} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
           : '';
@@ -772,6 +805,7 @@
             </div>
 
             <div class="log-meta-grid">
+              <div class="log-meta-item"><span>Triggered By</span><code>${escapeHtml(routeTrigger)}</code></div>
               <div class="log-meta-item"><span>Name</span><code>${escapeHtml(entry.name || 'n/a')}</code></div>
               <div class="log-meta-item"><span>Total Duration</span><code>${escapeHtml(formatMs(entry.durationMs))}</code></div>
               <div class="log-meta-item"><span>Execution</span><code>${escapeHtml(formatMs(entry.executionDurationMs))}</code></div>

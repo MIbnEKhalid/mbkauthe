@@ -1,6 +1,8 @@
 # Database Schema
 
-**Executable DDL lives only in [`docs/db.sql`](db.sql).** This file explains what that script creates and how the app uses it. Run the script against Postgres when bootstrapping or aligning a database (for example `psql $DATABASE_URL -f docs/db.sql`). The app can also apply it via `lib/createTable.js`, which reads `docs/db.sql`.
+[Back to docs index](../README.md) | [Back to project README](../../README.md)
+
+**Executable DDL lives only in [`docs/schema/db.sql`](../schema/db.sql).** This file explains what that script creates and how the app uses it. Run the script against Postgres when bootstrapping or aligning a database (for example `psql $DATABASE_URL -f docs/schema/db.sql`). The app can also apply it via `lib/createTable.js`, which reads `docs/schema/db.sql`.
 
 ---
 

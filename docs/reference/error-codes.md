@@ -1,5 +1,7 @@
 # Error Messages & Codes
 
+[Back to docs index](../README.md) | [Back to project README](../../README.md)
+
 MBKAuthe provides a comprehensive error messaging system with standardized error codes and user-friendly messages.
 
 ## Overview

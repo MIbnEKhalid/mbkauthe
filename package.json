@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -10,8 +10,8 @@
     "create-tables": "node lib/createTable.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
-    "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/auth-flows.mmd -o docs/images/auth-flows.svg",
-    "render:mermaid:png": "npx @mermaid-js/mermaid-cli -i docs/auth-flows.mmd -o docs/images/auth-flows.png -s 20"
+    "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.svg",
+    "render:mermaid:png": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.png -s 20"
   },
   "imports": {
     "#pool.js": "./lib/pool.js",
@@ -53,6 +53,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.15.0",
     "bytes": "^3.1.2",
     "connect-pg-simple": "^10.0.0",
     "content-type": "^1.0.5",

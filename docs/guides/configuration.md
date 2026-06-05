@@ -1,6 +1,7 @@
 # Environment Configuration Guide
 
-[← Back to README](README.md)
+[Back to docs index](../README.md) | [Back to project README](../../README.md)
+
 This document describes the environment variables MBKAuth expects and keeps brief usage notes for each parameter. Validation and defaults are implemented in `lib/config/index.js` (it parses `mbkautheVar`, applies optional `mbkauthShared` fallbacks, normalizes values, and throws on validation failures).
 
 ## How configuration is provided

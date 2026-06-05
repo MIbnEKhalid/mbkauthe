@@ -1,0 +1,122 @@
+```mermaid
+sequenceDiagram
+    autonumber
+
+    participant R as Protected Route
+    participant VS as validateSession
+    participant JT as isJsonRequest
+    participant VT as validateTokenAuthentication
+    participant CS as validateCookieSession
+    participant DB as AuthRepository / DB
+    participant RES as Response
+
+    R->>VS: validateSession(req, res, next, strictTokenValidation?)
+
+    alt Authorization header exists
+        alt strictTokenValidation is true
+            VS-->>RES: 401 INVALID_AUTH_TOKEN
+            Note over VS,RES: Token auth is rejected for strict cookie-only middleware.
+        else token auth allowed
+            VS->>VT: validateTokenAuthentication(req)
+
+            alt Header is not "Bearer <token>"
+                VT-->>VS: null
+                VS-->>RES: 401 INVALID_AUTH_TOKEN
+            else Token does not start with mbk_ or is too long
+                VT-->>VS: { error: "INVALID_TOKEN" }
+                VS-->>RES: 401 INVALID_AUTH_TOKEN
+            else Token format is accepted
+                VT->>VT: hashApiToken(token)
+                VT->>DB: getApiTokenByHash(tokenHash)
+
+                alt API token row not found
+                    DB-->>VT: null
+                    VT-->>VS: { error: "INVALID_TOKEN" }
+                    VS-->>RES: 401 INVALID_AUTH_TOKEN
+                else API token expired
+                    DB-->>VT: row with ExpiresAt <= now
+                    VT-->>VS: { error: "TOKEN_EXPIRED" }
+                    VS-->>RES: 401 API_TOKEN_EXPIRED
+                else API token found
+                    DB-->>VT: token row joined to user
+                    VT->>VT: Resolve token scope and allowedApps
+                    VT->>DB: updateApiTokenLastUsed(row.id) async
+                    VT-->>VS: tokenUser
+
+                    alt tokenUser.active is false
+                        VS-->>RES: 401 ACCOUNT_INACTIVE
+                    else Non-SuperAdmin has no allowed apps
+                        VS-->>RES: 401 APP_NOT_AUTHORIZED
+                    else Token allowedApps has wildcard but user apps do not include APP_NAME
+                        VS-->>RES: 401 APP_NOT_AUTHORIZED
+                    else Token allowedApps does not include APP_NAME
+                        VS-->>RES: 401 APP_NOT_AUTHORIZED
+                    else App access allowed
+                        VS->>VS: attachApiTokenUser(req, res, tokenUser)
+                        Note over VS: Sets req.auth, req.user, req.userRole,<br/>and request-local req.session.user.
+
+                        alt tokenScope does not allow req.method
+                            VS-->>RES: 403 TOKEN_SCOPE_INSUFFICIENT
+                        else token scope allows method
+                            VS-->>R: next()
+                        end
+                    end
+                end
+            end
+        end
+    else No Authorization header
+        VS->>JT: isJsonRequest(req)
+        JT-->>VS: prefersJson
+        VS->>CS: validateCookieSession(req, res, next, prefersJson)
+
+        alt req.session.user is missing
+            alt prefersJson
+                CS-->>RES: 401 SESSION_NOT_FOUND
+            else browser/page request
+                CS-->>RES: 302 /mbkauthe/login?redirect=...&reason=logged_out
+            end
+        else req.session.user exists
+            CS->>CS: Read req.session.user.sessionId
+
+            alt sessionId missing or not UUID
+                CS->>CS: destroy session and clear cookies
+                alt prefersJson
+                    CS-->>RES: 401 SESSION_EXPIRED
+                else browser/page request
+                    CS-->>RES: Render "Session Expired" error page
+                end
+            else sessionId is UUID
+                CS->>DB: getSessionAuthData(sessionId)
+
+                alt DB session row not found
+                    CS->>CS: destroy session and clear cookies
+                    alt prefersJson
+                        CS-->>RES: 401 SESSION_INVALID
+                    else browser/page request
+                        CS-->>RES: Render "Session Expired" error page
+                    end
+                else DB session row found
+                    DB-->>CS: session row joined to user
+
+                    alt session expired
+                        CS->>CS: destroy session and clear cookies
+                        CS-->>RES: 401 SESSION_EXPIRED or rendered error page
+                    else user account inactive
+                        CS->>CS: destroy session and clear cookies
+                        CS-->>RES: 401 ACCOUNT_INACTIVE or rendered support page
+                    else user not allowed for APP_NAME
+                        CS->>CS: destroy session and clear cookies
+                        CS-->>RES: 401 APP_NOT_AUTHORIZED or rendered unauthorized page
+                    else session valid and app access allowed
+                        CS->>CS: req.userRole = sessionRow.Role
+                        CS-->>R: next()
+                    end
+                end
+            end
+        end
+    end
+
+    opt Token or session validation throws
+        VS-->>RES: 500 INTERNAL_SERVER_ERROR
+    end
+```

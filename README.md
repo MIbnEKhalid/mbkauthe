@@ -6,71 +6,107 @@
 [![Publish](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
 [![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 
-
 <p align="center">
   <img height="64px" src="./public/logo.png" alt="MBKAuthe" />
 </p>
 
-**MBKAuthe** is an open source package focused on login, authentication, and validating sessions for your desired apps in Node.js with Express and PostgreSQL. It provides secure login, session validation, 2FA, role/app access checks, OAuth (GitHub & Google), multi-session support, and related authentication flows.
+**MBKAuthe** is an open source authentication package for Node.js, Express, and PostgreSQL. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, and multi-session management.
 
-> **Note:** MBKAuthe is intentionally limited to authentication and session validation. The full user/permission/dashboard management system is a separate product called **MBKCore**, developed by MBKTech and not currently open source. Access to MBKCore is currently available only to the MBKTech team, and we may refine it and consider open sourcing it in the future.
+> **Note:** MBKAuthe is intentionally focused on authentication and session validation. The broader user, permission, and dashboard management system is a separate MBKTech product named **MBKCore**(closed source for now).
 
-## Todo
-- Currently, for every request to a protected page, a database query is made to retrieve authentication information (allowed apps, username, session ID, role, etc.). We should implement a caching mechanism to reduce this overhead, but also find a way to allow administrators to log users out and update permissions in near real-time.
+## Features
 
-## ✨ Key Features
+- Express middleware for session validation and role checks
+- PostgreSQL-backed user, session, 2FA, trusted-device, and API-token storage
+- Secure password authentication with PBKDF2
+- Optional TOTP 2FA with trusted devices
+- GitHub App and Google OAuth login flows
+- API token authentication with read-only/write scopes
+- Configurable multi-session support per user
+- CSRF protection, rate limiting, secure cookies, and session fixation prevention
+- Customizable Handlebars views
+- Vercel/serverless-friendly deployment support
+- Dev-only DB Query Monitor with callsite, timing, request context, and pool stats
 
-- Compatible With Serverless Function (Vercel)
-- Secure password authentication (PBKDF2)
-- PostgreSQL session management
-- Multi-session support (configurable concurrent sessions per user)
-- Optional TOTP-based 2FA with trusted devices
-- Social login (GitHub App & Google OAuth)
-- Role-based access: SuperAdmin, NormalUser, Guest, member
-- CSRF protection & rate limiting
-- Easy Express.js integration
-- Customizable Handlebars templates
-- Session fixation prevention
-- Dynamic profile picture routing with session caching
-- Modern responsive UI with desktop two-column layout
-- Dev-only DB Query Monitor with callsite, timing, and request context
-
-## 📦 Installation
+## Installation
 
 ```bash
 npm install mbkauthe
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-**1. Configure Environment**
+1. Copy the environment template.
 
-```bash
+```powershell
 Copy-Item .env.example .env
 ```
-See [docs/env.md](docs/env.md).
 
-**2. Set Up Database**
-Run [docs/db.sql](docs/db.sql) to create tables and a default SuperAdmin (`support` / `12345678`). Change the password immediately. See [docs/db.md](docs/db.md).
+2. Configure environment values.
 
-**3. Integrate with Express**
+See the [configuration guide](docs/guides/configuration.md) for `mbkautheVar`, `mbkauthShared`, OAuth settings, session settings, and deployment flags.
+
+3. Create database tables.
+
+Run [docs/schema/db.sql](docs/schema/db.sql) against PostgreSQL, or use the package script:
+
+```bash
+npm run create-tables
+```
+
+The schema includes a default SuperAdmin user (`support` / `12345678`). Change that password immediately. See the [database guide](docs/guides/database.md).
+
+4. Mount MBKAuthe in Express.
 
 ```javascript
-import express from 'express';
-import mbkauthe, { sessVal, roleChk } from 'mbkauthe';
-import dotenv from 'dotenv';
+import express from "express";
+import dotenv from "dotenv";
+import mbkauthe, { sessVal, roleChk } from "mbkauthe";
+
 dotenv.config();
 
 const app = express();
+
 app.use(mbkauthe);
 
-app.get('/dashboard', sessVal, (req, res) => res.send(`Welcome ${req.session.user.username}!`));
-app.get('/admin', sessVal, roleChk(['SuperAdmin']), (req, res) => res.send('Admin Panel'));
+app.get("/dashboard", sessVal, (req, res) => {
+  res.send(`Welcome ${req.session.user.username}!`);
+});
+
+app.get("/admin", sessVal, roleChk("SuperAdmin"), (req, res) => {
+  res.send("Admin Panel");
+});
 
 app.listen(3000);
 ```
 
-## 🧪 Testing
+## Common Exports
+
+- `sessVal` / `validateSession` - require a valid session or API token.
+- `roleChk` / `checkRolePermission` - require a role after session validation.
+- `sessRole` / `validateSessionAndRole` - combine session and role checks.
+- `strictValidateSession` - require cookie session authentication only.
+- `strictValidateSessionAndRole` - strict cookie session plus role check.
+- `authenticate(token)` - protect server-to-server routes with a static bearer token.
+- `dblogin` - access the configured PostgreSQL pool.
+
+See the [API reference](docs/reference/api.md) for endpoints, middleware, examples, security notes, and rate limits.
+
+## JSON Error Responses
+
+Browser page routes usually render HTML errors, while API/AJAX-style requests receive JSON. MBKAuthe treats a request as JSON when any of these are true:
+
+- The path starts with `/mbkauthe/api/` or `/api/`
+- `X-Requested-With: XMLHttpRequest`
+- `Accept` prefers JSON and does not explicitly prefer `text/html`
+- `User-Agent` looks like a non-browser client such as `curl`, `wget`, or `Postman`
+- `User-Agent: json`
+
+```bash
+curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
+```
+
+## Development
 
 ```bash
 npm test
@@ -78,100 +114,50 @@ npm run test:watch
 npm run dev
 ```
 
-## 🔧 Core API
+Development-only diagnostics are mounted when `process.env.env === "dev"`:
 
-- **Session Validation:** `validateSession`
-- **Role Check:** `checkRolePermission(['Role'])`/`roleChk(['Role'])`
-- **Combined:** `validateSessionAndRole(['SuperAdmin', 'NormalUser'])`/`sessRole(['SuperAdmin', 'NormalUser'])`
-- **API Token Auth:** `authenticate(process.env.API_TOKEN)`
+- `/mbkauthe/db` - DB Query Monitor UI
+- `/mbkauthe/db.json` - DB Query Monitor JSON
+- `/mbkauthe/db/reset` - reset diagnostic query logs
+- `/mbkauthe/validate-superadmin` - SuperAdmin validation check
 
-## 🧾 JSON Responses (HTML vs JSON)
+## Documentation
 
-Most browser page routes render HTML on auth errors, while API/AJAX-style requests receive JSON error responses.
+- [Documentation index](docs/README.md)
+- [Configuration guide](docs/guides/configuration.md)
+- [Database guide](docs/guides/database.md)
+- [API reference](docs/reference/api.md)
+- [Authentication and sessions](docs/reference/api/authentication.md)
+- [Endpoints](docs/reference/api/endpoints.md)
+- [Middleware](docs/reference/api/middleware.md)
+- [Code examples](docs/reference/api/examples.md)
+- [Operational reference](docs/reference/api/operations.md)
+- [Error codes](docs/reference/error-codes.md)
+- [Documentation style guide](docs/STYLE.md)
 
-MBKAuthe treats a request as **JSON** (and returns JSON errors) when any of the following apply:
+## Deployment Checklist
 
-- URL/path starts with `/mbkauthe/api/` or `/api/`
-- `X-Requested-With: XMLHttpRequest`
-- `Accept` indicates JSON (e.g., `application/json`) and does not explicitly prefer `text/html`
-- `User-Agent` looks like a non-browser client (e.g., `curl`, `wget`, `Postman`)
-- `User-Agent: json` (explicitly forces JSON responses)
+- Set `IS_DEPLOYED=true`
+- Use strong `SESSION_SECRET_KEY` and `Main_SECRET_TOKEN` values
+- Enable HTTPS
+- Set the correct `DOMAIN`
+- Set an appropriate `COOKIE_EXPIRE_TIME`
+- Store secrets in environment variables
+- Configure OAuth credentials only when the matching provider is enabled
 
-**Example (force JSON errors):**
-```bash
-curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
-```
+Vercel deployments can use shared OAuth credentials through `mbkauthShared`.
 
-## 🧰 Diagnostics (dev only)
+## License
 
-These are only mounted when `process.env.env === "dev"`:
+GPL v2.0 - see [LICENSE](LICENSE).
 
-- **DB Query Monitor (HTML):** `/mbkauthe/db`
-- **DB Query Monitor (JSON):** `/mbkauthe/db.json`
-- **SuperAdmin check:** `/mbkauthe/validate-superadmin`
-
-## 🔐 Security
-
-- Rate limiting, CSRF protection, secure cookies
-- Password hashing (PBKDF2, 100k iterations)
-- PostgreSQL-backed sessions with automatic cleanup
-- OAuth with state validation and secure callbacks
-
-## 📱 Two-Factor Authentication
-
-Enable via `MBKAUTH_TWO_FA_ENABLE=true`. Trusted devices can skip 2FA for a set duration.
-
-## 🔄 Social Login Integration
-
-**GitHub App / Google OAuth:** Configure credentials via `.env` or `mbkautheVar`. Users must link accounts before login.
-
-## 🎨 Customization
-
-- **Redirect URL:** `mbkautheVar={"loginRedirectURL":"/dashboard"}`
-- **Custom Views:** `views/loginmbkauthe.handlebars`, `2fa.handlebars`, `Error/dError.handlebars`
-- **Database Access:** `import { dblogin } from 'mbkauthe'; const result = await dblogin.query('SELECT * FROM "Users"');`
-
-## 📄 API Reference
-
-- Full endpoint list and details: [docs/api.md](docs/api.md)
-
-## 🧰 Diagnostics (dev only)
-
-- **DB Query Monitor (HTML):** `/mbkauthe/db`
-- **DB Query Monitor (JSON):** `/mbkauthe/db.json`
-- **SuperAdmin check:** `/mbkauthe/debug/validate-superadmin`
-
-These routes are only mounted when `process.env.env === "dev"`. They expose query timing, status/error, pool stats, request context, and callsite data for troubleshooting.
-
-## 🚢 Deployment
-
-Checklist for production:
-- `IS_DEPLOYED=true`
-- Strong secrets for SESSION_SECRET_KEY & Main_SECRET_TOKEN
-- HTTPS enabled
-- Correct DOMAIN & COOKIE_EXPIRE_TIME
-- Use environment variables for all secrets
-
-**Vercel:** Supports shared OAuth credentials via `mbkauthShared`.
-
-## 📚 Documentation
-
-- [API Reference](docs/api.md)
-- [Database Schema](docs/db.md)
-- [Environment Config](docs/env.md)
-- [Error Codes](docs/error-messages.md)
-
-## 📝 License
-
-GPL v2.0 — see [LICENSE](LICENSE)
-
-## 👨‍💻 Author
+## Author
 
 **Muhammad Bin Khalid**  
-📧 [support@mbktech.org](mailto:support@mbktech.org) | [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)  
-🔗 [GitHub @MIbnEKhalid](https://github.com/MIbnEKhalid)
+[support@mbktech.org](mailto:support@mbktech.org) | [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)  
+[GitHub @MIbnEKhalid](https://github.com/MIbnEKhalid)
 
-## 🔗 Links
+## Links
 
 - [npm](https://www.npmjs.com/package/mbkauthe)
 - [GitHub](https://github.com/MIbnEKhalid/mbkauthe)
@@ -179,4 +165,4 @@ GPL v2.0 — see [LICENSE](LICENSE)
 
 ---
 
-Made with ❤️ by [MBKTech.org](https://mbktech.org)
+Made with love by [MBKTech.org](https://mbktech.org).

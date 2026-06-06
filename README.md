@@ -1,8 +1,8 @@
 # MBKAuthe - Node.js Authentication System
 
 [![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
-[![License](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-LGPL--3.0-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Publish](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
 [![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 
@@ -61,7 +61,7 @@ The schema includes a default SuperAdmin user (`support` / `12345678`). Change t
 ```javascript
 import express from "express";
 import dotenv from "dotenv";
-import mbkauthe, { sessVal, roleChk } from "mbkauthe";
+import mbkauthe, { sessVal, roleChk, sessRole } from "mbkauthe";
 
 dotenv.config();
 
@@ -74,6 +74,11 @@ app.get("/dashboard", sessVal, (req, res) => {
 });
 
 app.get("/admin", sessVal, roleChk("SuperAdmin"), (req, res) => {
+  res.send("Admin Panel");
+});
+
+// Or combine session and role checks into one middleware:
+app.get("/admin", sessRole("SuperAdmin"), (req, res) => {
   res.send("Admin Panel");
 });
 
@@ -149,7 +154,7 @@ Vercel deployments can use shared OAuth credentials through `mbkauthShared`.
 
 ## License
 
-GPL v2.0 - see [LICENSE](LICENSE).
+LGPL v3.0 - see [LICENSE](LICENSE).
 
 ## Author
 

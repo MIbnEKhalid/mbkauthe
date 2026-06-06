@@ -1,115 +1,162 @@
-async function logout() {
-  const confirmation = confirm("Are you sure you want to logout?");
-  if (!confirmation) {
-    return;
-  }
+(() => {
+  const SESSION_KEYS = [
+    'sessionId',
+    'mbkauthe.sid',
+    'fullName',
+    '_csrf',
+    'profileImageUser',
+    'profileImageUrl'
+  ];
+  const LOG_PREFIX = '[mbkauthe]';
+  const EXPIRED_COOKIE = 'expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: true
+  });
 
-  try {
-    // First, logout from server
-    const response = await fetch("/mbkauthe/api/logout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache"
-      },
-      credentials: "include"
-    });
+  const reloadPage = () => window.location.reload();
 
-    const result = await response.json();
+  const getCookieDomains = () => {
+    const hostname = window.location.hostname;
 
-    if (response.ok) {
-      // Then clear all caches after successful logout (except rememberedUsername)
-      await selectiveCacheClear();
-      // selectiveCacheClear already redirects, so no need for additional redirect
-    } else {
-      alert(result.message);
+    if (!hostname) {
+      return [];
     }
-  } catch (error) {
-    console.error(`[mbkauthe] Error during logout:`, error);
-    alert(`Logout failed: ${error.message}`);
-  }
-}
 
-async function selectiveCacheClear() {
-  try {
+    return [...new Set([hostname, hostname.includes('.') ? `.${hostname}` : null].filter(Boolean))];
+  };
 
-    const cookiesToClear = [
-      'sessionId',
-      'mbkauthe.sid',
-      'fullName',
-      '_csrf',
-      'profileImageUser',
-      'profileImageUrl'
-    ];
+  const clearCookie = (name) => {
+    document.cookie = `${name}=; ${EXPIRED_COOKIE}; path=/`;
 
-    const localStorageToClear = [
-      'sessionId',
-      'mbkauthe.sid',
-      'fullName',
-      '_csrf',
-      'profileImageUser',
-      'profileImageUrl'
-    ];
-
-    // 1. Clear selected localStorage keys
-    localStorageToClear.forEach(key => {
-      localStorage.removeItem(key);
+    getCookieDomains().forEach((domain) => {
+      document.cookie = `${name}=; ${EXPIRED_COOKIE}; path=/; domain=${domain}`;
     });
+  };
 
-    // 2. Clear selected cookies
-    cookiesToClear.forEach(name => {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`;
-    });
+  const parseJson = async (response) => {
+    try {
+      return await response.json();
+    } catch {
+      return {};
+    }
+  };
 
-    // 3. Optional reload
-    window.location.reload();
+  async function logout({ confirmLogout = true } = {}) {
+    if (confirmLogout && !confirm('Are you sure you want to logout?')) {
+      return false;
+    }
 
-  } catch (error) {
-    console.error(`[mbkauthe] selective cache clear failed:`, error);
-    window.location.reload();
-  }
-}
+    try {
+      const response = await fetch('/mbkauthe/api/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      const result = await parseJson(response);
 
-async function logoutuser() {
-  await logout();
-}
-
-const validateSessionInterval = 60000;
-// 1 minutes in milliseconds Function to check session validity by sending a request to the server
-function checkSession() {
-  fetch("/api/validate-session")
-    .then((response) => {
-      if (!response.ok) {
-        // Redirect or handle errors (session expired, user inactive, etc.)
-        window.location.reload(); // Reload the page to update the session status
+      if (response.ok) {
+        selectiveCacheClear();
+        return true;
       }
-    })
-    .catch((error) => console.error(`[mbkauthe] Error checking session:`, error));
-}
-// Call validateSession every 2 minutes (120000 milliseconds)
-// setInterval(checkSession, validateSessionInterval);
 
-function getCookieValue(cookieName) {
-  const cookies = document.cookie.split('; ');
-  for (let cookie of cookies) {
-    const [name, value] = cookie.split('=');
-    if (name === cookieName) {
-      return decodeURIComponent(value);
+      alert(result.message || 'Logout failed. Please try again.');
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error during logout:`, error);
+      alert(`Logout failed: ${error.message}`);
+    }
+
+    return false;
+  }
+
+  function selectiveCacheClear() {
+    try {
+      SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
+      SESSION_KEYS.forEach(clearCookie);
+    } catch (error) {
+      console.error(`${LOG_PREFIX} selective cache clear failed:`, error);
+    } finally {
+      reloadPage();
     }
   }
-  return null; // Return null if the cookie is not found
-}
 
-function loadpage(url) {
-  window.location.href = url;
-}
+  async function logoutuser() {
+    return logout();
+  }
 
-function formatDate(date) {
-  return new Date(date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true });
-}
+  function checkSession() {
+    return fetch('/mbkauthe/api/checkSession', {
+      credentials: 'include',
+      cache: 'no-store'
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          reloadPage();
+          return;
+        }
 
-function reloadPage() {
-  window.location.reload();
-}
+        const session = await parseJson(response);
+        if (session.sessionValid === false) {
+          reloadPage();
+        }
+      })
+      .catch((error) => console.error(`${LOG_PREFIX} Error checking session:`, error));
+  }
+
+  function getCookieValue(cookieName) {
+    if (!cookieName) {
+      return null;
+    }
+
+    const prefix = `${cookieName}=`;
+    const cookie = document.cookie
+      .split('; ')
+      .find((entry) => entry.startsWith(prefix));
+
+    if (!cookie) {
+      return null;
+    }
+
+    const value = cookie.slice(prefix.length);
+
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
+  function loadpage(url) {
+    if (url) {
+      window.location.href = url;
+    }
+  }
+
+  function formatDate(date) {
+    const parsedDate = new Date(date);
+    return Number.isNaN(parsedDate.getTime()) ? 'Invalid Date' : dateFormatter.format(parsedDate);
+  }
+
+  const api = {
+    checkSession,
+    formatDate,
+    getCookieValue,
+    loadpage,
+    logout,
+    logoutuser,
+    reloadPage,
+    selectiveCacheClear
+  };
+
+  window.mbkauthe = Object.assign(window.mbkauthe || {}, api);
+  Object.assign(window, api);
+})();

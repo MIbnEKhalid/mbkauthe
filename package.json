@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -10,6 +10,7 @@
     "create-tables": "node lib/createTable.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "tets": "npm run test",
     "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.svg",
     "render:mermaid:png": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.png -s 20",
     "install-mermaid": "npm i @mermaid-js/mermaid-cli@11.15.0 --save-dev"
@@ -30,9 +31,12 @@
     "nodejs",
     "express",
     "session",
-    "security"
+    "security",
+    "oauth",
+    "2fa",
+    "csrf"
   ],
-  "author": "Muhammad Bin Khalid <support@mbktech.org>",
+  "author": "Muhammad Bin Khalid <support@mbktech.org> <chmuhammadbinkhalid28@gmail.com>",
   "license": "LGPL-3.0-only",
   "bugs": {
     "url": "https://github.com/MIbnEKhalid/mbkauthe/issues"
@@ -99,7 +103,6 @@
     }
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "cross-env": "^7.0.3",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",

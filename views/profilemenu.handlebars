@@ -261,21 +261,7 @@
                 logoutButton.textContent = 'Logging out...';
 
                 try {
-                    const response = await fetch('/mbkauthe/api/logout', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'include'
-                    });
-
-                    const result = await response.json().catch(() => ({}));
-
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        alert(result.message || 'Logout failed. Please try again.');
-                    }
+                    await mbkauthe.logout();
                 } catch (error) {
                     console.error(`[mbkauthe] Error during logout:`, error);
                     alert('Logout failed. Please try again.');

@@ -205,7 +205,7 @@
                 </div>
 
                 <div class="session-actions">
-                    <button class="btn btn-danger" onclick="logout()" aria-label="Log out">
+                    <button class="btn btn-danger" onclick="mbkauthe.logout()" aria-label="Log out">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
                     <a class="btn btn-outline" href="https://portal.mbktech.org/">
@@ -233,7 +233,6 @@
         </div>
     </section>
 
-    <script src="/mbkauthe/main.js{{cacheBuster}}"></script>
     {{#if sessionExpiry}}
     <script>
         (function () {

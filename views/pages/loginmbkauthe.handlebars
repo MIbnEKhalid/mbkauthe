@@ -249,6 +249,14 @@
     {{> versionInfo}}
 
     <script>
+        function sanitizeRelativeRedirect(value) {
+            if (typeof value !== 'string') return null;
+            const trimmed = value.trim();
+            if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+            if (trimmed.includes('://') || trimmed.includes('\\')) return null;
+            return trimmed;
+        }
+
         // Toggle password visibility
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('loginPassword');
@@ -301,7 +309,7 @@
 
             // Pass redirect query param through to server so it can be used by 2FA flow
             const urlParams = new URLSearchParams(window.location.search);
-            const pageRedirect = urlParams.get('redirect');
+            const pageRedirect = sanitizeRelativeRedirect(urlParams.get('redirect'));
             fetch('/mbkauthe/api/login', {
                 method: 'POST',
                 credentials: 'include',
@@ -330,9 +338,8 @@
                                 deleteCookie('rememberedUsername');
                             }
 
-                            // Redirect to the appropriate page
-                            const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
-                            window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
+                            // Redirect to the validated target from the server or safe query param
+                            window.location.href = data.redirectUrl || pageRedirect || '{{customURL}}';
                         }
                     } else {
                         // Handle errors
@@ -388,23 +395,21 @@
         // Check for URL parameters
         document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
-            const usernameFromUrl = urlParams.get('username');
-            const passwordFromUrl = urlParams.get('password');
             const usernameInput = document.getElementById('loginUsername');
+
+            if (urlParams.has('password')) {
+                urlParams.delete('password');
+                const sanitizedQuery = urlParams.toString();
+                const nextUrl = `${window.location.pathname}${sanitizedQuery ? `?${sanitizedQuery}` : ''}${window.location.hash}`;
+                window.history.replaceState({}, document.title, nextUrl);
+                showMessage('Passwords must not be passed in the URL. Enter your password in the form instead.', 'Security Notice');
+            }
 
             // Check for remembered username in cookies
             const rememberedUsername = getCookie('rememberedUsername');
             if (rememberedUsername) {
                 usernameInput.value = rememberedUsername;
                 document.getElementById('rememberMe').checked = true;
-            }
-
-            if (usernameFromUrl) {
-                usernameInput.value = usernameFromUrl;
-            }
-
-            if (passwordFromUrl) {
-                document.getElementById('loginPassword').value = passwordFromUrl;
             }
 
             // Automatically focus the first empty field

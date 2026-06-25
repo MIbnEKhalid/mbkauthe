@@ -331,6 +331,8 @@ declare module 'mbkauthe' {
 
   export function hashPassword(password: string, username: string): string;
 
+  export function verifyPassword(password: string, username: string, storedHash: string): Promise<boolean>;
+
   export function clearSessionCookies(res: Response): void;
 
   export function getLatestVersion(): Promise<string>;

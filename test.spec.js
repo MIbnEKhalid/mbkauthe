@@ -14,7 +14,7 @@ process.env.dbLogs = 'true';
 process.env.dbLogsCallsite = 'false';
 
 const { default: router } = await import('./lib/main.js');
-const { packageJson } = await import('./lib/config/index.js');
+const { packageJson, mbkautheVar } = await import('./lib/config/index.js');
 const {
   resolveCookieDomain,
   isAllowedOriginHostname,
@@ -28,6 +28,11 @@ const {
   resetQueryLog,
   runWithRequestContext
 } = await import('./lib/utils/dbQueryLogger.js');
+
+const { isSafeRelativeRedirect, sanitizeRelativeRedirect } = await import('./lib/utils/redirect.js');
+const { isSafeFetchUrl } = await import('./lib/utils/urlSafety.js');
+const { hashPassword, verifyPassword } = await import('./lib/config/index.js');
+const { hashDeviceToken } = await import('./lib/config/cookies.js');
 
 const viewsPath = path.join(__dirname, 'views');
 
@@ -685,6 +690,43 @@ describe('mbkauthe Routes', () => {
         expect(response.headers['content-type']).toContain('application/json');
         expect(response.body).toHaveProperty('success', true);
       }
+    });
+  });
+
+  describe('Security hardening', () => {
+    test('sanitizeRelativeRedirect accepts safe paths and rejects open redirects', () => {
+      expect(sanitizeRelativeRedirect('/dashboard')).toBe('/dashboard');
+      expect(sanitizeRelativeRedirect('//evil.com')).toBeNull();
+      expect(sanitizeRelativeRedirect('https://evil.com')).toBeNull();
+      expect(isSafeRelativeRedirect('/app/settings')).toBe(true);
+    });
+
+    test('isSafeFetchUrl blocks localhost and allows public https URLs', () => {
+      expect(isSafeFetchUrl('https://avatars.githubusercontent.com/u/1')).toBe(true);
+      expect(isSafeFetchUrl('http://127.0.0.1/secret')).toBe(false);
+      expect(isSafeFetchUrl('https://localhost/admin')).toBe(false);
+      expect(isSafeFetchUrl('ftp://example.com/icon.png')).toBe(false);
+    });
+
+    test('verifyPassword validates peppered password hashes', async () => {
+      const username = 'test.user';
+      const password = 'test-password-123';
+      const stored = hashPassword(password, username);
+
+      expect(stored).toMatch(/^[0-9a-f]{128}$/);
+      expect(await verifyPassword(password, username, stored)).toBe(true);
+      expect(await verifyPassword('wrong-password', username, stored)).toBe(false);
+    });
+
+    test('hashDeviceToken returns a keyed hex digest', () => {
+      const token = 'a'.repeat(64);
+      expect(hashDeviceToken(token)).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    test('security headers are set on API responses', async () => {
+      const response = await request(app).get('/mbkauthe/main.js');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
     });
   });
 

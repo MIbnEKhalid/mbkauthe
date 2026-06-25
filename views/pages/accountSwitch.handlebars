@@ -340,7 +340,15 @@
     </style>
 
     <script>
-        const redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
+        function sanitizeRelativeRedirect(value) {
+            if (typeof value !== 'string') return null;
+            const trimmed = value.trim();
+            if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+            if (trimmed.includes('://') || trimmed.includes('\\')) return null;
+            return trimmed;
+        }
+
+        const redirectTarget = sanitizeRelativeRedirect(new URLSearchParams(window.location.search).get('redirect')) || '{{customURL}}';
 
         // Ensure login anchors include ?redirect using the redirect query param (not the current page URL)
         (function setLoginHrefFromQuery() {
@@ -485,16 +493,8 @@
                 if (res.ok && data.success) {
                     // Prioritize explicit ?redirect if present and valid, else fall back to server-provided redirect or template
                     const params = new URLSearchParams(window.location.search);
-                    let queryRedirect = null;
-                    if (params.has('redirect')) {
-                        try {
-                            const raw = params.get('redirect');
-                            if (raw) queryRedirect = decodeURIComponent(raw);
-                        } catch (e) {
-                            queryRedirect = null;
-                        }
-                    }
-                    const finalRedirect = queryRedirect || data.redirect || redirectTarget;
+                    const queryRedirect = sanitizeRelativeRedirect(params.get('redirect'));
+                    const finalRedirect = data.redirect || queryRedirect || redirectTarget;
                     if (finalRedirect) window.location.href = finalRedirect;
                 } else {
                     showMessage(data.message || 'Could not switch account', 'Switch Account');

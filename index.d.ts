@@ -55,7 +55,6 @@ declare module 'mbkauthe' {
     COOKIE_EXPIRE_TIME?: number;
     DEVICE_TRUST_DURATION_DAYS?: number;
     GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
-    GITHUB_APP_SLUG?: string;
     GITHUB_APP_CLIENT_ID?: string;
     GITHUB_APP_CLIENT_SECRET?: string;
     GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
@@ -67,7 +66,6 @@ declare module 'mbkauthe' {
 
   export interface OAuthConfig {
     GITHUB_LOGIN_ENABLED?: 'true' | 'false' | 'f';
-    GITHUB_APP_SLUG?: string;
     GITHUB_APP_CLIENT_ID?: string;
     GITHUB_APP_CLIENT_SECRET?: string;
     GOOGLE_LOGIN_ENABLED?: 'true' | 'false' | 'f';
@@ -299,6 +297,18 @@ declare module 'mbkauthe' {
     path: string;
     httpOnly: boolean;
   };
+
+  export function resolveCookieDomain(
+    isDeployed: 'true' | 'false' | 'f' | string,
+    domain?: string,
+    isTestDev?: boolean
+  ): string | undefined;
+
+  export function getCookieDomain(): string | undefined;
+
+  export function getCookieSecure(): boolean;
+
+  export function isAllowedOriginHostname(hostname: string, domain?: string): boolean;
 
   export function getClearCookieOptions(): {
     domain?: string;

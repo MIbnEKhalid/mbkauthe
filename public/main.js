@@ -28,7 +28,19 @@
       return [];
     }
 
-    return [...new Set([hostname, hostname.includes('.') ? `.${hostname}` : null].filter(Boolean))];
+    const domains = new Set();
+    const configuredDomain = window.mbkautheConfig?.cookieDomain;
+
+    if (configuredDomain) {
+      domains.add(configuredDomain);
+    }
+
+    domains.add(hostname);
+    if (hostname.includes('.')) {
+      domains.add(`.${hostname}`);
+    }
+
+    return [...domains];
   };
 
   const clearCookie = (name) => {

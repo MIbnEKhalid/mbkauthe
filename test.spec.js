@@ -15,6 +15,12 @@ process.env.dbLogsCallsite = 'false';
 
 const { default: router } = await import('./lib/main.js');
 const { packageJson } = await import('./lib/config/index.js');
+const {
+  resolveCookieDomain,
+  isAllowedOriginHostname,
+  getCookieDomain,
+  cachedCookieOptions
+} = await import('./lib/config/cookies.js');
 const { dblogin } = await import('./lib/pool.js');
 const {
   attachDevQueryLogger,
@@ -252,6 +258,7 @@ describe('mbkauthe Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toContain('javascript');
+      expect(response.text).toMatch(/^window\.mbkautheConfig=/);
     });
 
     test('GET /icon.svg returns SVG content', async () => {
@@ -678,6 +685,29 @@ describe('mbkauthe Routes', () => {
         expect(response.headers['content-type']).toContain('application/json');
         expect(response.body).toHaveProperty('success', true);
       }
+    });
+  });
+
+  describe('Cross-subdomain cookie sharing', () => {
+    test('resolveCookieDomain returns parent domain only when deployed outside test dev', () => {
+      expect(resolveCookieDomain('true', 'mbktech.org', true)).toBeUndefined();
+      expect(resolveCookieDomain('false', 'mbktech.org', false)).toBeUndefined();
+      expect(resolveCookieDomain('true', 'mbktech.org', false)).toBe('.mbktech.org');
+      expect(resolveCookieDomain('true', '.mbktech.org', false)).toBe('.mbktech.org');
+    });
+
+    test('isAllowedOriginHostname accepts root and nested subdomains', () => {
+      expect(isAllowedOriginHostname('mbktech.org', 'mbktech.org')).toBe(true);
+      expect(isAllowedOriginHostname('auth.mbktech.org', 'mbktech.org')).toBe(true);
+      expect(isAllowedOriginHostname('app.auth.mbktech.org', 'mbktech.org')).toBe(true);
+      expect(isAllowedOriginHostname('notmbktech.org', 'mbktech.org')).toBe(false);
+      expect(isAllowedOriginHostname('mbktech.org.evil.com', 'mbktech.org')).toBe(false);
+    });
+
+    test('cached cookie options omit domain in test dev environment', () => {
+      expect(getCookieDomain()).toBeUndefined();
+      expect(cachedCookieOptions.domain).toBeUndefined();
+      expect(cachedCookieOptions.secure).toBe(false);
     });
   });
 });

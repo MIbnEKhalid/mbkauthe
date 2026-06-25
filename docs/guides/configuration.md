@@ -35,7 +35,7 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Required: Yes
 
 - DOMAIN
-  - Description: App domain (e.g., `localhost` or `yourdomain.com`). Required when deployed.
+  - Description: Root app domain used for cross-subdomain cookie sharing in production (e.g., `yourdomain.com`, not `auth.yourdomain.com`). When `IS_DEPLOYED=true`, session cookies are scoped to `.yourdomain.com` so they are sent on all subdomains.
   - Example: `"DOMAIN":"localhost"`
   - Required: Yes
 
@@ -94,11 +94,6 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Default: `false`
   - If `GOOGLE_LOGIN_ENABLED=true`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are required.
   - If `GITHUB_LOGIN_ENABLED=true`, GitHub App client credentials are required.
-
-- GITHUB_APP_SLUG
-  - Description: GitHub App slug (optional for login flow in this package; useful for install/link flows handled elsewhere).
-  - Required: No
-  - Create GitHub App: https://github.com/settings/apps
 
 - GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET
   - Description: GitHub App OAuth credentials used for user sign-in.

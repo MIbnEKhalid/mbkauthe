@@ -16,7 +16,7 @@ Postgres enum `role`: `SuperAdmin`, `NormalUser`, `Guest`, `member`. The script 
 
 Core accounts table (`"Users"`): username, activation flag, role, mail flag, `AllowedApps` and `Positions` as JSONB, timestamps, optional `last_login`, and password hash column `PasswordEnc` (no plaintext passwords).
 
-Profile-style columns include `FullName`, `email`, `Image`, `Bio`, `SocialAccounts`, and password-reset fields (`resetToken`, `resetTokenExpires`, `resetAttempts`, `lastResetAttempt`).
+Profile-style columns include `FullName`, `UserId` (exactly 9 characters, unique business identifier assigned externally), `email`, `Image`, `Bio`, `SocialAccounts`, and password-reset fields (`resetToken`, `resetTokenExpires`, `resetAttempts`, `lastResetAttempt`).
 
 Indexes cover username, role, active, email, last login, and GIN indexes on JSONB for `AllowedApps` and `Positions`. The SQL file also adds optional covering indexes used on hot auth paths.
 

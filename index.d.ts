@@ -19,7 +19,7 @@ declare global {
 
     interface Session {
       user?: {
-        id: number;
+        userId?: string;
         username: string;
         fullname?: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
@@ -28,7 +28,7 @@ declare global {
         tokenScope?: 'read-only' | 'write' | null;
       };
       preAuthUser?: {
-        id: number;
+        userId?: string;
         username: string;
         role: 'SuperAdmin' | 'NormalUser' | 'Guest';
         loginMethod?: 'password' | 'github' | 'google';
@@ -77,7 +77,7 @@ declare module 'mbkauthe' {
   export type UserRole = 'SuperAdmin' | 'NormalUser' | 'Guest';
 
   export interface SessionUser {
-    id: number;
+    userId?: string;
     username: string;
     fullname?: string;
     role: UserRole;
@@ -86,7 +86,7 @@ declare module 'mbkauthe' {
   }
 
   export interface PreAuthUser {
-    id: number;
+    userId?: string;
     username: string;
     role: UserRole;
     allowedApps?: string[];
@@ -98,6 +98,7 @@ declare module 'mbkauthe' {
   export interface DBUser {
     id: number;
     UserName: string;
+    UserId?: string;
     PasswordEnc?: string;
     Role: UserRole;
     Active: boolean;

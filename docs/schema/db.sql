@@ -17,13 +17,16 @@ CREATE TABLE IF NOT EXISTS "Users" (
     last_login timestamp with time zone,
     "PasswordEnc" character varying(255),
     "FullName" character varying(100),
+    "UserId" character varying(9),
     email text DEFAULT 'support@mbktech.org'::text,
     "Image" text DEFAULT 'https://portal.mbktech.org/icon.svg'::text,
     "Bio" text DEFAULT 'I am ....'::text,
     "SocialAccounts" text DEFAULT '{}'::text,
     "Positions" jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb,
     CONSTRAINT "Users_pkey" PRIMARY KEY (id),
-    CONSTRAINT "Users_UserName_key" UNIQUE ("UserName")
+    CONSTRAINT "Users_UserName_key" UNIQUE ("UserName"),
+    CONSTRAINT "Users_UserId_key" UNIQUE ("UserId"),
+    CONSTRAINT chk_users_userid_length CHECK ("UserId" IS NULL OR length("UserId") = 9)
 );
 CREATE INDEX IF NOT EXISTS idx_users_active ON "Users" USING btree ("Active");
 CREATE INDEX IF NOT EXISTS idx_users_allowedapps_gin ON "Users" USING gin ("AllowedApps");
@@ -32,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_users_last_login ON "Users" USING btree (last_log
 CREATE INDEX IF NOT EXISTS idx_users_positions_gin ON "Users" USING gin ("Positions");
 CREATE INDEX IF NOT EXISTS idx_users_role ON "Users" USING btree ("Role");
 CREATE INDEX IF NOT EXISTS idx_users_username_cover ON "Users" USING btree ("UserName") INCLUDE ("Active", "Role");
+CREATE INDEX IF NOT EXISTS idx_users_userid ON "Users" USING btree ("UserId");
 COMMENT ON TABLE "Users" IS '[core]';
 
 -- Table: ApiTokens
@@ -326,3 +330,20 @@ COMMENT ON TABLE "website_access_logs" IS '[core]';
 INSERT INTO "Users" ("UserName", "PasswordEnc", "Role", "Active", "HaveMailAccount", "FullName")
 VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'SuperAdmin', true, false, 'Support User')
 ON CONFLICT ("UserName") DO NOTHING;
+
+-- Migration: add UserId to existing Users tables (idempotent)
+ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "UserId" character varying(9);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'Users_UserId_key'
+    ) THEN
+        ALTER TABLE "Users" ADD CONSTRAINT "Users_UserId_key" UNIQUE ("UserId");
+    END IF;
+END $$;
+
+ALTER TABLE "Users" DROP CONSTRAINT IF EXISTS chk_users_userid_length;
+ALTER TABLE "Users" ADD CONSTRAINT chk_users_userid_length CHECK ("UserId" IS NULL OR length("UserId") = 9);
+
+CREATE INDEX IF NOT EXISTS idx_users_userid ON "Users" USING btree ("UserId");

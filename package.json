@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.1.1",
+  "version": "5.2.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -48,6 +48,7 @@
     "LICENSE",
     "README.md",
     "test.spec.js",
+    "sqlite.spec.js",
     "docs/",
     "lib/",
     "public/",
@@ -58,6 +59,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "better-sqlite3": "^11.9.1",
     "bytes": "^3.1.2",
     "connect-pg-simple": "^10.0.0",
     "content-type": "^1.0.5",

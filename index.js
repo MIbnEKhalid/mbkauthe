@@ -94,7 +94,7 @@ export * from "./lib/middleware/auth.js";
 export * from "./lib/middleware/index.js";
 export { validateTokenScope } from "./lib/middleware/scopeValidator.js";
 export * from "#response.js";
-export { dblogin } from "#pool.js";
+export { dblogin, dbType, dialect } from "#pool.js";
 export { getLatestVersion } from "./lib/routes/misc.js";
 export * from "./lib/routes/auth.js";
 export * from "./lib/utils/errors.js";

@@ -27,7 +27,8 @@ This directory is organized by how the documentation is used:
 
 ## Assets
 
-- [Database schema SQL](schema/db.sql)
+- [Database schema SQL - PostgreSQL](schema/db.sql)
+- [Database schema SQL - SQLite](schema/db.sqlite.sql)
 - [Authentication flow Mermaid source](diagrams/auth-flows.mmd)
 - [Authentication process Mermaid source](diagrams/auth-processes.mmd)
 - [Rendered diagram images](images/)

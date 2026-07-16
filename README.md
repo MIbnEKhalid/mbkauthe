@@ -10,14 +10,14 @@
   <img height="64px" src="./public/logo.png" alt="MBKAuthe" />
 </p>
 
-**MBKAuthe** is an open source authentication package for Node.js, Express, and PostgreSQL. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, and multi-session management.
+**MBKAuthe** is an open source authentication package for Node.js and Express, backed by PostgreSQL or SQLite. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, and multi-session management.
 
 > **Note:** MBKAuthe is intentionally focused on authentication and session validation. The broader user, permission, and dashboard management system is a separate MBKTech product named **MBKCore**(closed source for now).
 
 ## Features
 
 - Express middleware for session validation and role checks
-- PostgreSQL-backed user, session, 2FA, trusted-device, and API-token storage
+- PostgreSQL or SQLite storage for users, sessions, 2FA, trusted devices, and API tokens
 - Secure password authentication with PBKDF2
 - Optional TOTP 2FA with trusted devices
 - GitHub App and Google OAuth login flows
@@ -46,17 +46,24 @@ Copy-Item .env.example .env
 
 See the [configuration guide](docs/guides/configuration.md) for `mbkautheVar`, `mbkauthShared`, OAuth settings, session settings, and deployment flags.
 
-3. Create database tables.
+3. Choose a database backend.
 
-Run [docs/schema/db.sql](docs/schema/db.sql) against PostgreSQL, or use the package script:
+MBKAuthe supports two backends, selected with `DB_TYPE` in `mbkautheVar`:
+
+- **PostgreSQL** (default) - set `LOGIN_DB` to a connection string. Recommended for production and multi-instance deployments.
+- **SQLite** - set `DB_TYPE` to `sqlite` and `SQLITE_PATH` to a file path (created if missing). No database server required - convenient for development, tests, and small single-instance deployments. Uses `better-sqlite3` with WAL mode; expect `-wal`/`-shm` side files next to the database file. See the [SQLite backend notes](docs/guides/database.md#sqlite-backend-notes) in the database guide.
+
+4. Create database tables.
 
 ```bash
 npm run create-tables
 ```
 
+The script applies [docs/schema/db.sql](docs/schema/db.sql) (PostgreSQL) or [docs/schema/db.sqlite.sql](docs/schema/db.sqlite.sql) (SQLite) to the configured backend. You can also run the matching SQL file yourself.
+
 The schema includes a default SuperAdmin user (`support` / `12345678`). Change that password immediately. See the [database guide](docs/guides/database.md).
 
-4. Mount MBKAuthe in Express.
+5. Mount MBKAuthe in Express.
 
 ```javascript
 import express from "express";
@@ -93,7 +100,8 @@ app.listen(3000);
 - `strictValidateSession` - require cookie session authentication only.
 - `strictValidateSessionAndRole` - strict cookie session plus role check.
 - `authenticate(token)` - protect server-to-server routes with a static bearer token.
-- `dblogin` - access the configured PostgreSQL pool.
+- `dblogin` - access the configured database pool (`pg.Pool` or the SQLite adapter, per `DB_TYPE`).
+- `dbType` - the active backend: `"postgres"` or `"sqlite"`.
 
 See the [API reference](docs/reference/api.md) for endpoints, middleware, examples, security notes, and rate limits.
 
@@ -149,6 +157,7 @@ Development-only diagnostics are mounted when `process.env.env === "dev"`:
 - Set an appropriate `COOKIE_EXPIRE_TIME`
 - Store secrets in environment variables
 - Configure OAuth credentials only when the matching provider is enabled
+- If using the SQLite backend, put `SQLITE_PATH` on persistent disk (not ephemeral/serverless storage) and back up the database together with its `-wal`/`-shm` side files
 
 Vercel deployments can use shared OAuth credentials through `mbkauthShared`.
 

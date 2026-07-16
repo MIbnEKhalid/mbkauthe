@@ -39,11 +39,24 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"DOMAIN":"localhost"`
   - Required: Yes
 
+- DB_TYPE
+  - Description: Which database backend to use.
+  - Values: `postgres` (default) / `sqlite`
+  - Example: `"DB_TYPE":"sqlite"`
+  - Required: No (defaults to `postgres`)
+
 - LOGIN_DB
   - Description: PostgreSQL connection string for auth (must start with `postgresql://` or `postgres://`).
   - Example: `"LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth"`
-  - Required: Yes
+  - Required: Yes, when `DB_TYPE` is `postgres` (the default)
   - Create free postgres db: https://neon.com/
+
+- SQLITE_PATH
+  - Description: Path to the SQLite database file (created if missing). Uses `better-sqlite3` under the hood.
+  - Example: `"SQLITE_PATH":"./data/mbkauthe.sqlite"`
+  - Required: Yes, when `DB_TYPE` is `sqlite`
+  - Default: `./mbkauthe.sqlite`
+  - Run `npm run create-tables` after setting this to create the schema (loads `docs/schema/db.sqlite.sql` instead of the Postgres `db.sql`).
 
 - MBKAUTH_TWO_FA_ENABLE
   - Description: Enable Two-Factor Authentication.
@@ -122,6 +135,14 @@ Production (short):
 ```env
 mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"prod-token","SESSION_SECRET_KEY":"prod-secret","IS_DEPLOYED":"true","DOMAIN":"yourdomain.com","LOGIN_DB":"postgresql://dbuser:secure@db:5432/mbkauth_prod","MBKAUTH_TWO_FA_ENABLE":"true"}
 ```
+
+SQLite (no external database required):
+
+```env
+mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","DB_TYPE":"sqlite","SQLITE_PATH":"./data/mbkauthe.sqlite","MBKAUTH_TWO_FA_ENABLE":"false"}
+```
+
+Then run `npm run create-tables` to create `./data/mbkauthe.sqlite` with the schema in `docs/schema/db.sqlite.sql`.
 
 ---
 

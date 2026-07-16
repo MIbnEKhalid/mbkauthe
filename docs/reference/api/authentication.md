@@ -98,7 +98,7 @@ When a user logs in, MBKAuthe creates a session and sets the following cookies:
 ### Session Lifetime
 
 - Default: 2 days (configurable via `COOKIE_EXPIRE_TIME`)
-- Application sessions are stored in the `Sessions` table in PostgreSQL
+- Application sessions are stored in the `Sessions` table in the configured database (PostgreSQL or SQLite, per `DB_TYPE`)
 - Sessions persist across subdomains in production
 
 ---

@@ -50,7 +50,12 @@ declare module 'mbkauthe' {
     Main_SECRET_TOKEN: string;
     IS_DEPLOYED: 'true' | 'false' | 'f';
     DOMAIN: string;
-    LOGIN_DB: string;
+    /** Defaults to 'postgres'. Set to 'sqlite' to use the SQLite backend instead. */
+    DB_TYPE?: 'postgres' | 'sqlite';
+    /** Required when DB_TYPE is 'postgres' (default). */
+    LOGIN_DB?: string;
+    /** Required when DB_TYPE is 'sqlite'. Path to the SQLite database file. */
+    SQLITE_PATH?: string;
     MBKAUTH_TWO_FA_ENABLE: 'true' | 'false' | 'f';
     COOKIE_EXPIRE_TIME?: number;
     DEVICE_TRUST_DURATION_DAYS?: number;
@@ -339,7 +344,26 @@ declare module 'mbkauthe' {
   export function getLatestVersion(): Promise<string>;
 
   // Exports
-  export const dblogin: Pool;
+  /** A `pg.Pool` when DB_TYPE is 'postgres' (default), or a SqlitePool-shaped adapter when DB_TYPE is 'sqlite'. */
+  export const dblogin: Pool | {
+    query(text: string | { text: string; values?: any[]; name?: string }, values?: any[]): Promise<{ rows: any[]; rowCount: number }>;
+    connect(): Promise<{ query: Function; release: () => void }>;
+    end(): Promise<void>;
+  };
+  export const dbType: 'postgres' | 'sqlite';
+  /** SQL dialect helpers for the active backend (see lib/db/dialects/). */
+  export const dialect: {
+    name: 'postgres' | 'sqlite';
+    quoteIdentifier(name: string): string;
+    param(index: number): string;
+    now(): string;
+    boolean(value: any): string;
+    supportsReturning: boolean;
+    returningClause(columns: string): string;
+    limitOffset(options?: { limit?: number; offset?: number }): string;
+    /** `null` on SQLite, which has no table-level lock statement. */
+    lockTable: ((tableSql: string, mode?: string) => string) | null;
+  };
   export const mbkautheVar: MBKAuthConfig;
   export const cachedCookieOptions: ReturnType<typeof getCookieOptions>;
   export const cachedClearCookieOptions: ReturnType<typeof getClearCookieOptions>;

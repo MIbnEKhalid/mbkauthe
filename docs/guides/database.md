@@ -2,7 +2,7 @@
 
 [Back to docs index](../README.md) | [Back to project README](../../README.md)
 
-**Executable DDL lives only in [`docs/schema/db.sql`](../schema/db.sql).** This file explains what that script creates and how the app uses it. Run the script against Postgres when bootstrapping or aligning a database (for example `psql $DATABASE_URL -f docs/schema/db.sql`). The app can also apply it via `lib/createTable.js`, which reads `docs/schema/db.sql`.
+**Executable DDL lives only in [`docs/schema/db.sql`](../schema/db.sql) (Postgres) and [`docs/schema/db.sqlite.sql`](../schema/db.sqlite.sql) (SQLite).** This file explains what those scripts create and how the app uses them. Run the Postgres script when bootstrapping or aligning a database (for example `psql $DATABASE_URL -f docs/schema/db.sql`). The app can also apply the right script for the configured backend via `lib/createTable.js`.
 
 ---
 
@@ -91,3 +91,34 @@ const encryptedPassword = hashPassword("your-password", "newusername");
 ```
 
 Replace usernames, roles (`SuperAdmin`, `NormalUser`, `Guest`, `member`), and flags (`Active`, `HaveMailAccount`) to match your needs.
+
+---
+
+## SQLite backend notes
+
+When `DB_TYPE` is `sqlite` (see the [configuration guide](configuration.md)), the app uses one `better-sqlite3` connection wrapped by `lib/db/sqlitePool.js`. The schema comes from [`docs/schema/db.sqlite.sql`](../schema/db.sqlite.sql) instead of `db.sql`.
+
+- The database runs in WAL journal mode with foreign keys enabled. Expect `-wal` and `-shm` side files next to the database file; do not delete them while the app is running, and include them when copying a live database (or checkpoint first with `PRAGMA wal_checkpoint(TRUNCATE)`).
+- Concurrent requests are safe: an internal FIFO mutex serializes statements so a plain query can never run inside another request's open transaction.
+
+### Warning: inside a transaction, only use `txRepo`
+
+The mutex is not re-entrant. `pool.query()` waits for the mutex, and an open transaction holds it — so a `pool.query()` call from inside a `withTransaction` callback waits on the transaction it is part of and **deadlocks the request** (it hangs with no error). This includes indirect calls through a repository bound to the pool.
+
+```javascript
+await authRepo.withTransaction(async (txRepo) => {
+  // Correct: txRepo wraps the client that holds the lock.
+  await txRepo.insertAppSession(username, expiresAt, meta);
+
+  // WRONG - deadlocks: authRepo is bound to the pool, which
+  // waits for the lock this transaction is holding.
+  // await authRepo.getUserProfileByUsername(username);
+
+  // WRONG for the same reason:
+  // await pool.query('SELECT 1');
+});
+```
+
+Rule of thumb: inside the `withTransaction` callback, only touch the `txRepo` parameter — never `authRepo`, the pool, or anything else that reaches the pool. Queries against the pool are fine again once the callback returns.
+
+(The Postgres backend has the same rule with a different failure mode: a `pool.query()` inside a transaction runs on a different pooled connection, silently outside the transaction.)

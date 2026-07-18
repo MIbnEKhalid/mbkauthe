@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -47,8 +47,6 @@
     "index.d.ts",
     "LICENSE",
     "README.md",
-    "test.spec.js",
-    "sqlite.spec.js",
     "docs/",
     "lib/",
     "public/",

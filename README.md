@@ -21,6 +21,7 @@
 - Secure password authentication with PBKDF2
 - Optional TOTP 2FA with trusted devices
 - GitHub App and Google OAuth login flows
+- Optional browser-based CLI/device login flow for issuing API tokens
 - API token authentication with read-only/write scopes
 - Configurable multi-session support per user
 - CSRF protection, rate limiting, secure cookies, and session fixation prevention
@@ -102,6 +103,35 @@ app.listen(3000);
 - `authenticate(token)` - protect server-to-server routes with a static bearer token.
 - `dblogin` - access the configured database pool (`pg.Pool` or the SQLite adapter, per `DB_TYPE`).
 - `dbType` - the active backend: `"postgres"` or `"sqlite"`.
+- `cliAuthRouter` - the browser-based CLI/device-login routes, mounted automatically unless disabled.
+
+
+## API Token Management
+
+MBKAuthe provides both sides of the API token lifecycle:
+
+- **Authentication** (built-in): Bearer tokens prefixed with `mbk_` are validated on every request (`sessVal` / `sessRole` accept them), with read-only/write scope enforcement via `validateTokenScope`. See [the API reference](docs/reference/api/authentication.md) and `docs/schema/` for the `ApiTokens` table.
+- **Management backend** (mounted by the host app): the CRUD repository, user-facing routes, and admin routes. The page views (`settings/api-tokens.handlebars`, `dashboard/admin/api-tokens.handlebars`) are provided by the host application — only the backend ships here.
+
+Exports:
+
+- `apiTokenRepository` / `ApiTokenRepository` - repository with `listForUser`, `countForUser`, `insert`, `deleteByIdAndUsername`, `findByTokenHash`, `updateLastUsedByHash`, plus admin helpers (`listAll`, `stats`, `listForUserAdmin`, `findInfoById`, `deleteById`, `deleteAllByUsername`, `listForUserDetail`).
+- `apiTokensRouter` - user-facing routes: `GET /user/api-tokens`, `POST /api/token`, `DELETE /api/tokens/:id`, `POST /api/tokens/verify`.
+- `adminApiTokensRouter` - admin routes: `GET /dashboard/admin/api-tokens`, `GET /api/admin/api-tokens/stats`, `GET /api/admin/api-tokens/:username`, `DELETE /api/admin/api-tokens/:id`, `DELETE /api/admin/api-tokens/user/:username`.
+- `hashApiToken(token)` - SHA-256 hash for storage/comparison.
+- `generatePrefixedToken(prefix = "mbk_")` / `generateRandomHex(bytes = 32)` - token generation helpers.
+
+Mount the routers wherever you want the endpoints to live (they use root-relative paths):
+
+```javascript
+import express from "express";
+import mbkauthe, { apiTokensRouter, adminApiTokensRouter } from "mbkauthe";
+
+const app = express();
+app.use(mbkauthe);
+app.use(apiTokensRouter);        // /user/api-tokens, /api/token, ...
+app.use(adminApiTokensRouter);   // /dashboard/admin/api-tokens, /api/admin/api-tokens/*
+```
 
 See the [API reference](docs/reference/api.md) for endpoints, middleware, examples, security notes, and rate limits.
 

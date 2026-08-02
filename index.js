@@ -62,6 +62,9 @@ const renderDevError = (res, req, code, error, message, page, details) => render
 if (isDevMode) {
     logServer(`Dev mode is enabled. Starting server in dev mode.`);
 
+    app.use(apiTokensRouter);
+    app.use(adminApiTokensRouter);
+
     app.get(["/dashboard", "/home", "/"], (req, res) => res.redirect("/mbkauthe/"));
 
     app.get("/dev/2fa", (req, res) => renderPage(req, res, "pages/2fa.handlebars", false, {
@@ -101,5 +104,12 @@ export * from "./lib/utils/errors.js";
 export * from "./lib/config/cookies.js";
 export * from "./lib/config/security.js";
 export * from "./lib/db/AuthRepository.js";
+export { ApiTokenRepository, apiTokenRepository } from "./lib/db/ApiTokenRepository.js";
+export { CliAuthSessionRepository, cliAuthSessionRepository } from "./lib/db/CliAuthSessionRepository.js";
+export { default as apiTokensRouter } from "./lib/routes/apiTokens.js";
+import apiTokensRouter from "./lib/routes/apiTokens.js";
+import adminApiTokensRouter from "./lib/routes/adminApiTokens.js";
+export { default as adminApiTokensRouter } from "./lib/routes/adminApiTokens.js";
+export { default as cliAuthRouter } from "./lib/routes/cliAuth.js";
 export { mbkautheVar } from "#config.js";
 export default app;

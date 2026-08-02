@@ -83,6 +83,17 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Notes: Must be a positive integer. Validation is performed at startup by `lib/config/index.js`.
   - Required: No
 
+- CLI_AUTH_ENABLED
+  - Description: Attach the browser-based CLI/device login flow to the main router. Set to `"false"` or `"f"` to disable it.
+  - Default: `"true"`
+  - Example: `"CLI_AUTH_ENABLED":"false"`
+  - Required: No
+
+- CLI_AUTH_BASE_URL
+  - Description: Optional absolute base URL (no trailing slash) used for the CLI verification link. Recommended in production so the device-flow page is reachable regardless of the request host.
+  - Example: `"CLI_AUTH_BASE_URL":"https://portal.mbktech.org"`
+  - Required: No
+
 - loginRedirectURL
   - Description: Post-login redirect path.
   - Default: `/dashboard`

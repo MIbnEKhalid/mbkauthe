@@ -51,6 +51,11 @@ Remembered devices (token, optional name, user agent, IP, created/expires/last-u
 
 Named tokens per user: hash and prefix for lookup, optional expiry, `LastUsed`, and `Permissions` JSONB with constraints defined in SQL.
 
+### Related tables for token issuance
+
+- **`ApiTokenProfiles`** — predefined API-token templates consumed by the browser-based CLI/device login flow. MBKAuthe reads the active profile to build a token from its scope, app restrictions, and expiration policy.
+- **`CliAuthSessions`** — one-time browser/device login sessions. Each row stores hashed user/device codes, a pending raw token (until delivery), status (`pending`, `approved`, `completed`, `denied`, `expired`), and the profile id used to issue the token.
+
 ### `Permissions` shape (JSONB)
 
 ```json

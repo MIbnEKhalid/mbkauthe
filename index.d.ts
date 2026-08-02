@@ -67,6 +67,17 @@ declare module 'mbkauthe' {
     GOOGLE_CLIENT_SECRET?: string;
     loginRedirectURL?: string;
     MAX_SESSIONS_PER_USER?: number;
+    /**
+     * Optional absolute base URL (no trailing slash) used to build the CLI
+     * device-flow verification URL, e.g. "https://portal.mbktech.org".
+     * Falls back to https://DOMAIN when IS_DEPLOYED, or the request host in dev.
+     */
+    CLI_AUTH_BASE_URL?: string;
+    /**
+     * Attach the CLI / device-flow login to the main router. Defaults to 'true'.
+     * Set 'false' to disable it.
+     */
+    CLI_AUTH_ENABLED?: 'true' | 'false' | 'f';
   }
 
   export interface OAuthConfig {
@@ -173,6 +184,125 @@ declare module 'mbkauthe' {
     CreatedAt: Date;
     ExpiresAt?: Date;
   }
+
+  /** A token row as returned by the list/admin repository methods (Scope/AllowedApps derived from Permissions). */
+  export interface ApiTokenRow {
+    id: number;
+    Name: string;
+    Prefix: string;
+    Scope: TokenScope;
+    AllowedApps: string[] | null;
+    Permissions?: TokenPermissions;
+    LastUsed?: Date;
+    CreatedAt?: Date;
+    ExpiresAt?: Date;
+    UserName?: string;
+    email?: string;
+    Role?: string;
+    FullName?: string;
+  }
+
+  /** A token row as returned by listForUserDetail (admin user detail page). */
+  export interface ApiTokenDetailRow {
+    id: number;
+    Name: string;
+    Prefix: string;
+    LastUsed?: Date;
+    formatted_created: string;
+    formatted_expires: string;
+    is_active: boolean;
+    Permissions: TokenPermissions;
+  }
+
+  // API Token Repository
+  export class ApiTokenRepository {
+    constructor(options?: { db?: any; dialect?: typeof dialect });
+    listForUser(username: string): Promise<ApiTokenRow[]>;
+    countForUser(username: string): Promise<number>;
+    insert(
+      username: string,
+      name: string,
+      tokenHash: string,
+      prefix: string,
+      permissions: string | TokenPermissions,
+      expiresAt?: Date | string | null
+    ): Promise<ApiTokenRow>;
+    deleteByIdAndUsername(id: number, username: string): Promise<{ rows: { Name: string }[]; rowCount: number }>;
+    findByTokenHash(tokenHash: string): Promise<ApiTokenRow[]>;
+    updateLastUsedByHash(tokenHash: string): Promise<{ rowCount: number }>;
+    listAll(): Promise<ApiTokenRow[]>;
+    stats(): Promise<Record<string, number | string>>;
+    listForUserAdmin(username: string): Promise<ApiTokenRow[]>;
+    findInfoById(id: number): Promise<{ UserName: string; Name: string } | null>;
+    deleteById(id: number): Promise<{ rowCount: number }>;
+    deleteAllByUsername(username: string): Promise<{ rowCount: number }>;
+    listForUserDetail(username: string): Promise<ApiTokenDetailRow[]>;
+  }
+
+  export const apiTokenRepository: ApiTokenRepository;
+
+  // API token routers (mounted by host apps; page views are provided by the host)
+  export const apiTokensRouter: Router;
+  export const adminApiTokensRouter: Router;
+
+  // CLI / Device-flow auth types
+  export type CliAuthStatus = 'pending' | 'approved' | 'completed' | 'denied' | 'expired';
+
+  export interface ApiTokenProfile {
+    id: number;
+    /** Public random key (>= 6 chars) that CLIs use instead of the serial id. */
+    ProfileKey?: string | null;
+    Name: string;
+    Description?: string | null;
+    AllowedApps?: string[] | null;
+    Scope: TokenScope;
+    ExpiresInDays?: number | null;
+    Active?: boolean;
+    CreatedAt?: Date;
+    UpdatedAt?: Date;
+  }
+
+  export interface CliAuthSession {
+    id: number;
+    DeviceCodeHash: string;
+    UserCodeHash: string;
+    ClientName: string;
+    ProfileId: number;
+    UserName?: string | null;
+    TokenId?: number | null;
+    PendingToken?: string | null;
+    Status: CliAuthStatus;
+    ExpiresAt: Date;
+    CreatedAt: Date;
+    ApprovedAt?: Date | null;
+  }
+
+  export class CliAuthSessionRepository {
+    constructor(options?: { db?: any; dialect?: typeof dialect });
+    create(input: {
+      deviceCodeHash: string;
+      userCodeHash: string;
+      clientName: string;
+      profileId: number;
+      expiresAt: Date;
+    }): Promise<CliAuthSession | null>;
+    findByDeviceCodeHash(deviceCodeHash: string): Promise<CliAuthSession | null>;
+    findByUserCodeHash(userCodeHash: string): Promise<CliAuthSession | null>;
+    markApproved(id: number, input: { userName: string; tokenId: number; pendingToken: string }): Promise<boolean>;
+    markDenied(id: number): Promise<{ rowCount: number }>;
+    markExpired(id: number): Promise<{ rowCount: number }>;
+    expireStale(now?: Date): Promise<{ rowCount: number }>;
+    completeDelivery(id: number): Promise<boolean>;
+    deleteById(id: number): Promise<{ rowCount: number }>;
+    getProfileById(profileId: number): Promise<ApiTokenProfile | null>;
+    getActiveProfileById(profileId: number): Promise<ApiTokenProfile | null>;
+    getActiveProfileByKey(profileKey: string): Promise<ApiTokenProfile | null>;
+  }
+
+  export const cliAuthSessionRepository: CliAuthSessionRepository;
+
+  /** CLI / device-flow auth router (browser login + token polling). Mount at root. */
+  export const cliAuthRouter: Router;
 
   // API Response Types
   export interface LoginResponse {
@@ -338,6 +468,15 @@ declare module 'mbkauthe' {
   export function hashPassword(password: string, username: string): string;
 
   export function verifyPassword(password: string, username: string, storedHash: string): Promise<boolean>;
+
+  // Hash an API token (SHA-256 hex) for storage/comparison
+  export function hashApiToken(token: string): string | null;
+
+  // Generate a cryptographically random hex string (default 32 bytes → 64 chars)
+  export function generateRandomHex(bytes?: number): string;
+
+  // Generate a prefixed API token (e.g. "mbk_<64 hex chars>")
+  export function generatePrefixedToken(prefix?: string): string;
 
   export function clearSessionCookies(res: Response): void;
 

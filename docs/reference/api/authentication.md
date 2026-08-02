@@ -22,11 +22,12 @@ Authorization: Bearer <your_api_token>
 **Behavior:**
 - **Stateless:** Validates against the `ApiTokens` table on every request.
 - **Expiration:** Tokens can have an optional expiration date.
-- **Permissions:** API tokens inherit the permissions of the user who created them.
+- **Permissions:** API tokens inherit the permissions of the user who created them, but can also carry token-specific app restrictions. The `Permissions` payload is evaluated before the request is allowed.
 - **Scopes:** Tokens have a scope (`read-only` or `write`) that controls which HTTP methods are allowed:
   - `read-only`: Only GET, HEAD, and OPTIONS requests (safe, read-only operations)
   - `write`: All HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
 - **Usage Tracking:** The system updates the `LastUsed` timestamp on every successful request.
+- **Allowed apps:** If a token carries `allowedApps`, that list overrides the user's own app list for token-based requests. `null` inherits the user's apps, `[]` denies app access, and `["*"]` grants access to all of the user's apps (subject to the user's own app list).
 
 **Errors:**
 - `401 Unauthorized` (Code 1005: `INVALID_AUTH_TOKEN`): Token is malformed or not found.

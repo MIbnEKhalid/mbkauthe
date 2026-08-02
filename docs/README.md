@@ -12,6 +12,7 @@ This directory is organized by how the documentation is used:
 - [Project README](../README.md)
 - [Configuration guide](guides/configuration.md)
 - [Database guide](guides/database.md)
+- [CLI authentication (device flow)](guides/cli-auth.md)
 - [API reference](reference/api.md)
 - [Error codes](reference/error-codes.md)
 - [Documentation style guide](STYLE.md)

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{> head pageTitle="Approve CLI Login" ogUrl="/mbkauthe/cli/device"}}
+
+<body>
+    {{> header}}
+
+    <style>
+        .cli-device-container {
+            min-height: calc(100vh - 120px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .cli-device-card {
+            max-width: 520px;
+            width: 100%;
+            background: var(--glass-bg);
+            border: 1px solid var(--muted-border);
+            border-radius: 18px;
+            padding: 2.25rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+            text-align: center;
+        }
+
+        .cli-device-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: #fff;
+        }
+
+        .cli-device-icon.icon-pending { background: var(--primary); }
+        .cli-device-icon.icon-success { background: #22a06b; }
+        .cli-device-icon.icon-danger { background: #e5484d; }
+        .cli-device-icon.icon-muted { background: #6b7280; }
+
+        .cli-device-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem;
+            color: var(--text-strong);
+        }
+
+        .cli-device-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin: 0 0 1.5rem;
+        }
+
+        .cli-user-code {
+            font-family: "Courier New", monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            background: var(--surface-elevated);
+            border: 1px dashed var(--muted-border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin: 0 auto 1.5rem;
+            display: inline-block;
+            color: var(--text-strong);
+        }
+
+        .cli-client-name {
+            font-weight: 600;
+            color: var(--text-strong);
+        }
+
+        .cli-profile-box {
+            text-align: left;
+            background: var(--surface-elevated);
+            border: 1px solid var(--muted-border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .cli-profile-box .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+        }
+
+        .cli-profile-box .row .label {
+            color: var(--text-muted);
+        }
+
+        .cli-profile-box .row .value {
+            color: var(--text-strong);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .cli-scope-badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .cli-scope-badge.read-only { background: rgba(11, 92, 171, 0.15); color: #0b5cab; }
+        .cli-scope-badge.write { background: rgba(214, 158, 46, 0.18); color: #8a6d1a; }
+
+        .cli-app-chip {
+            display: inline-block;
+            font-family: "Courier New", monospace;
+            font-size: 0.78rem;
+            background: var(--surface-elevated);
+            border: 1px solid var(--muted-border);
+            padding: 0.1rem 0.45rem;
+            border-radius: 5px;
+            margin: 0.1rem 0.15rem 0 0;
+            color: var(--text-strong);
+        }
+
+        .cli-device-actions {
+            display: flex;
+            gap: 0.85rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        .cli-device-actions button {
+            flex: 1;
+            padding: 0.7rem 1rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .btn-approve {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-deny {
+            background: transparent;
+            color: #e5484d;
+            border-color: rgba(229, 72, 77, 0.5) !important;
+        }
+
+        .cli-device-message {
+            margin-top: 1.25rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .cli-device-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: cli-spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.4rem;
+        }
+
+        @keyframes cli-spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+
+    {{> showmessage}}
+
+    <section class="cli-device-container">
+        <div class="cli-device-card">
+
+            {{#if (eq status 'notfound')}}
+                <div class="cli-device-icon icon-danger"><i class="fas fa-exclamation-triangle"></i></div>
+                <h1 class="cli-device-title">Request Not Found</h1>
+                <p class="cli-device-subtitle">{{#if error}}{{error}}{{else}}This login request could not be found.{{/if}}</p>
+                <p class="cli-device-message">Please start the CLI login again to get a fresh verification code.</p>
+
+            {{else if (eq status 'pending')}}
+                <div class="cli-device-icon icon-pending"><i class="fas fa-terminal"></i></div>
+                <h1 class="cli-device-title">Approve CLI Login</h1>
+                <p class="cli-device-subtitle">
+                    <span class="cli-client-name">{{clientName}}</span> is requesting an API token.
+                </p>
+
+                <div class="cli-user-code">{{userCode}}</div>
+
+                {{#if profile}}
+                <div class="cli-profile-box">
+                    <div class="row">
+                        <span class="label">Token profile</span>
+                        <span class="value">{{profile.name}}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Permission scope</span>
+                        <span class="value">
+                            <span class="cli-scope-badge {{#if (eq profile.scope 'write')}}write{{else}}read-only{{/if}}">
+                                {{profile.scope}}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Allowed applications</span>
+                        <span class="value">
+                            {{#if profile.allowedApps}}
+                                {{#each profile.allowedApps}}<span class="cli-app-chip">{{this}}</span>{{/each}}
+                            {{else}}
+                                Any
+                            {{/if}}
+                        </span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Expiration</span>
+                        <span class="value">{{#if profile.expiresInDays}}{{profile.expiresInDays}} day(s){{else}}Never{{/if}}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Requested by</span>
+                        <span class="value">{{username}}</span>
+                    </div>
+                </div>
+                {{/if}}
+
+                <div class="cli-device-actions">
+                    <button class="btn-deny" id="btnDeny" onclick="submitApproval('deny')"><i class="fas fa-times"></i> Deny</button>
+                    <button class="btn-approve" id="btnApprove" onclick="submitApproval('approve')"><i class="fas fa-check"></i> Approve</button>
+                </div>
+                <p class="cli-device-message">
+                    {{#if expiresInSeconds}}This request expires in {{expiresInSeconds}} seconds.{{else}}This request is about to expire.{{/if}}
+                </p>
+
+            {{else if (eq status 'approved')}}
+                <div class="cli-device-icon icon-success"><i class="fas fa-check"></i></div>
+                <h1 class="cli-device-title">Login Approved</h1>
+                <p class="cli-device-subtitle">The CLI has been authorized. Return to your terminal — it will receive the token momentarily.</p>
+
+            {{else if (eq status 'completed')}}
+                <div class="cli-device-icon icon-success"><i class="fas fa-check"></i></div>
+                <h1 class="cli-device-title">Token Delivered</h1>
+                <p class="cli-device-subtitle">The API token has been handed to the CLI. You can close this page.</p>
+
+            {{else if (eq status 'denied')}}
+                <div class="cli-device-icon icon-danger"><i class="fas fa-ban"></i></div>
+                <h1 class="cli-device-title">Login Denied</h1>
+                <p class="cli-device-subtitle">You denied this CLI login request. The CLI will not receive a token.</p>
+
+            {{else if (eq status 'expired')}}
+                <div class="cli-device-icon icon-muted"><i class="fas fa-hourglass-end"></i></div>
+                <h1 class="cli-device-title">Request Expired</h1>
+                <p class="cli-device-subtitle">This login request expired before it was approved. Please start the CLI login again.</p>
+
+            {{else}}
+                <div class="cli-device-icon icon-muted"><i class="fas fa-circle-info"></i></div>
+                <h1 class="cli-device-title">Unknown Request</h1>
+                <p class="cli-device-subtitle">The status of this request is unknown. Please start the CLI login again.</p>
+            {{/if}}
+
+        </div>
+    </section>
+
+    <script>
+        const userCode = {{#if userCode}}"{{userCode}}"{{else}}null{{/if}};
+
+        window.submitApproval = async function (action) {
+            const approveBtn = document.getElementById('btnApprove');
+            const denyBtn = document.getElementById('btnDeny');
+            if (approveBtn) { approveBtn.disabled = true; approveBtn.innerHTML = '<span class="cli-device-spinner"></span>Processing...'; }
+            if (denyBtn) { denyBtn.disabled = true; }
+
+            try {
+                const res = await fetch('/api/cli/device/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userCode, action }),
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    // Reload so the server renders the new status.
+                    window.location.reload();
+                    return;
+                }
+                showMessage(data.message || 'Failed to process your request. Please try again.', 'Approval Failed');
+            } catch (err) {
+                console.error(err);
+                showMessage('Failed to process your request. Please try again.', 'Approval Failed');
+            } finally {
+                if (approveBtn) { approveBtn.disabled = false; approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve'; }
+                if (denyBtn) { denyBtn.disabled = false; }
+            }
+        };
+    </script>
+</body>
+
+</html>

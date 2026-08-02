@@ -59,6 +59,50 @@ CREATE TABLE IF NOT EXISTS "ApiTokens" (
 CREATE INDEX IF NOT EXISTS idx_apitokens_expires ON "ApiTokens" ("ExpiresAt") WHERE "ExpiresAt" IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_apitokens_username_created ON "ApiTokens" ("UserName", "CreatedAt" DESC);
 
+-- Table: ApiTokenProfiles
+-- Predefined API token templates managed by MBKCore. MBKAuthe consumes these
+-- (read-only) during CLI / device-flow token issuance.
+CREATE TABLE IF NOT EXISTS "ApiTokenProfiles" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    "ProfileKey" TEXT,
+    "Name" TEXT NOT NULL,
+    "Description" TEXT,
+    "AllowedApps" TEXT,
+    "Scope" TEXT DEFAULT 'read-only' NOT NULL,
+    "ExpiresInDays" INTEGER,
+    "Active" INTEGER DEFAULT 1 NOT NULL,
+    "CreatedAt" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ApiTokenProfiles_Name_key" UNIQUE ("Name"),
+    CONSTRAINT "ApiTokenProfiles_ProfileKey_key" UNIQUE ("ProfileKey"),
+    CONSTRAINT chk_apitokenprofiles_scope CHECK (("Scope" IN ('read-only', 'write'))),
+    CONSTRAINT chk_apitokenprofiles_expires CHECK (("ExpiresInDays" IS NULL) OR ("ExpiresInDays" > 0))
+);
+CREATE INDEX IF NOT EXISTS idx_apitokenprofiles_active ON "ApiTokenProfiles" ("Active");
+
+-- Table: CliAuthSessions
+-- One-time device-authorization sessions backing the browser-based CLI login
+-- flow (RFC 8628-style). MBKAuthe owns this table.
+CREATE TABLE IF NOT EXISTS "CliAuthSessions" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    "DeviceCodeHash" TEXT NOT NULL,
+    "UserCodeHash" TEXT NOT NULL,
+    "ClientName" TEXT NOT NULL,
+    "ProfileId" INTEGER NOT NULL,
+    "UserName" TEXT,
+    "TokenId" INTEGER,
+    "PendingToken" TEXT,
+    "Status" TEXT DEFAULT 'pending' NOT NULL,
+    "ExpiresAt" TEXT NOT NULL,
+    "CreatedAt" TEXT DEFAULT CURRENT_TIMESTAMP,
+    "ApprovedAt" TEXT,
+    CONSTRAINT "CliAuthSessions_DeviceCodeHash_key" UNIQUE ("DeviceCodeHash"),
+    CONSTRAINT "CliAuthSessions_UserCodeHash_key" UNIQUE ("UserCodeHash"),
+    CONSTRAINT chk_cliauthsessions_status CHECK (("Status" IN ('pending', 'approved', 'completed', 'denied', 'expired')))
+);
+CREATE INDEX IF NOT EXISTS idx_cliauthsessions_expires ON "CliAuthSessions" ("ExpiresAt");
+CREATE INDEX IF NOT EXISTS idx_cliauthsessions_status ON "CliAuthSessions" ("Status");
+
 -- Table: PasswordResets
 CREATE TABLE IF NOT EXISTS "PasswordResets" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

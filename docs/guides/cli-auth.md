@@ -60,6 +60,10 @@ To disable it:
 
 `CLI_AUTH_ENABLED` accepts `"true"` (default) / `"false"` / `"f"`.
 
+When disabled, the router **stays mounted** but rejects every request with
+`403` and `{ "success": false, "message": "CLI auth is disabled" }`, instead
+of detaching the endpoints (which would produce `404`s).
+
 ### Verification URL
 
 The verification URL shown to the user is built from, in order of priority:

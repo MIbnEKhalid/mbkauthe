@@ -180,16 +180,75 @@ Possible responses:
 { "success": true, "status": "approved", "token": "mbk_…", "tokenPrefix": "mbk_1234", "username": "jane", "message": "Login approved" }
 ```
 
-## CLI client example
+## Error Response Reference
 
-A minimal polling loop:
+### POST /api/cli/device
+
+| HTTP Status | Condition |
+|---|---|
+| `201` | Session created, verification URL returned |
+| `400` | Missing/invalid `clientName` (empty or >255 chars) |
+| `400` | No valid `profileKey` (≥6 chars) or `profileId` provided |
+| `400` | Profile not found or inactive |
+| `429` | Rate limit exceeded (20/min/IP) |
+| `500` | Internal server error |
+
+### POST /api/cli/device/approve
+
+| HTTP Status | `status` field | Condition |
+|---|---|---|
+| `200` | `"approved"` | Login approved, token staged |
+| `200` | `"denied"` | Login explicitly denied |
+| `400` | — | Missing `userCode` or invalid `action` |
+| `403` | — | Token limit reached for non-SuperAdmin (max 10) |
+| `404` | — | `userCode` not found |
+| `409` | `"approved"` / `"denied"` / `"expired"` | Request already processed |
+| `410` | `"expired"` | Request expired before decision |
+| `429` | — | Rate limit exceeded (30/min/IP) |
+| `500` | — | Internal server error |
+
+### POST /api/cli/device/token
+
+| HTTP Status | `success` | `status` field | Condition |
+|---|---|---|---|
+| `200` | `true` | `"approved"` | **Token delivered** (includes `token`, `tokenPrefix`, `username`) |
+| `200` | `false` | `"pending"` | Still waiting — poll again after `interval` seconds |
+| `200` | `false` | `"completed"` | Token was already delivered on a prior poll |
+| `200` | `false` | `"denied"` | User denied the request |
+| `200` | `false` | `"expired"` | Request expired |
+| `400` | `false` | — | Missing `deviceCode` |
+| `404` | `false` | `"invalid"` | Unknown `deviceCode` |
+| `429` | — | — | Rate limit exceeded (60/min/IP) |
+| `500` | — | — | Internal server error |
+
+## CLI Client Example
+
+A complete reference implementation is available at
+[`lib/tests/mbkcli.mjs`](../../lib/tests/mbkcli.mjs). It covers:
+
+1. **Token persistence** — saves the token to `~/.mbkcli_token` (0600)
+2. **Token verification** — on startup, validates any saved token via `POST /api/tokens/verify`
+3. **Device login** — starts a new device flow if no valid token exists
+4. **Protected API call** — confirms the token works against a protected endpoint
+
+Key configuration via environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `MBKCLI_BASE_URL` | `http://localhost:5555` | Server base URL |
+| `MBKCLI_CLIENT_NAME` | `mbkbucket-cli` | Display name shown in browser approval page |
+| `MBKCLI_PROFILE_KEY` | `"1362403658a3"` | API Token Profile public key (≥6 chars) |
+| `MBKCLI_PROFILE_ID` | *(none)* | Deprecated fallback — use `MBKCLI_PROFILE_KEY` instead |
+| `MBKCLI_TOKEN_FILE` | `~/.mbkcli_token` | Path to save the API token |
+
+### Minimal polling loop
 
 ```javascript
 // 1. Start
 const start = await fetch(`${BASE}/api/cli/device`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ clientName: "my-cli", profileId }),
+  body: JSON.stringify({ clientName: "my-cli", profileKey: "1362403658a3" }),
 }).then((r) => r.json());
 
 console.log(`Open: ${start.verificationUrl}`);
@@ -211,6 +270,37 @@ for (;;) {
     throw new Error(`Login ${res.status}`);
   }
 }
+```
+
+### Token Verification
+
+After obtaining a token, verify it before use:
+
+```bash
+curl -X POST https://portal.mbktech.org/api/tokens/verify \
+  -H "Content-Type: application/json" \
+  -d '{"token": "mbk_..."}'
+```
+
+**Success (`200 OK`):**
+```json
+{
+  "success": true,
+  "tokenValid": true,
+  "username": "jane",
+  "permissions": { "scope": "read-only", "allowedApps": ["Portal"] },
+  "expiresAt": "2026-09-01T00:00:00.000Z"
+}
+```
+
+**Expired/Invalid (`200 OK`):**
+```json
+{ "success": false, "tokenValid": false, "message": "Token is invalid or expired" }
+```
+
+**Malformed Token (`400`):**
+```json
+{ "success": false, "message": "Token format is invalid" }
 ```
 
 ## Managing API Token Profiles

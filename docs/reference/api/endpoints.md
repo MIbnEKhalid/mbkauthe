@@ -196,6 +196,186 @@ Validates that the current session has `SuperAdmin` role and returns a JSON summ
 
 ---
 
+## CLI Device Flow Endpoints (RFC 8628)
+
+See the [CLI Authentication guide](../../guides/cli-auth.md) for the full flow description and a complete reference client implementation (`lib/tests/mbkcli.mjs`).
+
+#### `POST /api/cli/device`
+
+Starts a browser-based device login. Called by the CLI. Public, rate-limited (20/min/IP).
+
+The profile is referenced by `profileKey` (preferred, ≥6-char public key) or `profileId` (numeric, deprecated).
+
+**Request Body:**
+```json
+{
+  "clientName": "my-cli",
+  "profileKey": "1362403658a3"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "verificationUrl": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
+  "userCode": "XXXX-XXXX",
+  "deviceCode": "a3f9…(48 hex chars)",
+  "expiresIn": 900,
+  "interval": 5,
+  "clientName": "my-cli",
+  "profile": {
+    "id": 3,
+    "key": "1362403658a3",
+    "name": "cli-default",
+    "scope": "read-only",
+    "allowedApps": ["Portal"],
+    "expiresInDays": 30
+  }
+}
+```
+
+---
+
+#### `GET /mbkauthe/cli/device/:userCode`
+
+Browser approval page. Requires an authenticated session; redirects to login if not signed in.
+
+**Rate Limit:** None (session-authenticated page render).
+
+---
+
+#### `POST /api/cli/device/approve`
+
+Approve or deny a CLI login request. Session-authenticated, rate-limited (30/min/IP).
+
+**Request Body:**
+```json
+{ "userCode": "XXXX-XXXX", "action": "approve" }
+```
+`action` must be `"approve"` or `"deny"`.
+
+**Success Response (200 OK — approved):**
+```json
+{ "success": true, "status": "approved", "message": "Login approved. The CLI will receive the token momentarily." }
+```
+
+**Success Response (200 OK — denied):**
+```json
+{ "success": true, "status": "denied", "message": "Login request denied" }
+```
+
+---
+
+#### `POST /api/cli/device/token`
+
+Polls for the issued token. Called by the CLI on `interval` seconds. Public, rate-limited (60/min/IP).
+
+**Request Body:**
+```json
+{ "deviceCode": "a3f9…(48 hex chars)" }
+```
+
+**Success — Token delivered (200 OK):**
+```json
+{
+  "success": true,
+  "status": "approved",
+  "token": "mbk_…(64 hex chars)",
+  "tokenPrefix": "mbk_1234",
+  "username": "jane",
+  "message": "Login approved"
+}
+```
+The token is delivered **exactly once** — subsequent polls return `"completed"`.
+
+**Pending (200 OK):**
+```json
+{ "success": false, "status": "pending", "interval": 5 }
+```
+
+---
+
+## API Token Management
+
+#### `POST /api/token`
+
+Create a new API token (user-facing). Requires an authenticated session.
+
+**Request Body:**
+```json
+{
+  "name": "My CI Token",
+  "scope": "read-only",
+  "expiresDays": 30,
+  "allowedApps": ["Portal", "mbkauthe"]
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "token": "mbk_…(64 hex chars)",
+  "prefix": "mbk_a1b2",
+  "name": "My CI Token",
+  "id": 42
+}
+```
+
+---
+
+#### `POST /api/tokens/verify`
+
+Verify an API token's validity. Public.
+
+**Request Body:**
+```json
+{ "token": "mbk_…(64 hex chars)" }
+```
+
+**Success (200 OK):**
+```json
+{
+  "success": true,
+  "tokenValid": true,
+  "username": "jane",
+  "permissions": { "scope": "read-only", "allowedApps": ["Portal"] },
+  "expiresAt": "2026-09-01T00:00:00.000Z"
+}
+```
+
+---
+
+#### `DELETE /api/token/:id`
+
+Delete (revoke) your own API token. Requires an authenticated session.
+
+**Success Response (200 OK):**
+```json
+{ "success": true, "message": "Token deleted" }
+```
+
+---
+
+## Admin API Token Management
+
+All admin endpoints require `SuperAdmin` role.
+
+#### `GET /api/admin/api-tokens/stats`
+
+Get aggregate token statistics.
+
+#### `GET /api/admin/api-tokens/:username`
+
+Get all API tokens for a specific user.
+
+#### `DELETE /api/admin/api-tokens/:id`
+
+Revoke (delete) any API token by ID.
+
+---
+
 ## Additional Endpoints
 
 The endpoints below are active in the router but are not fully expanded above. Use this list as a reference.
@@ -227,7 +407,7 @@ The endpoints below are active in the router but are not fully expanded above. U
 - `GET /mbkauthe/info.json` and `GET /mbkauthe/i.json` - Info page JSON.
 - `GET /mbkauthe/ErrorCode` - Error codes page.
 - `GET /mbkauthe/user/profilepic` - User profile picture proxy.
- - `GET /mbkauthe/` - Mount root; renders the test/home page (alias of `/mbkauthe/test`).
+- `GET /mbkauthe/` - Mount root; renders the test/home page (alias of `/mbkauthe/test`).
 
 **Admin:**
 

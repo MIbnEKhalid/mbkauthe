@@ -35,6 +35,8 @@
 
 ## Rate Limits
 
+### Auth Endpoints
+
 | Endpoint | Limit | Window |
 |----------|-------|--------|
 | `/mbkauthe/api/login` | 8 requests | 1 minute |
@@ -46,7 +48,21 @@
 | `/mbkauthe/info` | 8 requests | 1 minute |
 | `/mbkauthe/test` | 8 requests | 1 minute |
 
-Rate limits are applied per IP address. Logged-in users are exempt from some rate limits (e.g., login page rate limit).
+### CLI Device Flow
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| `POST /api/cli/device` | 20 requests | 1 minute |
+| `POST /api/cli/device/approve` | 30 requests | 1 minute |
+| `POST /api/cli/device/token` | 60 requests | 1 minute |
+
+### Admin Endpoints
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| Admin operations (terminate sessions, etc.) | 3 requests | 5 minutes |
+
+Rate limits are applied per IP address. Logged-in users are exempt from some rate limits (e.g., login page rate limit). The `/mbkauthe/cli/device/:userCode` page render is session-authenticated and not rate-limited.
 
 ---
 

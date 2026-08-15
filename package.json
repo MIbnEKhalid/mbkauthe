@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.3.3",
+  "version": "5.3.4",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -58,44 +58,22 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.9.1",
-    "bytes": "^3.1.2",
     "connect-pg-simple": "^10.0.0",
-    "content-type": "^1.0.5",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "csurf": "^1.2.2",
     "debug": "^4.4.3",
-    "depd": "^2.0.0",
     "dotenv": "^16.6.1",
-    "encodeurl": "^2.0.0",
-    "escape-html": "^1.0.3",
-    "etag": "^1.8.1",
     "express": "^5.1.0",
-    "express-handlebars": "^8.0.1",
+    "express-handlebars": "^8.0.3",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
-    "graceful-fs": "^4.2.11",
-    "iconv-lite": "^0.7.2",
-    "inherits": "^2.0.4",
-    "ms": "^2.1.3",
     "node-fetch": "^3.3.2",
-    "on-finished": "^2.4.1",
-    "once": "^1.4.0",
-    "parseurl": "^1.3.3",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
-    "pg": "^8.14.1",
-    "proxy-addr": "^2.0.7",
-    "qs": "^6.15.0",
-    "range-parser": "^1.2.1",
-    "safe-buffer": "^5.2.1",
-    "speakeasy": "^2.0.0",
-    "statuses": "^2.0.2",
-    "unpipe": "^1.0.0",
-    "utils-merge": "^1.0.1",
-    "vary": "^1.1.2",
-    "xtend": "^4.0.2"
+    "pg": "^8.16.3",
+    "speakeasy": "^2.0.0"
   },
   "overrides": {
     "csurf": {
@@ -103,9 +81,10 @@
     }
   },
   "devDependencies": {
+    "admindb": "^1.0.3",
     "cross-env": "^7.0.3",
     "jest": "^30.2.0",
-    "nodemon": "^3.1.11",
+    "nodemon": "^3.1.14",
     "supertest": "^7.1.4"
   },
   "jest": {
@@ -113,6 +92,9 @@
     "testMatch": [
       "**/*.spec.js",
       "**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
     ],
     "testTimeout": 10000,
     "transform": {}

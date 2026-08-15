@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 import { renderError, renderPage } from "#response.js";
 import { packageJson } from "#config.js";
 import { createLogger } from "./lib/utils/logger.js";
+import { createRouter, DbManager } from 'admindb';
+import { mbkautheVar } from "#config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,6 +80,19 @@ if (isDevMode) {
         "Internal Server Error", "Simulated 500 Error",
         "/mbkauthe/login", "This is a simulated 500 error page for testing purposes."
     ));
+
+    if (mbkautheVar.DB_TYPE === "sqlite") {
+        app.use('/admin', createRouter({
+            manager: new DbManager(
+                {
+                    dir: './data',
+                    readonly: true,                
+                },
+            ),
+            basePath: '/admin',
+        }));
+
+    }
 
     app.use((req, res) => {
         logServer(`Path not found: ${req.method} ${req.url}`);

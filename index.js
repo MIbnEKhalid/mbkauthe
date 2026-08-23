@@ -6,8 +6,9 @@ import { fileURLToPath } from "url";
 import { renderError, renderPage } from "#response.js";
 import { packageJson } from "#config.js";
 import { createLogger } from "./lib/utils/logger.js";
-import { createRouter, DbManager } from 'admindb';
+import { createRouter } from 'admindb';
 import { mbkautheVar } from "#config.js";
+import { sessVal } from "./lib/middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,14 +83,10 @@ if (isDevMode) {
     ));
 
     if (mbkautheVar.DB_TYPE === "sqlite") {
-        app.use('/admin', createRouter({
-            manager: new DbManager(
-                {
-                    dir: './data',
-                    readonly: true,                
-                },
-            ),
-            basePath: '/admin',
+        app.use('/admindb', sessVal, createRouter({
+            dbPath: mbkautheVar.SQLITE_PATH,
+            auth: false,
+            basePath: '/admindb',
         }));
 
     }

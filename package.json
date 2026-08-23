@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.3.4",
+  "version": "5.3.5",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -81,7 +81,7 @@
     }
   },
   "devDependencies": {
-    "admindb": "^1.0.3",
+    "admindb": "^2.2.1",
     "cross-env": "^7.0.3",
     "jest": "^30.2.0",
     "nodemon": "^3.1.14",

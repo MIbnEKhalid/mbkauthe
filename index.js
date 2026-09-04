@@ -1,108 +1,116 @@
 import express from "express";
-import router, { checkVersion } from "./lib/main.js";
 import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
-import { renderError, renderPage } from "#response.js";
-import { packageJson } from "#config.js";
-import { createLogger } from "./lib/utils/logger.js";
 import { createRouter } from 'admindb';
-import { mbkautheVar } from "#config.js";
+import router, { checkVersion } from "./lib/main.js";
+import { renderError, renderPage } from "#response.js";
+import { packageJson, mbkautheVar } from "#config.js";
+import { createLogger } from "./lib/utils/logger.js";
 import { sessVal } from "./lib/middleware/auth.js";
+import apiTokensRouter from "./lib/routes/apiTokens.js";
+import adminApiTokensRouter from "./lib/routes/adminApiTokens.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDevMode = process.env.test === "dev";
-const DEV_PORT = 5555;
 const viewsPath = path.join(__dirname, "views");
-const packageVersion = packageJson.version;
 const logServer = createLogger("server");
 
 const app = express();
 
-app.set("views", [
-    viewsPath,
-    path.join(__dirname, "node_modules/mbkauthe/views")
-]);
+app.set("views", [viewsPath, path.join(__dirname, "node_modules/mbkauthe/views")]);
 
-const handlebarsHelpers = {
+app.engine("handlebars", engine({
+  defaultLayout: false,
+  cache: !isDevMode,
+  partialsDir: [
+    viewsPath,
+    path.join(__dirname, "node_modules/mbkauthe/views"),
+    path.join(__dirname, "node_modules/mbkauthe/views/Error"),
+  ],
+  helpers: {
     eq: (a, b) => a === b,
     encodeURIComponent: (str) => encodeURIComponent(str),
     formatTimestamp: (timestamp) => new Date(timestamp).toLocaleString(),
     jsonStringify: (context) => JSON.stringify(context),
     json: (obj) => JSON.stringify(obj, null, 2),
-    objectEntries: (obj) => {
-        if (!obj || typeof obj !== 'object') return [];
-        return Object.entries(obj).map(([key, value]) => ({ key, value }));
-    },
-    cacheBuster: () => `?v=${packageVersion}`
-};
-
-app.engine("handlebars", engine({
-    defaultLayout: false,
-    cache: true,
-    partialsDir: [
-        viewsPath,
-        path.join(__dirname, "node_modules/mbkauthe/views"),
-        path.join(__dirname, "node_modules/mbkauthe/views/Error"),
-    ],
-    helpers: handlebarsHelpers
+    objectEntries: (obj) => (obj && typeof obj === 'object' ? Object.entries(obj).map(([key, value]) => ({ key, value })) : []),
+    cacheBuster: () => `?v=${packageJson.version}`
+  }
 }));
 
 app.set("view engine", "handlebars");
 app.use(router);
 
 const renderDevError = (res, req, code, error, message, page, details) => renderError(res, req, {
-    layout: false,
-    code,
-    error,
-    message,
-    details,
-    pagename: "Home",
-    page,
+  layout: false,
+  code,
+  error,
+  message,
+  details,
+  pagename: "Home",
+  page,
 });
 
 if (isDevMode) {
-    logServer(`Dev mode is enabled. Starting server in dev mode.`);
+  logServer(`Dev mode is enabled. Starting server in dev mode.`);
 
-    app.use(apiTokensRouter);
-    app.use(adminApiTokensRouter);
+  app.use(apiTokensRouter);
+  app.use(adminApiTokensRouter);
 
-    app.get(["/dashboard", "/home", "/"], (req, res) => res.redirect("/mbkauthe/"));
+  app.get(["/dashboard", "/home", "/"], (req, res) => res.redirect("/mbkauthe/"));
+  app.get("/dev/2fa", (req, res) => renderPage(req, res, "pages/2fa.handlebars", false, { pagename: "Two-Factor Authentication", page: "/home" }));
+  app.get("/dev/showmessage", (req, res) => renderPage(req, res, "showmessage", false));
+  app.get("/dev/500", (req, res) => renderDevError(res, req, 500, "Internal Server Error", "Simulated 500 Error", "/mbkauthe/login", "This is a simulated 500 error page for testing purposes."));
+  app.get("/dev/404", (req, res) => renderDevError(res, req, 404, "Not Found", "Simulated 404 Error", "/mbkauthe/login", "This is a simulated 404 error page for testing purposes."));
+  app.get("/dev/403", (req, res) => renderDevError(res, req, 403, "Forbidden", "Simulated 403 Error", "/mbkauthe/login", "This is a simulated 403 error page for testing purposes."));
+  app.get("/dev/401", (req, res) => renderDevError(res, req, 401, "Unauthorized", "Simulated 401 Error", "/mbkauthe/login", "This is a simulated 401 error page for testing purposes."));
+  app.get("/dev/400", (req, res) => renderDevError(res, req, 400, "Bad Request", "Simulated 400 Error", "/mbkauthe/login", "This is a simulated 400 error page for testing purposes."));
 
-    app.get("/dev/2fa", (req, res) => renderPage(req, res, "pages/2fa.handlebars", false, {
-        pagename: "Two-Factor Authentication",
-        page: "/home"
+
+  // Dev preview routes for Device Approval states
+  app.get("/dev/device-approval", (req, res) => res.redirect("/dev/device-approval/pending"));
+  app.get("/dev/device-approval/pending", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, {
+    status: "pending",
+    clientName: "MBK CLI (macOS / arm64)",
+    userCode: "WXYZ-9876",
+    username: "ibnekhalid",
+    expiresInSeconds: 1,
+    profile: {
+      name: "Developer CLI Profile",
+      scope: "write",
+      allowedApps: ["mbkbucket", "mbkdb", "mbkdeploy"],
+      expiresInDays: 30
+    },
+    pagename: "Approve CLI Login",
+    page: "/home"
+  }));
+  app.get("/dev/device-approval/approved", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "approved", pagename: "Login Approved", page: "/home" }));
+  app.get("/dev/device-approval/completed", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "completed", pagename: "Token Delivered", page: "/home" }));
+  app.get("/dev/device-approval/denied", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "denied", pagename: "Login Denied", page: "/home" }));
+  app.get("/dev/device-approval/expired", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "expired", pagename: "Request Expired", page: "/home" }));
+  app.get("/dev/device-approval/notfound", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "notfound", error: "This login request could not be found or has already been processed.", pagename: "Request Not Found", page: "/home" }));
+  app.get("/dev/device-approval/unknown", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "unknown", pagename: "Unknown Request", page: "/home" }));
+
+
+
+  if (mbkautheVar.DB_TYPE === "sqlite") {
+    app.use('/admindb', sessVal, createRouter({
+      dbPath: mbkautheVar.SQLITE_PATH,
+      auth: false,
+      basePath: '/admindb',
     }));
+  }
 
-    app.get("/showmessage", (req, res) => renderPage(req, res, "showmessage", false));
+  app.use((req, res) => {
+    logServer(`Path not found: ${req.method} ${req.url}`);
+    renderDevError(res, req, 404, "Not Found", "The requested page was not found.", "/mbkauthe/login");
+  });
 
-    app.get("/500", (req, res) => renderDevError(res, req, 500,
-        "Internal Server Error", "Simulated 500 Error",
-        "/mbkauthe/login", "This is a simulated 500 error page for testing purposes."
-    ));
-
-    if (mbkautheVar.DB_TYPE === "sqlite") {
-        app.use('/admindb', sessVal, createRouter({
-            dbPath: mbkautheVar.SQLITE_PATH,
-            auth: false,
-            basePath: '/admindb',
-        }));
-
-    }
-
-    app.use((req, res) => {
-        logServer(`Path not found: ${req.method} ${req.url}`);
-        renderDevError(res, req, 404, "Not Found", "The requested page was not found.", "/mbkauthe/login");
-    });
-
-    app.listen(DEV_PORT, () => {
-        logServer(`Server running on http://localhost:${DEV_PORT}`);
-    });
-}
-
-if (!isDevMode) {
-    await checkVersion();
+  const DEV_PORT = 5555;
+  app.listen(DEV_PORT, () => logServer(`Server running on http://localhost:${DEV_PORT}`));
+} else {
+  await checkVersion();
 }
 
 export * from "./lib/middleware/auth.js";
@@ -119,8 +127,6 @@ export * from "./lib/db/AuthRepository.js";
 export { ApiTokenRepository, apiTokenRepository } from "./lib/db/ApiTokenRepository.js";
 export { CliAuthSessionRepository, cliAuthSessionRepository } from "./lib/db/CliAuthSessionRepository.js";
 export { default as apiTokensRouter } from "./lib/routes/apiTokens.js";
-import apiTokensRouter from "./lib/routes/apiTokens.js";
-import adminApiTokensRouter from "./lib/routes/adminApiTokens.js";
 export { default as adminApiTokensRouter } from "./lib/routes/adminApiTokens.js";
 export { default as cliAuthRouter } from "./lib/routes/cliAuth.js";
 export { mbkautheVar } from "#config.js";

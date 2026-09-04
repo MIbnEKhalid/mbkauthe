@@ -1,439 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="DB Query Monitor" ogUrl="/mbkauthe/db" extraStyles="<style>
-  .db-container {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 120px 1.7rem 40px;
-    position: relative;
-    overflow: hidden;
-    background: radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 25%, transparent 75%), transparent 55%),
-                radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 18%, transparent 82%), transparent 50%),
-                linear-gradient(135deg, var(--hero-from), var(--hero-to));
-  }
-
-  .db-panel {
-    background: color-mix(in srgb, var(--glass-bg) 96%, transparent 4%);
-    border-radius: 18px;
-    padding: 2.25rem;
-    width: min(1280px, 100%);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent 80%);
-    position: relative;
-    z-index: 2;
-    overflow: hidden;
-  }
-
-  .db-panel::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 8%, transparent 92%), transparent 55%);
-    pointer-events: none;
-  }
-
-  .db-header,
-  .db-stack,
-  .db-toolbar,
-  .db-grid,
-  .db-list,
-  .log-list {
-    position: relative;
-    z-index: 1;
-  }
-
-  .db-header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .db-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.8rem, 2vw, 2.4rem);
-    color: var(--light);
-  }
-
-  .db-subtitle {
-    color: var(--text-light);
-    font-size: var(--text-size-sm);
-    margin-top: 0.3rem;
-  }
-
-  .db-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  .db-link,
-  .db-toolbar button {
-    padding: 0.45rem 0.85rem;
-    border-radius: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent 55%);
-    background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
-    color: var(--light);
-    text-decoration: none;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  .db-link:hover,
-  .db-toolbar button:hover {
-    background: color-mix(in srgb, var(--accent) 24%, transparent 76%);
-  }
-
-  .db-card {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .stat-box,
-  .summary-card,
-  .summary-list-card,
-  .db-table-wrapper {
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent 78%);
-    background: color-mix(in srgb, var(--surface-1) 80%, transparent 20%);
-  }
-
-  .stat-box,
-  .summary-card {
-    padding: 1rem 1.2rem;
-  }
-
-  .stat-label {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--light);
-  }
-
-  .db-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .db-toolbar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .toolbar-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .toolbar-field label {
-    color: var(--text-light);
-    font-size: 0.84rem;
-  }
-
-  .toolbar-field input,
-  .toolbar-field select {
-    width: 100%;
-    padding: 0.5rem 0.65rem;
-    border-radius: 0.6rem;
-    border: 1px solid var(--muted-border);
-    background: var(--input-bg);
-    color: var(--text);
-  }
-
-  .toolbar-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-    align-items: end;
-  }
-
-  .db-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .summary-list-card,
-  .db-table-wrapper {
-    padding: 0.9rem;
-  }
-
-  .section-title {
-    font-size: 1rem;
-    color: var(--light);
-    margin-bottom: 0.7rem;
-  }
-
-  .summary-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-
-  .summary-item {
-    border: 1px solid var(--muted-border);
-    border-radius: 12px;
-    padding: 0.75rem;
-    background: var(--surface-muted);
-  }
-
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.8rem;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 0.45rem;
-  }
-
-  .summary-metrics {
-    display: flex;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-  }
-
-  .summary-meta {
-    color: var(--text-light);
-    font-size: 0.8rem;
-  }
-
-  .route-pill {
-    display: inline-flex;
-    align-items: center;
-    max-width: 100%;
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent 55%);
-    background: color-mix(in srgb, var(--primary) 12%, transparent 88%);
-    color: var(--light);
-    font-size: 0.78rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .summary-snippet,
-  .log-query-block pre,
-  .log-return-block pre,
-  .log-detail-item pre {
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .log-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-  }
-
-  .log-card {
-    border: 1px solid var(--muted-border);
-    border-radius: 12px;
-    background: var(--surface-muted);
-    padding: 0.85rem;
-  }
-
-  .log-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .log-mainline {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-  }
-
-  .log-index,
-  .log-pool,
-  .chip {
-    font-size: 0.75rem;
-    color: var(--text-light);
-    border: 1px solid var(--muted-border);
-    border-radius: 999px;
-    padding: 0.12rem 0.48rem;
-  }
-
-  .log-pool,
-  .chip {
-    background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
-  }
-
-  .log-time {
-    color: var(--text-light);
-    font-size: 0.8rem;
-  }
-
-  .log-query-block,
-  .log-return-block,
-  .log-meta-item,
-  .log-detail-item {
-    border: 1px solid var(--muted-border);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--surface-1) 50%, transparent 50%);
-  }
-
-  .log-query-block,
-  .log-return-block {
-    padding: 0.55rem;
-    margin-bottom: 0.65rem;
-  }
-
-  .log-return-block {
-    border-color: color-mix(in srgb, var(--primary) 35%, transparent 65%);
-    background: color-mix(in srgb, var(--primary) 10%, transparent 90%);
-  }
-
-  .log-return-block summary,
-  .log-details summary {
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .log-return-block summary {
-    color: var(--primary);
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
-
-  .log-return-block[open] summary {
-    margin-bottom: 0.45rem;
-  }
-
-  .log-label {
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.65rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .log-meta-grid,
-  .log-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 0.45rem;
-  }
-
-  .log-meta-grid {
-    margin-bottom: 0.65rem;
-  }
-
-  .log-meta-item,
-  .log-detail-item {
-    padding: 0.45rem 0.55rem;
-  }
-
-  .log-meta-item span {
-    color: var(--text-light);
-    font-size: 0.72rem;
-    display: block;
-    margin-bottom: 0.2rem;
-  }
-
-  .log-details {
-    border-top: 1px dashed var(--muted-border);
-    padding-top: 0.55rem;
-  }
-
-  .log-details summary {
-    color: var(--accent);
-    font-size: 0.82rem;
-  }
-
-  .copy-row-btn {
-    padding: 0.25rem 0.6rem;
-    border-radius: 0.5rem;
-    border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent 45%);
-    background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
-    color: var(--light);
-    cursor: pointer;
-    font-size: 0.75rem;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.15rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .badge.ok {
-    background: color-mix(in srgb, var(--success) 15%, transparent 85%);
-    color: var(--success);
-    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent 55%);
-  }
-
-  .badge.err {
-    background: color-mix(in srgb, var(--danger) 15%, transparent 85%);
-    color: var(--danger);
-    border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent 60%);
-  }
-
-  .notification {
-    padding: 0.75rem 1rem;
-    border-radius: 0.7rem;
-    background: color-mix(in srgb, var(--success) 14%, transparent 86%);
-    color: var(--success);
-    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent 55%);
-  }
-
-  .notification.warn {
-    background: color-mix(in srgb, var(--warning) 14%, transparent 86%);
-    color: var(--warning);
-    border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent 55%);
-  }
-
-  .empty {
-    font-style: italic;
-    color: var(--text-light);
-    padding: 1.5rem;
-    text-align: center;
-  }
-
-  code {
-    font-family: var(--font-mono);
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  @media (max-width: 980px) {
-    .db-panel {
-      padding: 1.5rem;
-    }
-
-    .db-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>"}}
+{{> head pageTitle="DB Query Monitor" ogUrl="/mbkauthe/db"}}
 
 <body>
   {{> header appName=appName}}
@@ -441,7 +9,7 @@
   <section class="db-container">
     {{> backgroundElements}}
 
-    <div class="db-panel">
+    <div class="glass-card db-panel">
       <div class="db-header">
         <div>
           <div class="db-title">DB Query Monitor</div>
@@ -453,55 +21,37 @@
       </div>
 
       <div class="db-card">
-        <div class="stat-box">
-          <div class="stat-label">Query Count</div>
-          <div class="stat-value" id="query-count">-</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Visible</div>
-          <div class="stat-value" id="visible-count">-</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Avg Total</div>
-          <div class="stat-value" id="avg-duration">-</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Avg Wait</div>
-          <div class="stat-value" id="avg-wait">-</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Errors</div>
-          <div class="stat-value" id="error-count">-</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Pool Pressure</div>
-          <div class="stat-value" id="pressured-count">-</div>
-        </div>
+        <div class="stat-box"><div class="stat-label">Query Count</div><div class="stat-value" id="query-count">-</div></div>
+        <div class="stat-box"><div class="stat-label">Visible</div><div class="stat-value" id="visible-count">-</div></div>
+        <div class="stat-box"><div class="stat-label">Avg Total</div><div class="stat-value" id="avg-duration">-</div></div>
+        <div class="stat-box"><div class="stat-label">Avg Wait</div><div class="stat-value" id="avg-wait">-</div></div>
+        <div class="stat-box"><div class="stat-label">Errors</div><div class="stat-value" id="error-count">-</div></div>
+        <div class="stat-box"><div class="stat-label">Pool Pressure</div><div class="stat-value" id="pressured-count">-</div></div>
       </div>
 
       <div class="db-stack">
         <form id="filter-form" class="db-toolbar" action="/mbkauthe/db" method="get">
           <div class="toolbar-field">
             <label for="limit">Limit</label>
-            <input id="limit" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
+            <input id="limit" class="form-input" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
             <label for="pool-filter">Pool</label>
-            <select id="pool-filter" name="pool" {{#unless isDev}}disabled{{/unless}}>
+            <select id="pool-filter" class="form-input" name="pool" {{#unless isDev}}disabled{{/unless}}>
               <option value="">All Pools</option>
             </select>
           </div>
           <div class="toolbar-field">
             <label for="username-filter">Username</label>
-            <input id="username-filter" name="username" type="text" value="{{filters.username}}" placeholder="support" {{#unless isDev}}disabled{{/unless}} />
+            <input id="username-filter" class="form-input" name="username" type="text" value="{{filters.username}}" placeholder="support" {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
             <label for="url-filter">Request URL</label>
-            <input id="url-filter" name="url" type="text" value="{{filters.url}}" placeholder="/mbkauthe/api/login" {{#unless isDev}}disabled{{/unless}} />
+            <input id="url-filter" class="form-input" name="url" type="text" value="{{filters.url}}" placeholder="/mbkauthe/api/login" {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
             <label for="success-filter">Result</label>
-            <select id="success-filter" name="success" {{#unless isDev}}disabled{{/unless}}>
+            <select id="success-filter" class="form-input" name="success" {{#unless isDev}}disabled{{/unless}}>
               <option value="" {{#if filters.successAny}}selected{{/if}}>Any</option>
               <option value="true" {{#if filters.successTrue}}selected{{/if}}>Success</option>
               <option value="false" {{#if filters.successFalse}}selected{{/if}}>Error</option>
@@ -523,15 +73,11 @@
         <div class="db-grid">
           <div class="summary-list-card">
             <div class="section-title">Top Repeated Query Shapes</div>
-            <div id="repeat-groups" class="summary-list">
-              <div class="empty">Loading summary...</div>
-            </div>
+            <div id="repeat-groups" class="summary-list"><div class="empty">Loading summary...</div></div>
           </div>
           <div class="summary-list-card">
             <div class="section-title">Slowest Recent Queries</div>
-            <div id="slow-queries" class="summary-list">
-              <div class="empty">Loading summary...</div>
-            </div>
+            <div id="slow-queries" class="summary-list"><div class="empty">Loading summary...</div></div>
           </div>
         </div>
 
@@ -568,63 +114,40 @@
       .replace(/[&<>"'`]/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[s]);
 
     const escapeMarkdownCell = (value) => String(value || '')
-      .replace(/\\/g, '\\\\')
-      .replace(/\|/g, '\\|')
-      .replace(/\r?\n/g, '<br>');
+      .replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 
     const formatMs = (value) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)} ms` : '0.00 ms';
 
     const formatCompactRequest = (request) => {
       if (!request) return '';
-      const user = request.username || request.userId || 'anonymous';
-      return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${user}`;
+      return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${request.username || request.userId || 'anonymous'}`;
     };
 
     const formatCodeTrigger = (callsite) => {
       if (!callsite) return 'Code trigger (callsite unavailable)';
-      const fnName = callsite.function || '(anonymous)';
-      const location = callsite.file
-        ? `${callsite.file}:${callsite.line}:${callsite.column}`
-        : 'callsite unavailable';
-      return `Code trigger: ${fnName} @ ${location}`;
+      return `Code trigger: ${callsite.function || '(anonymous)'} @ ${callsite.file ? `${callsite.file}:${callsite.line}:${callsite.column}` : 'callsite unavailable'}`;
     };
 
-    const formatRouteTrigger = (request, callsite) => {
-      if (!request) return formatCodeTrigger(callsite);
-      const routeText = `${request.method || ''} ${request.url || ''}`.trim();
-      return routeText || formatCodeTrigger(callsite);
-    };
+    const formatRouteTrigger = (request, callsite) => (request ? `${request.method || ''} ${request.url || ''}`.trim() : '') || formatCodeTrigger(callsite);
 
     const getFilterParams = () => {
       const params = new URLSearchParams();
-      const limit = Number(limitInput.value) || 50;
-      params.set('limit', String(limit));
-
-      if (poolFilterEl.value) params.set('pool', poolFilterEl.value);
-      if (usernameFilterEl.value.trim()) params.set('username', usernameFilterEl.value.trim());
-      if (urlFilterEl.value.trim()) params.set('url', urlFilterEl.value.trim());
-      if (successFilterEl.value) params.set('success', successFilterEl.value);
-
+      params.set('limit', String(Number(limitInput?.value) || 50));
+      if (poolFilterEl?.value) params.set('pool', poolFilterEl.value);
+      if (usernameFilterEl?.value.trim()) params.set('username', usernameFilterEl.value.trim());
+      if (urlFilterEl?.value.trim()) params.set('url', urlFilterEl.value.trim());
+      if (successFilterEl?.value) params.set('success', successFilterEl.value);
       return params;
     };
 
     const renderPoolFilterOptions = (queryLog, selectedPool = '') => {
-      const names = [...new Set((Array.isArray(queryLog) ? queryLog : [])
-        .map((entry) => entry?.pool?.name)
-        .filter(Boolean))]
-        .sort();
-
+      const names = [...new Set((Array.isArray(queryLog) ? queryLog : []).map((e) => e?.pool?.name).filter(Boolean))].sort();
       poolFilterEl.innerHTML = '<option value="">All Pools</option>' +
         names.map((name) => `<option value="${escapeHtml(name)}"${name === selectedPool ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
     };
 
     const renderSummaryList = (target, items, renderItem, emptyText) => {
-      if (!Array.isArray(items) || items.length === 0) {
-        target.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
-        return;
-      }
-
-      target.innerHTML = items.map(renderItem).join('');
+      target.innerHTML = (Array.isArray(items) && items.length) ? items.map(renderItem).join('') : `<div class="empty">${escapeHtml(emptyText)}</div>`;
     };
 
     const renderSummary = (payload) => {
@@ -679,16 +202,9 @@
       );
     };
 
-    const formatParamValues = (values, pretty = false) => {
-      if (!Array.isArray(values) || values.length === 0) return '';
-
-      return values
-        .map((v, i) => {
-          const printable = typeof v === 'string' ? v : JSON.stringify(v);
-          return pretty ? `$${i + 1}: ${printable}` : `$${i + 1}: ${printable}`;
-        })
-        .join(pretty ? '\n' : ' | ');
-    };
+    const formatParamValues = (values) => Array.isArray(values) && values.length
+      ? values.map((v, i) => `$${i + 1}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join('\n')
+      : '';
 
     const toMarkdownReport = (payload) => {
       const queryLog = payload?.queryLog || [];
@@ -696,8 +212,7 @@
       const filters = payload?.filters || {};
 
       const lines = [
-        '# DB Query Monitor',
-        '',
+        '# DB Query Monitor', '',
         `- Exported: ${new Date().toISOString()}`,
         `- Query Count: ${payload?.queryCount ?? 0}`,
         `- Visible: ${summary.totalVisible ?? 0}`,
@@ -705,15 +220,13 @@
         `- Avg Total: ${formatMs(summary.avgDurationMs)}`,
         `- Avg Wait: ${formatMs(summary.avgWaitMs)}`,
         `- Errors: ${summary.errorCount ?? 0}`,
-        `- Filters: pool=${filters.pool || '*'}, username=${filters.username || '*'}, url=${filters.url || '*'}, success=${filters.success === null || filters.success === undefined ? '*' : filters.success}`,
+        `- Filters: pool=${filters.pool || '*'}, username=${filters.username || '*'}, url=${filters.url || '*'}, success=${filters.success ?? '*'}`,
         '',
       ];
 
-      if (Array.isArray(summary.repeatedGroups) && summary.repeatedGroups.length > 0) {
+      if (summary.repeatedGroups?.length) {
         lines.push('## Top Repeated Query Shapes', '');
-        for (const group of summary.repeatedGroups) {
-          lines.push(`- ${group.count}x | ${group.fingerprint || 'no-fp'} | avg ${formatMs(group.avgDurationMs)} | ${group.normalizedQuery || group.sampleQuery || ''}`);
-        }
+        summary.repeatedGroups.forEach((g) => lines.push(`- ${g.count}x | ${g.fingerprint || 'no-fp'} | avg ${formatMs(g.avgDurationMs)} | ${g.normalizedQuery || g.sampleQuery || ''}`));
         lines.push('');
       }
 
@@ -722,68 +235,42 @@
         return lines.join('\n');
       }
 
-      lines.push('| # | Time | Duration | Wait | Status | Fingerprint | Request | Query |');
-      lines.push('|---:|---|---|---|---|---|---|---|');
-
+      lines.push('| # | Time | Duration | Wait | Status | Fingerprint | Request | Query |', '|---:|---|---|---|---|---|---|---|');
       queryLog.forEach((entry, idx) => {
-        const statusText = entry.success === true ? 'OK' : entry.success === false ? 'ERR' : '';
-        lines.push(
-          `| ${idx + 1} | ${escapeMarkdownCell(entry.time)} | ${escapeMarkdownCell(formatMs(entry.durationMs))} | ${escapeMarkdownCell(formatMs(entry.poolWait?.waitMs || 0))} | ${escapeMarkdownCell(statusText)} | ${escapeMarkdownCell(entry.fingerprint || '')} | ${escapeMarkdownCell(formatCompactRequest(entry.request))} | ${escapeMarkdownCell(entry.query || '')} |`
-        );
+        lines.push(`| ${idx + 1} | ${escapeMarkdownCell(entry.time)} | ${escapeMarkdownCell(formatMs(entry.durationMs))} | ${escapeMarkdownCell(formatMs(entry.poolWait?.waitMs || 0))} | ${entry.success ? 'OK' : entry.success === false ? 'ERR' : ''} | ${escapeMarkdownCell(entry.fingerprint || '')} | ${escapeMarkdownCell(formatCompactRequest(entry.request))} | ${escapeMarkdownCell(entry.query || '')} |`);
       });
 
       return lines.join('\n');
     };
 
     const buildTable = (queryLog) => {
-      if (!Array.isArray(queryLog) || queryLog.length === 0) {
+      if (!Array.isArray(queryLog) || !queryLog.length) {
         queryLogEl.innerHTML = '<div class="empty">No queries recorded yet.</div>';
         return;
       }
 
       const cards = queryLog.map((entry, idx) => {
-        const values = formatParamValues(entry.values, true);
+        const values = formatParamValues(entry.values);
         const returnValueText = entry.returnValue ? JSON.stringify(entry.returnValue, null, 2) : '';
         const returnValueSummary = entry.returnValue
-          ? [
-            entry.returnValue.command ? `command: ${entry.returnValue.command}` : null,
-            typeof entry.returnValue.rowCount === 'number' ? `rowCount: ${entry.returnValue.rowCount}` : null,
-            typeof entry.returnValue.returnedRows === 'number' ? `rows: ${entry.returnValue.returnedRows}` : null
-          ].filter(Boolean).join(' | ')
+          ? [entry.returnValue.command && `command: ${entry.returnValue.command}`, typeof entry.returnValue.rowCount === 'number' && `rowCount: ${entry.returnValue.rowCount}`, typeof entry.returnValue.returnedRows === 'number' && `rows: ${entry.returnValue.returnedRows}`].filter(Boolean).join(' | ')
           : '';
-        const callsite = entry.callsite || null;
-        const callsiteText = callsite
-          ? `${callsite.function || '(anonymous)'}\n${callsite.file}:${callsite.line}:${callsite.column}`
-          : '';
-        const statusBadge = entry.success === true
-          ? '<span class="badge ok">OK</span>'
-          : entry.success === false
-          ? '<span class="badge err">ERR</span>'
-          : '<span class="badge">N/A</span>';
-        const errorText = entry.error
-          ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}`
-          : '';
-        const requestText = entry.request
-          ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() +
-            `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}` +
-            `\nip: ${entry.request.ip || ''}`
-          : '';
-        const routeTrigger = formatRouteTrigger(entry.request, entry.callsite);
-        const poolText = entry.pool
-          ? `name:${entry.pool.name || ''} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}`
-          : '';
-        const waitText = entry.poolWait
-          ? `source:${entry.poolWait.source || 'n/a'}\nwait:${formatMs(entry.poolWait.waitMs || 0)}\nwaitingBefore:${entry.poolWait.waitingBefore || 0}\nwaitingAfter:${entry.poolWait.waitingAfter || 0}\npressure:${entry.poolWait.hadPoolPressure ? 'yes' : 'no'}`
-          : '';
+        const callsiteText = entry.callsite ? `${entry.callsite.function || '(anonymous)'}\n${entry.callsite.file}:${entry.callsite.line}:${entry.callsite.column}` : '';
+        const statusBadge = entry.success ? '<span class="badge badge-success">OK</span>' : entry.success === false ? '<span class="badge badge-danger">ERR</span>' : '<span class="badge">N/A</span>';
+        const errorText = entry.error ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}` : '';
+        const requestText = entry.request ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() + `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}\nip: ${entry.request.ip || ''}` : '';
+        const poolText = entry.pool ? `name:${entry.pool.name || ''} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}` : '';
+        const waitText = entry.poolWait ? `source:${entry.poolWait.source || 'n/a'}\nwait:${formatMs(entry.poolWait.waitMs || 0)}\nwaitingBefore:${entry.poolWait.waitingBefore || 0}\nwaitingAfter:${entry.poolWait.waitingAfter || 0}\npressure:${entry.poolWait.hadPoolPressure ? 'yes' : 'no'}` : '';
+
         const detailBlocks = [
-          entry.fingerprint ? `<div class="log-detail-item"><div class="log-label">Fingerprint</div><pre><code>${escapeHtml(entry.fingerprint)}</code></pre></div>` : '',
-          entry.normalizedQuery ? `<div class="log-detail-item"><div class="log-label">Normalized Query</div><pre><code>${escapeHtml(entry.normalizedQuery)}</code></pre></div>` : '',
-          values ? `<div class="log-detail-item"><div class="log-label">Values</div><pre><code>${escapeHtml(values)}</code></pre></div>` : '',
-          errorText ? `<div class="log-detail-item"><div class="log-label">Error</div><pre><code>${escapeHtml(errorText)}</code></pre></div>` : '',
-          requestText ? `<div class="log-detail-item"><div class="log-label">Request</div><pre><code>${escapeHtml(requestText)}</code></pre></div>` : '',
-          poolText ? `<div class="log-detail-item"><div class="log-label">Pool</div><pre><code>${escapeHtml(poolText)}</code></pre></div>` : '',
-          waitText ? `<div class="log-detail-item"><div class="log-label">Pool Wait</div><pre><code>${escapeHtml(waitText)}</code></pre></div>` : '',
-          callsiteText ? `<div class="log-detail-item"><div class="log-label">Callsite</div><pre><code>${escapeHtml(callsiteText)}</code></pre></div>` : ''
+          entry.fingerprint && `<div class="log-detail-item"><div class="log-label">Fingerprint</div><pre><code>${escapeHtml(entry.fingerprint)}</code></pre></div>`,
+          entry.normalizedQuery && `<div class="log-detail-item"><div class="log-label">Normalized Query</div><pre><code>${escapeHtml(entry.normalizedQuery)}</code></pre></div>`,
+          values && `<div class="log-detail-item"><div class="log-label">Values</div><pre><code>${escapeHtml(values)}</code></pre></div>`,
+          errorText && `<div class="log-detail-item"><div class="log-label">Error</div><pre><code>${escapeHtml(errorText)}</code></pre></div>`,
+          requestText && `<div class="log-detail-item"><div class="log-label">Request</div><pre><code>${escapeHtml(requestText)}</code></pre></div>`,
+          poolText && `<div class="log-detail-item"><div class="log-label">Pool</div><pre><code>${escapeHtml(poolText)}</code></pre></div>`,
+          waitText && `<div class="log-detail-item"><div class="log-label">Pool Wait</div><pre><code>${escapeHtml(waitText)}</code></pre></div>`,
+          callsiteText && `<div class="log-detail-item"><div class="log-label">Callsite</div><pre><code>${escapeHtml(callsiteText)}</code></pre></div>`
         ].filter(Boolean).join('');
 
         return `
@@ -798,20 +285,14 @@
               </div>
               <button class="copy-row-btn" data-copy='${escapeHtml(JSON.stringify(entry))}'>Copy</button>
             </div>
-
-            <div class="log-query-block">
-              <div class="log-label">Query</div>
-              <pre><code>${escapeHtml(entry.query || '')}</code></pre>
-            </div>
-
+            <div class="log-query-block"><div class="log-label">Query</div><pre><code>${escapeHtml(entry.query || '')}</code></pre></div>
             <div class="log-meta-grid">
-              <div class="log-meta-item"><span>Triggered By</span><code>${escapeHtml(routeTrigger)}</code></div>
+              <div class="log-meta-item"><span>Triggered By</span><code>${escapeHtml(formatRouteTrigger(entry.request, entry.callsite))}</code></div>
               <div class="log-meta-item"><span>Name</span><code>${escapeHtml(entry.name || 'n/a')}</code></div>
               <div class="log-meta-item"><span>Total Duration</span><code>${escapeHtml(formatMs(entry.durationMs))}</code></div>
               <div class="log-meta-item"><span>Execution</span><code>${escapeHtml(formatMs(entry.executionDurationMs))}</code></div>
               <div class="log-meta-item"><span>Pool Wait</span><code>${escapeHtml(formatMs(entry.poolWait?.waitMs || 0))}</code></div>
             </div>
-
             ${returnValueText ? `<details class="log-return-block"><summary>Return Value${returnValueSummary ? ` (${escapeHtml(returnValueSummary)})` : ''}</summary><pre><code>${escapeHtml(returnValueText)}</code></pre></details>` : ''}
             ${detailBlocks ? `<details class="log-details"><summary>More details</summary><div class="log-detail-grid">${detailBlocks}</div></details>` : ''}
           </article>
@@ -822,130 +303,81 @@
     };
 
     const showDisabledState = (message = 'DB logs are disabled.') => {
-      queryCountEl.textContent = '-';
-      visibleCountEl.textContent = '-';
-      avgDurationEl.textContent = '-';
-      avgWaitEl.textContent = '-';
-      errorCountEl.textContent = '-';
-      pressuredCountEl.textContent = '-';
+      [queryCountEl, visibleCountEl, avgDurationEl, avgWaitEl, errorCountEl, pressuredCountEl].forEach((el) => { if (el) el.textContent = '-'; });
       latestPayload = null;
-      repeatGroupsEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
-      slowQueriesEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
-      queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+      [repeatGroupsEl, slowQueriesEl, queryLogEl].forEach((el) => { if (el) el.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`; });
     };
 
     const loadLog = async () => {
-      if (!isDev) {
-        showDisabledState();
-        return;
-      }
-
+      if (!isDev) return showDisabledState();
       const params = getFilterParams();
-      const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
 
-      if (!response.ok) {
-        let message = 'Failed to load query log.';
-        try {
-          const errorData = await response.json();
-          if (response.status === 403 || errorData?.isDev === false) {
-            showDisabledState(errorData?.message || 'DB logs are disabled.');
-            return;
-          }
-          if (errorData?.message) message = errorData.message;
-        } catch {}
+      try {
+        const response = await fetch(`/mbkauthe/db.json?${params.toString()}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 403 || errorData?.isDev === false) return showDisabledState(errorData?.message || 'DB logs are disabled.');
+          queryLogEl.innerHTML = `<div class="empty">${escapeHtml(errorData?.message || 'Failed to load query log.')}</div>`;
+          return;
+        }
 
-        queryLogEl.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
-        return;
+        const data = await response.json();
+        if (data?.isDev === false) return showDisabledState(data.message || 'DB logs are disabled.');
+
+        latestPayload = data;
+        renderPoolFilterOptions(data.queryLog, data.filters?.pool || '');
+        renderSummary(data);
+        buildTable(data.queryLog);
+        window.history.replaceState({}, '', `/mbkauthe/db?${params.toString()}`);
+      } catch {
+        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
       }
-
-      const data = await response.json();
-      if (data?.isDev === false) {
-        showDisabledState(data.message || 'DB logs are disabled.');
-        return;
-      }
-
-      latestPayload = data;
-      renderPoolFilterOptions(data.queryLog, data.filters?.pool || '');
-      renderSummary(data);
-      buildTable(data.queryLog);
-      window.history.replaceState({}, '', `/mbkauthe/db?${params.toString()}`);
     };
 
-    filterForm?.addEventListener('submit', (event) => {
-      event.preventDefault();
-      loadLog().catch(() => {
-        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
-      });
-    });
+    filterForm?.addEventListener('submit', (e) => { e.preventDefault(); loadLog(); });
 
-    resetBtn?.addEventListener('click', () => {
-      if (!isDev) {
-        showDisabledState();
-        return;
+    resetBtn?.addEventListener('click', async () => {
+      if (!isDev) return showDisabledState();
+      try {
+        const response = await fetch('/mbkauthe/db/reset', { method: 'POST' });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 403 || errorData?.isDev === false) return showDisabledState(errorData?.message || 'DB logs are disabled.');
+          throw new Error();
+        }
+        const result = await response.json().catch(() => ({}));
+        if (resetNoticeEl) {
+          resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
+          resetNoticeEl.hidden = false;
+        }
+        loadLog();
+      } catch {
+        queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
       }
-
-      fetch('/mbkauthe/db/reset', { method: 'POST' })
-        .then(async (response) => {
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            if (response.status === 403 || errorData?.isDev === false) {
-              showDisabledState(errorData?.message || 'DB logs are disabled.');
-              return;
-            }
-            throw new Error('reset failed');
-          }
-
-          const result = await response.json().catch(() => ({}));
-          if (resetNoticeEl) {
-            resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
-            resetNoticeEl.hidden = false;
-          }
-
-          return loadLog();
-        })
-        .catch(() => {
-          queryLogEl.innerHTML = '<div class="empty">Failed to reset query log.</div>';
-        });
     });
 
     copyBtn?.addEventListener('click', () => {
-      if (!isDev) {
-        showDisabledState();
-        return;
-      }
-
-      const markdown = toMarkdownReport(latestPayload);
-      navigator.clipboard.writeText(markdown).then(() => {
+      if (!isDev) return showDisabledState();
+      navigator.clipboard.writeText(toMarkdownReport(latestPayload)).then(() => {
         copyBtn.textContent = 'Copied!';
-        setTimeout(() => {
-          copyBtn.textContent = 'Copy Report';
-        }, 1200);
+        setTimeout(() => { copyBtn.textContent = 'Copy Report'; }, 1200);
       });
     });
 
-    queryLogEl.addEventListener('click', (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement) || !target.classList.contains('copy-row-btn')) return;
-
-      const payload = target.getAttribute('data-copy');
+    queryLogEl?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.copy-row-btn');
+      if (!btn) return;
+      const payload = btn.getAttribute('data-copy');
       if (!payload) return;
-
       navigator.clipboard.writeText(payload).then(() => {
-        const original = target.textContent;
-        target.textContent = 'Copied';
-        setTimeout(() => {
-          target.textContent = original || 'Copy';
-        }, 1200);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = orig || 'Copy'; }, 1200);
       });
     });
 
-    if (!isDev) {
-      showDisabledState();
-    } else {
-      loadLog().catch(() => {
-        queryLogEl.innerHTML = '<div class="empty">Failed to load query log.</div>';
-      });
-    }
+    if (!isDev) showDisabledState();
+    else loadLog();
   </script>
   {{> versionInfo}}
 </body>

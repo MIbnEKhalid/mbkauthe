@@ -1,222 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head}}
+{{> head pageTitle="Error Codes Reference" ogUrl="/mbkauthe/ErrorCode"}}
 
 <body>
     {{> header}}
 
-    <style>
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            padding-top: 100px;
-        }
-
-        .page-header {
-            text-align: center;
-            padding: 3rem 0 2rem;
-            border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
-        }
-
-        .page-header h1 {
-            font-size: 2.5rem;
-            color: var(--accent);
-            margin-bottom: 0.5rem;
-        }
-
-        .page-header p {
-            font-size: 1.1rem;
-            color: var(--text-light);
-        }
-
-        .search-box {
-            margin-bottom: 2rem;
-            position: sticky;
-            top: 70px;
-            background: transparent;
-            backdrop-filter: blur(10px);
-            padding: 1rem 0;
-            z-index: 100;
-            border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent 75%);
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 1rem 1.5rem;
-            background: var(--surface-soft);
-            border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: var(--surface-1);
-        }
-
-        .search-input::placeholder {
-            color: var(--text-light);
-            opacity: 0.6;
-        }
-
-        .category {
-            margin-bottom: 3rem;
-        }
-
-        .category-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
-            border-left: 4px solid var(--accent);
-            border-radius: 4px;
-        }
-
-        .category-header h2 {
-            font-size: 1.8rem;
-            color: var(--accent);
-        }
-
-        .category-header .range {
-            font-size: 1rem;
-            color: var(--text-light);
-            font-weight: normal;
-        }
-
-        .error-card {
-            background: color-mix(in srgb, var(--glass-bg) 90%, transparent 10%);
-            border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent 78%);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.3s ease;
-            scroll-margin-top: 100px;
-        }
-
-        .error-card:hover {
-            border-color: var(--accent);
-            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.2);
-        }
-
-        .error-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .error-code {
-            background: var(--warning);
-            color: var(--darker);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        .error-name {
-            color: var(--accent);
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-
-        .error-message {
-            color: var(--text);
-            font-size: 1.1rem;
-            margin-bottom: 0.75rem;
-            padding-left: 1rem;
-            border-left: 3px solid color-mix(in srgb, var(--accent) 35%, transparent 65%);
-        }
-
-        .error-hint {
-            background: color-mix(in srgb, var(--warning) 15%, transparent 85%);
-            color: var(--warning);
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            border-left: 3px solid var(--warning);
-            font-size: 0.95rem;
-            margin-top: 0.75rem;
-        }
-
-
-
-        .no-results {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-light);
-            font-size: 1.2rem;
-        }
-
-        .is-hidden {
-            display: none !important;
-        }
-
-        .back-to-top {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            background: var(--accent);
-            color: var(--text-dark);
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3);
-            transition: all 0.3s ease;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .back-to-top.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .back-to-top:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 25px rgba(0, 184, 148, 0.4);
-        }
-
-        @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 2rem;
-            }
-
-            .category-header h2 {
-                font-size: 1.5rem;
-            }
-
-            .error-card {
-                padding: 1rem;
-            }
-
-            .error-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-    </style>
-
     <div class="container">
-        <div class="page-header">
+        <div class="page-header-doc">
             <h1>🔐 MBKAuthe Error Codes</h1>
             <p>Complete reference guide for all error codes and their solutions</p>
         </div>
 
-        <div class="search-box">
-            <input type="text" class="search-input" id="searchInput"
-                placeholder="Search by error code, name, or description...">
+        <div class="search-box-sticky">
+            <input type="text" class="search-input-doc form-input" id="searchInput" placeholder="Search by error code, name, or description...">
         </div>
 
         <div id="errorContainer">
@@ -228,18 +25,13 @@
                 </div>
 
                 {{#each this.errors}}
-                <div class="error-card" id="error-{{this.code}}"
-                    data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
+                <div class="error-card" id="error-{{this.code}}" data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
                     <div class="error-header">
                         <span class="error-code">{{this.code}}</span>
                         <span class="error-name">{{this.name}}</span>
                     </div>
-                    <div class="error-message">
-                        {{this.userMessage}}
-                    </div>
-                    <div class="error-hint">
-                        💡 {{this.hint}}
-                    </div>
+                    <div class="error-message">{{this.userMessage}}</div>
+                    <div class="error-hint">💡 {{this.hint}}</div>
                 </div>
                 {{/each}}
             </div>
@@ -251,96 +43,57 @@
         </div>
     </div>
 
-    <div class="back-to-top" id="backToTop">↑</div>
+    <div class="back-to-top" id="backToTop" aria-label="Back to top">↑</div>
 
     <script>
-        // Search functionality
         const searchInput = document.getElementById('searchInput');
         const errorCards = document.querySelectorAll('.error-card');
         const categories = document.querySelectorAll('.category');
         const noResults = document.getElementById('noResults');
 
-        searchInput.addEventListener('input', function () {
-            const searchTerm = this.value.toLowerCase().trim();
-            let hasResults = false;
+        searchInput?.addEventListener('input', function () {
+            const term = this.value.toLowerCase().trim();
+            let hasResults = !term;
 
-            if (!searchTerm) {
-                // Show all cards and categories
-                errorCards.forEach(card => card.classList.remove('is-hidden'));
-                categories.forEach(cat => cat.classList.remove('is-hidden'));
-                noResults.classList.add('hidden-by-default');
-                return;
-            }
-
-            // Search through error cards
-            errorCards.forEach(card => {
-                const searchData = card.getAttribute('data-search').toLowerCase();
-                if (searchData.includes(searchTerm)) {
-                    card.classList.remove('is-hidden');
-                    hasResults = true;
-                } else {
-                    card.classList.add('is-hidden');
-                }
+            errorCards.forEach((card) => {
+                const match = !term || (card.getAttribute('data-search') || '').toLowerCase().includes(term);
+                card.classList.toggle('is-hidden', !match);
+                if (match) hasResults = true;
             });
 
-            // Hide/show categories based on visible cards
-            categories.forEach(category => {
-                const visibleCards = category.querySelectorAll('.error-card:not(.is-hidden)');
-                if (visibleCards.length > 0) {
-                    category.classList.remove('is-hidden');
-                } else {
-                    category.classList.add('is-hidden');
-                }
+            categories.forEach((cat) => {
+                const hasVisible = !term || Boolean(cat.querySelector('.error-card:not(.is-hidden)'));
+                cat.classList.toggle('is-hidden', !hasVisible);
             });
 
-            noResults.classList.toggle('hidden-by-default', hasResults);
+            noResults?.classList.toggle('hidden-by-default', hasResults);
         });
 
-        // Back to top button
         const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => backToTop?.classList.toggle('visible', window.pageYOffset > 300));
+        backToTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-        window.addEventListener('scroll', function () {
-            if (window.pageYOffset > 300) {
-                backToTop.classList.add('visible');
-            } else {
-                backToTop.classList.remove('visible');
-            }
-        });
-
-        backToTop.addEventListener('click', function () {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        // Handle hash navigation
         function scrollToError() {
-            if (window.location.hash) {
-                let targetId = window.location.hash.substring(1);
+            if (!window.location.hash) return;
+            const rawId = window.location.hash.substring(1);
+            const targetId = (!rawId.startsWith('error-') && /^\d+$/.test(rawId)) ? `error-${rawId}` : rawId;
+            const targetEl = document.getElementById(targetId);
 
-                // If hash doesn't start with "error-", add it
-                if (!targetId.startsWith('error-') && /^\d+$/.test(targetId)) {
-                    targetId = 'error-' + targetId;
-                }
-
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
+            if (targetEl) {
+                setTimeout(() => {
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetEl.style.borderColor = 'var(--primary)';
+                    targetEl.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.3)';
                     setTimeout(() => {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        targetElement.style.background = 'rgba(0, 184, 148, 0.2)';
-                        targetElement.style.transition = 'background 0.3s ease';
-                        setTimeout(() => {
-                            targetElement.style.background = '';
-                        }, 2000);
-                    }, 100);
-                }
+                        targetEl.style.borderColor = '';
+                        targetEl.style.boxShadow = '';
+                    }, 2500);
+                }, 100);
             }
         }
 
-        // Scroll on page load
         scrollToError();
-
-        // Scroll when hash changes
         window.addEventListener('hashchange', scrollToError);
     </script>
 </body>
-
 </html>

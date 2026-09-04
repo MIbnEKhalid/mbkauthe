@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.3.6",
+  "version": "5.4.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -43,14 +43,15 @@
   },
   "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme",
   "files": [
-    "index.js",
-    "index.d.ts",
-    "LICENSE",
-    "README.md",
     "docs/",
     "lib/",
     "public/",
     "views/",
+    ".env.example",
+    "index.js",
+    "LICENSE",
+    "package.json",
+    "README.md",
     "vercel.json"
   ],
   "publishConfig": {

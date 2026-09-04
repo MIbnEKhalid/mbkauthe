@@ -1,13 +1,11 @@
 <div class="showMessageOverlay" id="messageOverlay" aria-hidden="true" hidden>
-    <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle"
-        aria-describedby="messageContent">
+    <div class="messageModal" role="dialog" aria-modal="true" aria-labelledby="messageTitle" aria-describedby="messageContent">
         <div class="messageHeader">
             <div class="messageIcon">
                 <i class="fas fa-info-circle"></i>
             </div>
             <h2 id="messageTitle">Notification</h2>
         </div>
-
         <div class="messageBody">
             <p id="messageContent"></p>
             <a href="#" target="_blank" rel="noopener noreferrer" class="errorCodeBadge is-hidden" id="errorCodeLink">
@@ -15,7 +13,6 @@
                 <span id="errorCodeText"></span>
             </a>
         </div>
-
         <div class="messageFooter">
             <button type="button" class="btn-message-action" onclick="hideMessage()">Okay</button>
         </div>
@@ -23,44 +20,31 @@
 </div>
 
 <script>
-    //showMessage("This is a <b>test message</b> with some <i>HTML</i> content.", "Info", "E1234");
-    // Sanitize HTML to prevent XSS while allowing safe HTML tags
     function sanitizeHTML(html) {
         if (!html) return "";
-
-        // Use DOMParser for safer parsing
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-
-        const allowedTags = ["b", "i", "u", "strong", "em", "br", "p", "span", "div", "a"];
-        const allowedAttrs = ["href", "target", "class", "id", "style"];
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const allowedTags = ["b", "i", "u", "strong", "em", "br", "p", "span", "div", "a", "code"];
+        const allowedAttrs = ["href", "target", "class", "id", "style", "rel"];
 
         function cleanNode(node) {
-            const children = Array.from(node.childNodes);
-            for (const child of children) {
-                if (child.nodeType === 1) { // Element
-                    const tagName = child.tagName.toLowerCase();
-                    if (allowedTags.includes(tagName)) {
-                        // Clean attributes
-                        const attrs = Array.from(child.attributes);
-                        for (const attr of attrs) {
-                            const attrName = attr.name.toLowerCase();
-                            if (!allowedAttrs.includes(attrName) || attrName.startsWith("on")) {
+            Array.from(node.childNodes).forEach((child) => {
+                if (child.nodeType === 1) {
+                    const tag = child.tagName.toLowerCase();
+                    if (allowedTags.includes(tag)) {
+                        Array.from(child.attributes).forEach((attr) => {
+                            const name = attr.name.toLowerCase();
+                            if (!allowedAttrs.includes(name) || name.startsWith("on") || (name === "href" && attr.value.toLowerCase().trim().startsWith("javascript:"))) {
                                 child.removeAttribute(attr.name);
-                            } else if (attrName === "href" && attr.value.toLowerCase().trim().startsWith("javascript:")) {
-                                child.removeAttribute("href");
                             }
-                        }
+                        });
                         cleanNode(child);
                     } else {
-                        // Disallowed tag: replace with text content
-                        const text = document.createTextNode(child.textContent);
-                        child.replaceWith(text);
+                        child.replaceWith(document.createTextNode(child.textContent));
                     }
-                } else if (child.nodeType !== 3) { // Remove comments etc.
+                } else if (child.nodeType !== 3) {
                     child.remove();
                 }
-            }
+            });
         }
 
         cleanNode(doc.body);
@@ -74,29 +58,22 @@
         const errorLink = document.getElementById("errorCodeLink");
         const errorText = document.getElementById("errorCodeText");
         const iconEl = document.querySelector(".messageIcon i");
-
-        // Set content
-        titleEl.innerText = heading || "Notification";
-
-        // Handle HTML content safely
-        if (message && message.includes("<")) {
-            contentEl.innerHTML = sanitizeHTML(message);
-        } else {
-            contentEl.innerText = message || "";
-        }
-
-        // Update Icon based on heading/context (simple heuristic)
-        const lowerHeading = (heading || "").toLowerCase();
         const iconWrap = document.querySelector(".messageIcon");
+
+        titleEl.innerText = heading || "Notification";
+        contentEl[message?.includes("<") ? "innerHTML" : "innerText"] = message?.includes("<") ? sanitizeHTML(message) : (message || "");
+
+        const lower = (heading || "").toLowerCase();
         iconEl.className = "fas";
         iconWrap.classList.remove("is-error", "is-success", "is-warning", "is-info");
-        if (lowerHeading.includes("error") || lowerHeading.includes("failed")) {
+
+        if (lower.includes("error") || lower.includes("failed")) {
             iconEl.classList.add("fa-exclamation-circle");
             iconWrap.classList.add("is-error");
-        } else if (lowerHeading.includes("success")) {
+        } else if (lower.includes("success")) {
             iconEl.classList.add("fa-check-circle");
             iconWrap.classList.add("is-success");
-        } else if (lowerHeading.includes("warning")) {
+        } else if (lower.includes("warning")) {
             iconEl.classList.add("fa-exclamation-triangle");
             iconWrap.classList.add("is-warning");
         } else {
@@ -104,7 +81,6 @@
             iconWrap.classList.add("is-info");
         }
 
-        // Handle Error Code
         if (errorCode) {
             errorLink.classList.remove("is-hidden");
             errorText.innerText = `Code: ${errorCode}`;
@@ -113,38 +89,30 @@
             errorLink.classList.add("is-hidden");
         }
 
-        // Show Modal
         overlay.removeAttribute("hidden");
         overlay.classList.add("active");
         document.body.classList.add("blur-active");
         overlay.setAttribute("aria-hidden", "false");
-
-        // Focus trap could be added here for accessibility
-        document.querySelector(".btn-message-action").focus();
+        document.querySelector(".btn-message-action")?.focus();
     }
 
     function hideMessage() {
         const overlay = document.getElementById("messageOverlay");
         overlay.classList.add("fade-out");
-
         setTimeout(() => {
             overlay.classList.remove("active", "fade-out");
             document.body.classList.remove("blur-active");
             overlay.setAttribute("aria-hidden", "true");
             overlay.setAttribute("hidden", "");
-        }, 300);
+        }, 250);
     }
 
-    // Close on click outside
-    document.getElementById("messageOverlay").addEventListener("click", function (e) {
-        if (e.target === this) {
-            hideMessage();
-        }
+    document.getElementById("messageOverlay")?.addEventListener("click", function(e) {
+        if (e.target === this) hideMessage();
     });
 
-    // Close on Escape key
-    document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape" && document.getElementById("messageOverlay").classList.contains("active")) {
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && document.getElementById("messageOverlay")?.classList.contains("active")) {
             hideMessage();
         }
     });
@@ -153,53 +121,37 @@
 <style>
     .showMessageOverlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: color-mix(in srgb, var(--darker) 55%, transparent 45%);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        inset: 0;
+        background: rgba(10, 20, 20, 0.65);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         display: none;
         justify-content: center;
         align-items: center;
         z-index: 9999;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.25s ease;
     }
-
-    .showMessageOverlay.active {
-        display: flex;
-        opacity: 1;
-        pointer-events: all;
-    }
-
-    .showMessageOverlay.fade-out {
-        opacity: 0;
-    }
-
-    body.blur-active {
-        overflow: hidden;
-    }
+    .showMessageOverlay.active { display: flex; opacity: 1; pointer-events: all; }
+    .showMessageOverlay.fade-out { opacity: 0; }
+    body.blur-active { overflow: hidden; }
 
     .messageModal {
-        background: var(--surface-1);
-        border: 1px solid var(--muted-border);
-        border-radius: 16px;
-        padding: 0;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-xl);
         width: 90%;
-        max-width: 400px;
-        box-shadow: 0 20px 50px color-mix(in srgb, var(--darker) 35%, transparent 65%);
-        transform: scale(0.95) translateY(10px);
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        max-width: 420px;
+        box-shadow: var(--shadow-dropdown);
+        transform: scale(0.94) translateY(12px);
+        transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
     }
-
-    .showMessageOverlay.active .messageModal {
-        transform: scale(1) translateY(0);
-    }
+    .showMessageOverlay.active .messageModal { transform: scale(1) translateY(0); }
 
     .messageHeader {
         padding: 1.5rem 1.5rem 0.5rem;
@@ -208,151 +160,80 @@
         align-items: center;
         text-align: center;
     }
-
     .messageIcon {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
-        color: var(--primary);
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.75rem;
-        margin-bottom: 1rem;
+        font-size: 1.6rem;
+        margin-bottom: 0.85rem;
     }
-
-    .messageIcon.is-info {
-        background: color-mix(in srgb, var(--primary) 14%, transparent 86%);
-        color: var(--primary);
-    }
-
-    .messageIcon.is-error {
-        background: color-mix(in srgb, var(--danger) 14%, transparent 86%);
-        color: var(--danger);
-    }
-
-    .messageIcon.is-success {
-        background: color-mix(in srgb, var(--success) 14%, transparent 86%);
-        color: var(--success);
-    }
-
-    .messageIcon.is-warning {
-        background: color-mix(in srgb, var(--warning) 14%, transparent 86%);
-        color: var(--warning);
-    }
-
+    .messageIcon.is-info, .messageIcon { background: var(--primary-light-color-ml); color: var(--primary-color-ml); }
+    .messageIcon.is-error { background: rgba(220, 38, 38, 0.12); color: var(--danger-color-ml); }
+    .messageIcon.is-success { background: rgba(22, 163, 74, 0.12); color: var(--success-color-ml); }
+    .messageIcon.is-warning { background: rgba(217, 119, 6, 0.12); color: var(--warning-color-ml); }
     .messageHeader h2 {
-        color: var(--text);
-        font-size: 1.5rem;
-        font-weight: 600;
+        color: #0b4f4a;
+        font-size: 1.35rem;
+        font-family: var(--font-family-headings);
+        font-weight: 700;
         margin: 0;
     }
 
     .messageBody {
-        padding: 0.5rem 2rem 1.5rem;
+        padding: 0.5rem 1.75rem 1.25rem;
         text-align: center;
-        color: var(--text-light);
-        font-size: 1rem;
-        line-height: 1.6;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        line-height: 1.55;
     }
-
-    .messageBody p {
-        margin-bottom: 1rem;
-    }
-
-    .messageBody a {
-        color: var(--accent);
-        text-decoration: none;
-    }
-
-    .messageBody a:hover {
-        text-decoration: underline;
-    }
+    .messageBody p { margin-bottom: 0.85rem; }
+    .messageBody a { color: var(--primary-color-ml); font-weight: 600; text-decoration: none; }
+    .messageBody a:hover { text-decoration: underline; }
 
     .errorCodeBadge {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.45rem;
         background: var(--surface-soft);
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-family: var(--font-mono);
         color: var(--text-light) !important;
         text-decoration: none !important;
-        transition: all 0.2s ease;
+        transition: var(--transition);
         border: 1px solid var(--muted-border);
     }
+    .errorCodeBadge.is-hidden { display: none; }
+    .errorCodeBadge:hover { background: var(--surface-1); color: var(--primary) !important; border-color: var(--primary); }
 
-    .errorCodeBadge.is-hidden {
-        display: none;
-    }
-
-    .errorCodeBadge:hover {
-        background: var(--surface-1);
-        color: var(--text) !important;
-    }
-
-    .messageFooter {
-        padding: 1.5rem;
-        background: var(--surface-muted);
-        display: flex;
-        justify-content: center;
-    }
-
+    .messageFooter { padding: 1.1rem 1.5rem 1.4rem; display: flex; justify-content: center; }
     .btn-message-action {
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        padding: 0.8rem 2rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 800;
+        background: var(--primary);
+        color: #ffffff;
+        border: 1px solid transparent;
+        padding: 0.75rem 2rem;
+        border-radius: var(--radius);
+        font-size: 0.95rem;
+        font-family: var(--font-family);
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s ease;
         width: 100%;
-        border: 2px solid transparent;
-        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(15, 118, 110, 0.28);
+        transition: var(--transition);
     }
-
     .btn-message-action:hover {
-        background: transparent;
-        color: var(--accent);
-        border-color: var(--accent);
-        box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
-    }
-
-    .btn-message-action:active {
-        transform: translateY(0);
+        background: var(--primary-hover);
+        box-shadow: 0 6px 18px rgba(15, 118, 110, 0.4);
+        transform: translateY(-1px);
     }
 
     @media (max-width: 480px) {
-        .messageModal {
-            width: 95%;
-        }
-
-        .messageHeader {
-            padding: 1.5rem 1rem 0.5rem;
-        }
-
-        .messageBody {
-            padding: 0.5rem 1.5rem 1.5rem;
-        }
-    }
-
-    /* Animation Keyframes */
-    @keyframes pulse-soft {
-        0% {
-            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.4);
-        }
-
-        70% {
-            box-shadow: 0 0 0 10px rgba(0, 184, 148, 0);
-        }
-
-        100% {
-            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0);
-        }
+        .messageModal { width: 94%; }
+        .messageHeader { padding: 1.25rem 1rem 0.5rem; }
+        .messageBody { padding: 0.5rem 1.25rem 1rem; }
     }
 </style>

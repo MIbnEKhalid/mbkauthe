@@ -1,268 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageCode=code pageError=error ogUrl="/error" extraStyles="<style>
-  .login-box {
-    max-width: 600px;
-    padding: 2.5rem;
-  }
-
-  .status-code {
-    text-align: center;
-    font-size: 4rem;
-    font-weight: 700;
-    color: var(--success);
-    position: relative;
-    margin-bottom: 1rem;
-  }
-
-  .status-title {
-    text-align: center;
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-    color: var(--light);
-  }
-
-  .status-code::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px;
-    height: 4px;
-    background-color: var(--accent);
-    border-radius: 2px;
-  }
-
-  .status-content {
-    text-align: center;
-  }
-
-  .status-message {
-    font-size: 1.2rem;
-    margin: 0.5rem 0;
-    color: var(--warning);
-    line-height: 1.4;
-  }
-
-  .status-links {
-    display: flex;
-    justify-content: center;
-  }
-
-  .status-link {
-    color: var(--accent);
-    text-decoration: none;
-    transition: var(--transition);
-    margin: 0 auto;
-    font-size: 1rem;
-    font-weight: 700;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--border-radius);
-  }
-
-  .status-link:hover {
-    text-decoration: none;
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--secondary);
-  }
-
-  /* Details wrapper: improved layout, accessibility and animation */
-  .details-wrapper {
-    margin-top: 1.25rem;
-    background: rgba(255, 255, 255, .03);
-    border-radius: var(--border-radius);
-    padding: 0;
-    transition: box-shadow .25s ease, transform .25s ease;
-    border: 1px solid rgba(255, 255, 255, .06);
-    overflow: visible;
-  }
-
-  .details-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    background: transparent;
-    border: 0;
-    color: var(--light);
-    font-size: 1.05rem;
-    font-weight: 600;
-    padding: 0.85rem 1rem;
-    cursor: pointer;
-  }
-
-  .details-toggle:focus {
-    outline: 3px solid rgba(100, 150, 255, .18);
-    outline-offset: 2px;
-    border-radius: var(--border-radius);
-  }
-
-  .details-toggle .chev {
-    transition: transform .25s ease, color .2s ease;
-    color: var(--muted);
-  }
-
-  .details-wrapper:hover .details-toggle .chev {
-    color: var(--accent);
-  }
-
-  .error-details-wrapper {
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height .33s cubic-bezier(.2, .9, .2, 1), opacity .25s ease;
-    padding: 0 1rem;
-  }
-
-  .details-wrapper.active .error-details-wrapper {
-    max-height: 480px;
-    /* large enough for content */
-    opacity: 1;
-    padding: 0.9rem 1rem 1.25rem 1rem;
-  }
-
-  .error-details {
-    width: 100%;
-    min-height: 140px;
-    background: rgba(0, 0, 0, .28);
-    border: 1px solid rgba(255, 255, 255, .08);
-    border-radius: calc(var(--border-radius) - 2px);
-    color: var(--text);
-    padding: 0.9rem;
-    padding-right: 3.6rem;
-    /* leave space for overlay button */
-    box-sizing: border-box;
-    resize: vertical;
-    font-size: 0.9rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
-    line-height: 1.45;
-  }
-
-  .error-details-container {
-    position: relative;
-    width: 100%;
-  }
-
-  /* Overlay copy button positioned inside the details container */
-  .copy-btn {
-    position: absolute;
-    top: 0.6rem;
-    right: 0.65rem;
-    background: rgba(0, 0, 0, 0.55);
-    color: var(--text);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    padding: 0.45rem 0.6rem;
-    cursor: pointer;
-    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-    font-size: 0.95rem;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-    display: inline-flex;
-    gap: 0.45rem;
-    align-items: center;
-    z-index: 6;
-    backdrop-filter: blur(4px);
-  }
-
-  .copy-btn:hover {
-    background: var(--accent);
-    color: var(--dark);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-  }
-
-  .copy-feedback {
-    position: absolute;
-    top: 2.4rem;
-    right: 0.6rem;
-    background: rgba(0, 0, 0, 0.65);
-    color: var(--accent);
-    padding: 0.25rem 0.5rem;
-    font-weight: 700;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    display: none;
-    z-index: 6;
-  }
-
-  .sr-only {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-  }
-
-  @media (max-width: 768px) {
-    .status-code {
-      font-size: 3rem;
-    }
-
-    .status-title {
-      font-size: 1.25rem;
-    }
-
-    .login-box {
-      padding: 1.5rem;
-    }
-  }
-
-  @media (max-width: 576px) {
-
-    .status-code {
-      font-size: 2.5rem;
-    }
-
-    .status-links {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-  }
-</style>"}}
+{{> head pageCode=code pageError=error ogUrl="/error"}}
 
 <body>
   {{> header}}
 
   <section class="login-container">
-
     {{> backgroundElements}}
 
-    <div class="login-box">
+    <div class="glass-card error-page-box" role="region" aria-label="Error Notice">
+      <div class="error-hero-icon {{#if (eq code 500)}}is-5xx{{else}}{{#if (eq code 404)}}is-4xx{{/if}}{{/if}}" aria-hidden="true">
+        {{#if (eq code 404)}}
+        <i class="fas fa-compass"></i>
+        {{else if (eq code 500)}}
+        <i class="fas fa-server"></i>
+        {{else if (eq code 403)}}
+        <i class="fas fa-user-lock"></i>
+        {{else if (eq code 401)}}
+        <i class="fas fa-key"></i>
+        {{else}}
+        <i class="fas fa-exclamation-triangle"></i>
+        {{/if}}
+      </div>
+
       <h1 class="status-code">{{code}}</h1>
-      <h1 class="status-title">{{error}}</h1>
+      <h2 class="status-title">{{error}}</h2>
 
       <div class="status-content">
         <p class="status-message">{{message}}</p>
       </div>
 
       <div class="status-links">
-        <a href="{{page}}" class="status-link">Go to {{pagename}} page</a>
+        <a href="{{page}}" class="btn btn-primary">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i>
+          <span>Return to {{#if pagename}}{{pagename}}{{else}}Home{{/if}}</span>
+        </a>
+        <a href="/mbkauthe/login" class="btn btn-outline">
+          <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+          <span>Login</span>
+        </a>
+        <a href="/mbkauthe/ErrorCode" class="btn btn-outline">
+          <i class="fas fa-book" aria-hidden="true"></i>
+          <span>Error Codes</span>
+        </a>
       </div>
 
       {{#if details}}
       <div class="details-wrapper">
         <button class="details-toggle" type="button" aria-expanded="false" aria-controls="errorDetails">
-          <span>Show error details</span>
+          <span class="details-toggle-left">
+            <i class="fas fa-terminal icon-primary" aria-hidden="true"></i>
+            <span>Diagnostic & Trace</span>
+            <span class="details-badge badge-success"><i class="fas fa-shield-alt" aria-hidden="true"></i> Redacted</span>
+          </span>
           <i class="fas fa-chevron-down chev" aria-hidden="true"></i>
         </button>
         <div class="error-details-wrapper" id="errorDetails" hidden>
-          <div class="error-details-container">
-            <textarea class="error-details" readonly>{{details}}</textarea>
-            <button class="copy-btn" type="button" aria-label="Copy error details">
-              <i class="fas fa-copy" aria-hidden="true"></i><span class="sr-only"> Copy</span>
-            </button>
-            <span class="copy-feedback" aria-live="polite">Copied!</span>
+          <div class="details-security-notice" role="status">
+            <i class="fas fa-shield-alt icon-primary" aria-hidden="true"></i>
+            <span>Sensitive tokens, keys, and credentials are automatically scrubbed.</span>
+          </div>
+
+          <div class="details-terminal">
+            <div class="details-terminal-toolbar">
+              <span class="terminal-dots" aria-hidden="true">
+                <span class="terminal-dot dot-red"></span>
+                <span class="terminal-dot dot-yellow"></span>
+                <span class="terminal-dot dot-green"></span>
+                <span style="margin-left: 6px;">trace.log</span>
+              </span>
+              <div class="terminal-actions">
+                <button class="terminal-btn btn-wrap-toggle" type="button" title="Toggle line wrap">
+                  <i class="fas fa-align-left" aria-hidden="true"></i>
+                  <span>Wrap</span>
+                </button>
+                <button class="terminal-btn btn-copy-trace" type="button" title="Copy trace">
+                  <i class="fas fa-copy" aria-hidden="true"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="details-code-container">
+              <pre class="details-code-block"><code class="details-code-text">{{details}}</code></pre>
+              <span class="copy-feedback" aria-live="polite">Copied!</span>
+            </div>
           </div>
         </div>
       </div>
       {{/if}}
-
     </div>
   </section>
 
@@ -270,66 +97,49 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.details-wrapper').forEach(wrapper => {
+      document.querySelectorAll('.details-wrapper').forEach((wrapper) => {
         const toggle = wrapper.querySelector('.details-toggle');
         const details = wrapper.querySelector('.error-details-wrapper');
         const icon = wrapper.querySelector('.chev');
-        const copyBtn = wrapper.querySelector('.copy-btn');
+        const copyBtn = wrapper.querySelector('.btn-copy-trace');
+        const wrapBtn = wrapper.querySelector('.btn-wrap-toggle');
+        const codeBlock = wrapper.querySelector('.details-code-block');
+        const codeText = wrapper.querySelector('.details-code-text');
         const feedback = wrapper.querySelector('.copy-feedback');
-
         if (!toggle || !details) return;
-
-        // initialize hidden state and maxHeight for animation
-        details.style.maxHeight = details.hidden ? '0px' : details.scrollHeight + 'px';
 
         toggle.addEventListener('click', (e) => {
           e.stopPropagation();
           const isOpen = wrapper.classList.toggle('active');
           toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
           details.hidden = !isOpen;
-
-          if (isOpen) {
-            details.style.maxHeight = details.scrollHeight + 'px';
-            if (icon) icon.style.transform = 'rotate(180deg)';
-          } else {
-            details.style.maxHeight = '0px';
-            if (icon) icon.style.transform = 'rotate(0deg)';
-          }
+          if (icon) icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
         });
 
-        if (copyBtn) {
-          copyBtn.addEventListener('click', async (e) => {
+        if (wrapBtn && codeBlock) {
+          wrapBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const textarea = wrapper.querySelector('.error-details');
-            try {
-              await navigator.clipboard.writeText(textarea.value);
-              if (feedback) {
-                feedback.style.display = 'inline';
-                setTimeout(() => { feedback.style.display = 'none'; }, 2000);
-              } else {
-                const orig = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Copied';
-                setTimeout(() => { copyBtn.innerHTML = orig; }, 2000);
-              }
-            } catch (err) {
-              console.error(`[mbkauthe] Failed to copy:`, err);
-            }
+            codeBlock.classList.toggle('is-wrapped');
+            wrapBtn.classList.toggle('active');
           });
         }
 
-        // close the details when user clicks outside
-        document.addEventListener('click', (e) => {
-          if (!wrapper.contains(e.target) && wrapper.classList.contains('active')) {
-            wrapper.classList.remove('active');
-            toggle.setAttribute('aria-expanded', 'false');
-            details.hidden = true;
-            if (icon) icon.style.transform = 'rotate(0deg)';
-            details.style.maxHeight = '0px';
-          }
-        });
+        if (copyBtn && codeText) {
+          copyBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+              await navigator.clipboard.writeText(codeText.textContent);
+              if (feedback) {
+                feedback.style.display = 'inline';
+                setTimeout(() => { feedback.style.display = 'none'; }, 2000);
+              }
+            } catch (err) {
+              console.error('[mbkauthe] Failed to copy error trace:', err);
+            }
+          });
+        }
       });
     });
   </script>
 </body>
-
 </html>

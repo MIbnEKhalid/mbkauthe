@@ -6,84 +6,13 @@
 <body>
     {{> header}}
 
-    <style>
-        .last-used-parent {
-            position: relative;
-        }
-
-        .last-used-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 26px;
-            height: 20px;
-            padding: 0 6px;
-            font-size: 11px;
-            font-weight: 700;
-            background: var(--accent);
-            color: #fff;
-            border-radius: 999px;
-            border: 2px solid var(--muted-border);
-            z-index: 30;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-            line-height: 1;
-            text-transform: none;
-        }
-
-        /* Ensure login button has reasonable space for badge */
-        #loginButton {
-            position: relative;
-            overflow: visible;
-        }
-
-        .mobile-github-btn,
-        .mobile-google-btn,
-        .btn-social {
-            position: relative;
-            overflow: visible;
-        }
-
-        .form-row-split {
-            align-items: center;
-        }
-
-        @media (max-width: 1000px) {
-            .login-box {
-                position: relative;
-                background: var(--glass-bg);
-                overflow: hidden;
-            }
-
-            .login-box::before {
-                content: "";
-                position: absolute;
-                inset: 0;
-                background: linear-gradient(135deg,
-                        color-mix(in srgb, var(--primary) 16%, transparent 84%),
-                        color-mix(in srgb, var(--accent) 16%, transparent 84%));
-                pointer-events: none;
-                z-index: 0;
-            }
-
-            .login-box>* {
-                position: relative;
-                z-index: 1;
-            }
-        }
-    </style>
-
     {{> showmessage}}
 
     <section class="login-container">
-
         {{> backgroundElements}}
 
-        <div class="login-box">
+        <div class="glass-card login-box login-box-split">
             <div class="login-box-inner">
-                <!-- Left Column: Branding & Secondary Actions -->
                 <div class="login-sidebar">
                     <div class="sidebar-content">
                         <div class="brand-section">
@@ -127,13 +56,12 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Main Login Form -->
                 <div class="login-main">
-                    <h1 class="login-title">Login</h1>
+                    <h1 class="login-title title-underline">Login</h1>
 
                     {{#if showLoggedOutMessage}}
                     <div class="WarningboxInfo" style="margin-bottom: 20px; border-left-color: #ff3b30;">
-                        <strong>Authentication Required</strong>
+                        <strong class="warning-title">Authentication Required</strong>
                         <div>You have been redirected here because you are not logged in or your session has expired. Please log in to continue.</div>
                         {{#if redirectTarget}}
                         <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.9;">
@@ -167,60 +95,40 @@
 
                         <div class="form-row-split">
                             <div class="remember-me remember-me-inline">
-                                <input type="checkbox" id="rememberMe" name="rememberMe">
+                                <input type="checkbox" id="rememberMe" name="rememberMe" class="custom-checkbox">
                                 <label for="rememberMe">Remember me</label>
                             </div>
-
                             <a href="https://portal.mbktech.org/forgot-password" class="login-link login-link-nowrap">Forgot Password?</a>
                         </div>
 
                         <button type="submit" class="btn-login last-used-parent" id="loginButton">
                             <span id="loginButtonText">Login</span>
-                            {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true"
-                                title="Last used">Last</span>{{/if}}
+                            {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                         </button>
+
                         {{#if userLoggedIn }}
                         <div class="WarningboxInfo already-logged-info">
-                            <strong>You are already logged in as</strong>
-                            <span class="username">"<span id="headerProfileUserName">{{username}}</span>"</span>.
-                            <div>
-                                <a class="terms-link" href="{{customURL}}">Go to dashboard</a>
-                                or
-                                <a class="terms-link" href="/mbkauthe/accounts">switch account</a>.
-                            </div>
+                            You are already logged in as <strong class="username"><span id="headerProfileUserName">{{username}}</span></strong>. <a class="link-primary" href="{{customURL}}">Go to dashboard</a> or <a class="link-primary" href="/mbkauthe/accounts">switch account</a>.
                         </div>
                         {{/if}}
-                        <!-- Mobile/Tablet Only: Social & Secondary Actions -->
+
                         <div class="mobile-actions">
                             {{#if githubLoginEnabled }}
                             {{#if googleLoginEnabled }}
                             <div class="social-login">
-                                <div class="divider">
-                                    <span>or</span>
-                                </div>
+                                <div class="divider"><span>or</span></div>
                                 <div class="social-icons-row">
-                                    <button type="button" class="swi s mobile-github-btn last-used-parent"
-                                        title="Login with GitHub" aria-label="Login with GitHub">
+                                    <button type="button" class="swi s mobile-github-btn last-used-parent" title="Login with GitHub" aria-label="Login with GitHub">
                                         <i class="fab fa-github"></i>
-                                        {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true"
-                                            title="Last used">Last</span>{{/if}}
+                                        {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                                     </button>
-                                    <button type="button" class="swi s mobile-google-btn last-used-parent"
-                                        title="Login with Google" aria-label="Login with Google">
+                                    <button type="button" class="swi s mobile-google-btn last-used-parent" title="Login with Google" aria-label="Login with Google">
                                         <i class="fab fa-google"></i>
-                                        {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true"
-                                            title="Last used">Last</span>{{/if}}
+                                        {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                                     </button>
                                 </div>
                             </div>
-                            {{/if}}
-                            {{/if}}
-
-                            {{#if githubLoginEnabled }}
-                            {{#if googleLoginEnabled }}
-                            <div class="divider">
-                                <span>or</span>
-                            </div>
+                            <div class="divider"><span>or</span></div>
                             {{/if}}
                             {{/if}}
 
@@ -228,234 +136,158 @@
                                 <i class="fa fa-user-group"></i>
                                 <span>Switch Account</span>
                             </a>
-
                         </div>
 
                         <p class="terms-info">
                             By logging in, you agree to our
-                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Terms &
-                                Conditions</a>
+                            <a href="https://mbktech.org/Terms&Conditions" target="_blank" rel="noopener noreferrer" class="link-primary">Terms & Conditions</a>
                             and
-                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="terms-link">Privacy
-                                Policy</a>.
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="link-primary">Privacy Policy</a>.
                         </p>
                     </form>
                 </div>
             </div>
-        </div>
         </div>
     </section>
 
     {{> versionInfo}}
 
     <script>
+        const cookieDomain = '{{cookieDomain}}';
+
         function sanitizeRelativeRedirect(value) {
             if (typeof value !== 'string') return null;
             const trimmed = value.trim();
-            if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
-            if (trimmed.includes('://') || trimmed.includes('\\')) return null;
-            return trimmed;
+            return (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('://') && !trimmed.includes('\\')) ? trimmed : null;
         }
 
-        // Toggle password visibility
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('loginPassword');
-        const togglePasswordIcon = togglePassword.querySelector('i');
-
-        togglePassword.addEventListener('click', function () {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            togglePassword.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
-            togglePasswordIcon.classList.toggle('fa-eye');
-            togglePasswordIcon.classList.toggle('fa-eye-slash');
-        });
-
-        function fpass() {
-            showMessage(`If you have forgotten your password, please contact support at <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer">https://mbktech.org/Support</a> to reset it.`, `Forgot Password`);
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', () => {
+                const isPass = passwordInput.type === 'password';
+                passwordInput.type = isPass ? 'text' : 'password';
+                togglePassword.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+                togglePassword.querySelector('i')?.classList.toggle('fa-eye', !isPass);
+                togglePassword.querySelector('i')?.classList.toggle('fa-eye-slash', isPass);
+            });
         }
 
-        // Info dialogs
+        function fpass() {
+            showMessage('If you have forgotten your password, please contact support at <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer">https://mbktech.org/Support</a> to reset it.', 'Forgot Password');
+        }
+
         function usernameinfo() {
-            showMessage(`Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support" rel="noopener noreferrer">Support</a>.`, `What is my username?`);
+            showMessage('Your username is the part of your MBKTech.org email before the @ (e.g., abc.xyz@mbktech.org → abc.xyz). For guests or if you’ve forgotten your credentials, contact <a href="https://mbktech.org/Support" rel="noopener noreferrer">Support</a>.', 'What is my username?');
         }
 
         function tokeninfo() {
-            showMessage(`The 2FA token is a 6-digit code generated by your authenticator app (such as Google Authenticator, Microsoft Authenticator, or Authy). Enter the code shown in your app to complete login. If you have not set up 2FA or are having trouble, please contact support.`, `What is the 2FA token?`);
+            showMessage('The 2FA token is a 6-digit code generated by your authenticator app (such as Google Authenticator, Microsoft Authenticator, or Authy). Enter the code shown in your app to complete login. If you have not set up 2FA or are having trouble, please contact support.', 'What is the 2FA token?');
         }
 
-        // Form submission
-        document.getElementById('loginForm').addEventListener('submit', function (event) {
+        document.getElementById('loginForm')?.addEventListener('submit', async (event) => {
             event.preventDefault();
-
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
+            const username = document.getElementById('loginUsername')?.value.trim();
+            const password = document.getElementById('loginPassword')?.value.trim();
             const loginButton = document.getElementById('loginButton');
             const loginButtonText = document.getElementById('loginButtonText');
-            const rememberMe = document.getElementById('rememberMe').checked;
+            const rememberMe = document.getElementById('rememberMe')?.checked;
 
-            if (!username || !password) {
-                showMessage('Username and password are required', 'Login Error');
-                return;
-            }
-
-            // Validate password length
-            if (password.length < 8) {
-                showMessage('Password must be at least 8 characters long', 'Login Error');
-                return;
-            }
+            if (!username || !password) return showMessage('Username and password are required', 'Login Error');
+            if (password.length < 8) return showMessage('Password must be at least 8 characters long', 'Login Error');
 
             loginButton.disabled = true;
             loginButtonText.textContent = 'Authenticating...';
 
-            // Pass redirect query param through to server so it can be used by 2FA flow
             const urlParams = new URLSearchParams(window.location.search);
             const pageRedirect = sanitizeRelativeRedirect(urlParams.get('redirect'));
-            fetch('/mbkauthe/api/login', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username,
-                    password
-                    , redirect: pageRedirect || null
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        if (data.twoFactorRequired) {
-                            // Redirect to 2FA page (= pass along redirect target)
-                            const redirectTarget = data.redirectUrl || pageRedirect;
-                            const redirectQuery = redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : '';
-                            window.location.href = `/mbkauthe/2fa${redirectQuery}`;
-                        } else {
-                            loginButtonText.textContent = 'Success! Redirecting...';
-                            if (rememberMe) {
-                                setCookie('rememberedUsername', username, 30); // 30 days
-                            } else {
-                                deleteCookie('rememberedUsername');
-                            }
 
-                            // Redirect to the validated target from the server or safe query param
-                            window.location.href = data.redirectUrl || pageRedirect || '{{customURL}}';
-                        }
+            try {
+                const response = await fetch('/mbkauthe/api/login', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, redirect: pageRedirect || null })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.twoFactorRequired) {
+                        const redirectTarget = data.redirectUrl || pageRedirect;
+                        window.location.href = `/mbkauthe/2fa${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
                     } else {
-                        // Handle errors
-                        loginButton.disabled = false;
-                        loginButtonText.textContent = 'Login';
-                        showMessage(data.message || 'Login failed. Please try again.', 'Login Error', data.errorCode);
+                        loginButtonText.textContent = 'Success! Redirecting...';
+                        if (rememberMe) setCookie('rememberedUsername', username, 30);
+                        else deleteCookie('rememberedUsername');
+                        window.location.href = data.redirectUrl || pageRedirect || '{{customURL}}';
                     }
-                })
-                .catch(error => {
+                } else {
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Login';
-                    console.error(`[mbkauthe] Error:`, error);
-                    showMessage('An error occurred. Please try again.', 'Login Error');
-                });
+                    showMessage(data.message || 'Login failed. Please try again.', 'Login Error', data.errorCode);
+                }
+            } catch (error) {
+                loginButton.disabled = false;
+                loginButtonText.textContent = 'Login';
+                console.error('[mbkauthe] Error:', error);
+                showMessage('An error occurred. Please try again.', 'Login Error');
+            }
         });
 
-        // Cookie helper functions for cross-subdomain sharing
-        const cookieDomain = '{{cookieDomain}}';
-
         function setCookie(name, value, days) {
-            let expires = "";
-            if (days) {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            let cookieValue = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
-            if (cookieDomain) {
-                cookieValue += "; domain=" + cookieDomain;
-            }
-            document.cookie = cookieValue;
+            const expires = days ? `; expires=${new Date(Date.now() + days * 864e5).toUTCString()}` : '';
+            const domain = cookieDomain ? `; domain=${cookieDomain}` : '';
+            document.cookie = `${name}=${value || ''}${expires}; path=/; SameSite=Lax${domain}`;
         }
 
         function getCookie(name) {
-            const nameEQ = name + "=";
-            const ca = document.cookie.split(';');
-            for (let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
+            return document.cookie.split('; ').find((row) => row.startsWith(`${name}=`))?.split('=')[1] ?? null;
         }
 
         function deleteCookie(name) {
-            let cookieValue = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-            if (cookieDomain) {
-                cookieValue += "; domain=" + cookieDomain;
-            }
-            document.cookie = cookieValue;
+            const domain = cookieDomain ? `; domain=${cookieDomain}` : '';
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/${domain}`;
         }
 
-        // Check for URL parameters
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const usernameInput = document.getElementById('loginUsername');
 
             if (urlParams.has('password')) {
                 urlParams.delete('password');
                 const sanitizedQuery = urlParams.toString();
-                const nextUrl = `${window.location.pathname}${sanitizedQuery ? `?${sanitizedQuery}` : ''}${window.location.hash}`;
-                window.history.replaceState({}, document.title, nextUrl);
+                window.history.replaceState({}, document.title, `${window.location.pathname}${sanitizedQuery ? `?${sanitizedQuery}` : ''}${window.location.hash}`);
                 showMessage('Passwords must not be passed in the URL. Enter your password in the form instead.', 'Security Notice');
             }
 
-            // Check for remembered username in cookies
             const rememberedUsername = getCookie('rememberedUsername');
-            if (rememberedUsername) {
+            if (rememberedUsername && usernameInput) {
                 usernameInput.value = rememberedUsername;
-                document.getElementById('rememberMe').checked = true;
+                const rem = document.getElementById('rememberMe');
+                if (rem) rem.checked = true;
             }
 
-            // Automatically focus the first empty field
-            if (!usernameInput.value) {
-                usernameInput.focus();
-            } else {
-                document.getElementById('loginPassword').focus();
-            }
+            if (!usernameInput?.value) usernameInput?.focus();
+            else document.getElementById('loginPassword')?.focus();
         });
 
         {{#if githubLoginEnabled }}
-
-        // GitHub login: Navigate directly to GitHub App flow
-        async function startGithubLogin() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const redirect = urlParams.get('redirect') || '{{customURL}}';
-
-            // Navigate directly to the backend GitHub App endpoint with redirect query
+        const startGithubLogin = () => {
+            const redirect = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
             window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
-        }
-
-        // Attach to both sidebar button (desktop) and mobile button
-        const githubBtn = document.getElementById('githubLoginBtn');
-        const mobileGithubBtn = document.querySelector('.mobile-github-btn');
-        if (githubBtn) githubBtn.addEventListener('click', startGithubLogin);
-        if (mobileGithubBtn) mobileGithubBtn.addEventListener('click', startGithubLogin);
+        };
+        document.getElementById('githubLoginBtn')?.addEventListener('click', startGithubLogin);
+        document.querySelector('.mobile-github-btn')?.addEventListener('click', startGithubLogin);
         {{/if}}
 
         {{#if googleLoginEnabled }}
-
-        // Google login: Navigate directly to Google OAuth flow
-        async function startGoogleLogin() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const redirect = urlParams.get('redirect') || '{{customURL}}';
-
-            // Navigate directly to the backend GET endpoint with redirect query
+        const startGoogleLogin = () => {
+            const redirect = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
             window.location.href = `/mbkauthe/api/google/login?redirect=${encodeURIComponent(redirect)}`;
-        }
-
-        // Attach to both sidebar button (desktop) and mobile button
-        const googleBtn = document.getElementById('googleLoginBtn');
-        const mobileGoogleBtn = document.querySelector('.mobile-google-btn');
-        if (googleBtn) googleBtn.addEventListener('click', startGoogleLogin);
-        if (mobileGoogleBtn) mobileGoogleBtn.addEventListener('click', startGoogleLogin);
+        };
+        document.getElementById('googleLoginBtn')?.addEventListener('click', startGoogleLogin);
+        document.querySelector('.mobile-google-btn')?.addEventListener('click', startGoogleLogin);
         {{/if}}
     </script>
 </body>
-
 </html>

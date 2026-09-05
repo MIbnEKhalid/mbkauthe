@@ -5,11 +5,16 @@
 This document describes the environment variables MBKAuth expects and keeps brief usage notes for each parameter. Validation and defaults are implemented in `lib/config/index.js` (it parses `mbkautheVar`, applies optional `mbkauthShared` fallbacks, normalizes values, and throws on validation failures).
 
 ## How configuration is provided
-- Primary payload: `mbkautheVar` — a JSON string with app-specific keys.
-- Optional shared defaults: `mbkauthShared` — a JSON string used only for missing or empty keys.
-- Example: `mbkautheVar={"APP_NAME":"mbkauthe", ...}`
 
----
+All configuration variables can be supplied through any of three sources:
+1. **`VarName`** (Simple environment variable, e.g. `process.env.APP_NAME` or `process.env.app_name`) — **Top Priority** (overrides both `mbkautheVar` and `mbkauthShared`).
+2. **`mbkautheVar.VarName`** — App-specific variables supplied either as keys in the `process.env.mbkautheVar` JSON string, or as flat prefixed environment variables (e.g. `process.env["mbkautheVar.APP_NAME"]`) — Overrides `mbkauthShared`.
+3. **`mbkauthShared.VarName`** — Shared defaults across multiple services supplied either as keys in the `process.env.mbkauthShared` JSON string, or as flat prefixed environment variables (e.g. `process.env["mbkauthShared.APP_NAME"]`).
+
+### Lowercase Normalization & Case-Insensitivity
+All configuration variables are normalized in lowercase internally, and are accepted case-insensitively across all sources:
+- `APP_NAME`, `app_name`, `AppName`, and `appName` are all recognized and map to the same setting.
+- In code, the resulting `mbkautheVar` object exposes both lowercase (`mbkautheVar.app_name`) and uppercase (`mbkautheVar.APP_NAME`) properties, and supports camelCase access through an intelligent Proxy.
 
 ## Parameters (short descriptions)
 
@@ -18,9 +23,9 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"APP_NAME":"mbkauthe"`
   - Required: Yes
 
-- Main_SECRET_TOKEN
+- MAIN_SECRET_TOKEN
   - Description: Primary token used for internal auth and validations.
-  - Example: `"Main_SECRET_TOKEN":"my-secret-token"`
+  - Example: `"MAIN_SECRET_TOKEN":"my-secret-token"`
   - Required: Yes
 
 - SESSION_SECRET_KEY
@@ -94,10 +99,10 @@ This document describes the environment variables MBKAuth expects and keeps brie
   - Example: `"CLI_AUTH_BASE_URL":"https://portal.mbktech.org"`
   - Required: No
 
-- loginRedirectURL
+- LOGIN_REDIRECT_URL
   - Description: Post-login redirect path.
   - Default: `/dashboard`
-  - Example: `"loginRedirectURL":"/dashboard"`
+  - Example: `"LOGIN_REDIRECT_URL":"/dashboard"`
   - Required: No
 
 - env
@@ -137,20 +142,32 @@ This document describes the environment variables MBKAuth expects and keeps brie
 Development (.env):
 
 ```env
-mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth_dev","MBKAUTH_TWO_FA_ENABLE":"false"}
+mbkautheVar={"APP_NAME":"mbkauthe","MAIN_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","LOGIN_DB":"postgresql://user:pass@localhost:5432/mbkauth_dev","MBKAUTH_TWO_FA_ENABLE":"false"}
 mbkauthShared={"GITHUB_LOGIN_ENABLED":"false"}
+```
+
+Alternatively, you can provide configuration directly via standard flat environment variables (no JSON packing needed):
+
+```env
+APP_NAME=mbkauthe
+MAIN_SECRET_TOKEN=dev-token
+SESSION_SECRET_KEY=dev-secret
+IS_DEPLOYED=false
+DOMAIN=localhost
+LOGIN_DB=postgresql://user:pass@localhost:5432/mbkauth_dev
+MBKAUTH_TWO_FA_ENABLE=false
 ```
 
 Production (short):
 
 ```env
-mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"prod-token","SESSION_SECRET_KEY":"prod-secret","IS_DEPLOYED":"true","DOMAIN":"yourdomain.com","LOGIN_DB":"postgresql://dbuser:secure@db:5432/mbkauth_prod","MBKAUTH_TWO_FA_ENABLE":"true"}
+mbkautheVar={"APP_NAME":"mbkauthe","MAIN_SECRET_TOKEN":"prod-token","SESSION_SECRET_KEY":"prod-secret","IS_DEPLOYED":"true","DOMAIN":"yourdomain.com","LOGIN_DB":"postgresql://dbuser:secure@db:5432/mbkauth_prod","MBKAUTH_TWO_FA_ENABLE":"true"}
 ```
 
 SQLite (no external database required):
 
 ```env
-mbkautheVar={"APP_NAME":"mbkauthe","Main_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","DB_TYPE":"sqlite","SQLITE_PATH":"./data/mbkauthe.sqlite","MBKAUTH_TWO_FA_ENABLE":"false"}
+mbkautheVar={"APP_NAME":"mbkauthe","MAIN_SECRET_TOKEN":"dev-token","SESSION_SECRET_KEY":"dev-secret","IS_DEPLOYED":"false","DOMAIN":"localhost","DB_TYPE":"sqlite","SQLITE_PATH":"./data/mbkauthe.sqlite","MBKAUTH_TWO_FA_ENABLE":"false"}
 ```
 
 Then run `npm run create-tables` to create `./data/mbkauthe.sqlite` with the schema in `docs/schema/db.sqlite.sql`.

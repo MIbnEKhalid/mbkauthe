@@ -79,15 +79,15 @@ if (isDevMode) {
   app.get("/dev/device-approval", (req, res) => res.redirect("/dev/device-approval/pending"));
   app.get("/dev/device-approval/pending", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, {
     status: "pending",
-    clientName: "MBK CLI (macOS / arm64)",
-    userCode: "WXYZ-9876",
+    client_name: "MBK CLI (macOS / arm64)",
+    user_code: "WXYZ-9876",
     username: "ibnekhalid",
-    expiresInSeconds: 1,
+    expires_in_seconds: 1,
     profile: {
       name: "Developer CLI Profile",
       scope: "write",
-      allowedApps: ["mbkbucket", "mbkdb", "mbkdeploy"],
-      expiresInDays: 30
+      allowed_apps: ["mbkbucket", "mbkdb", "mbkdeploy"],
+      expires_in_days: 30
     },
     pagename: "Approve CLI Login",
     page: "/home"

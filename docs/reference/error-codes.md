@@ -277,7 +277,7 @@ import { createErrorResponse, ErrorCodes } from 'mbkauthe';
 return res.status(403).json(
     createErrorResponse(403, ErrorCodes.APP_NOT_AUTHORIZED, {
         appName: 'Admin Panel',
-        requiredRole: 'SuperAdmin'
+        requiredRole: 'superadmin'
     })
 );
 
@@ -290,7 +290,7 @@ return res.status(403).json(
 //     hint: "Contact your administrator if you believe this is an error",
 //     timestamp: "2025-12-03T12:00:00.000Z",
 //     appName: "Admin Panel",
-//     requiredRole: "SuperAdmin"
+//     requiredRole: "superadmin"
 // }
 ```
 
@@ -377,7 +377,7 @@ async function login(username, password) {
         }
         
         // Handle successful login
-        if (data.twoFactorRequired) {
+        if (data.two_factor_required) {
             redirectTo2FA();
         } else {
             redirectToDashboard();
@@ -557,7 +557,7 @@ router.post('/mbkauthe/api/login', async (req, res) => {
         }
         
         // Success
-        res.json({ success: true, sessionId: '...' });
+        res.json({ success: true, message: 'Login successful' });
         
     } catch (error) {
         console.error(`[mbkauthe] Login error:`, error);

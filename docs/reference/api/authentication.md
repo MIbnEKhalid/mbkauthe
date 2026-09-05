@@ -1,4 +1,4 @@
-﻿# Authentication and Sessions
+# Authentication and Sessions
 
 [Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
 
@@ -26,8 +26,8 @@ Authorization: Bearer <your_api_token>
 - **Scopes:** Tokens have a scope (`read-only` or `write`) that controls which HTTP methods are allowed:
   - `read-only`: Only GET, HEAD, and OPTIONS requests (safe, read-only operations)
   - `write`: All HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
-- **Usage Tracking:** The system updates the `LastUsed` timestamp on every successful request.
-- **Allowed apps:** If a token carries `allowedApps`, that list overrides the user's own app list for token-based requests. `null` inherits the user's apps, `[]` denies app access, and `["*"]` grants access to all of the user's apps (subject to the user's own app list).
+- **Usage Tracking:** The system updates the `last_used` timestamp on every successful request.
+- **Allowed apps:** If a token carries `allowed_apps`, that list overrides the user's own app list for token-based requests. `null` inherits the user's apps, `[]` denies app access, and `["*"]` grants access to all of the user's apps (subject to the user's own app list).
 
 **Errors:**
 - `401 Unauthorized` (Code 1005: `INVALID_AUTH_TOKEN`): Token is malformed or not found.
@@ -45,7 +45,7 @@ import { sessVal } from 'mbkauthe';
 
 app.get('/api/protected-resource', sessVal, (req, res) => {
   // Access user info populated from the token
-  const user = req.session.user; // { id, username, role, ... }
+  const user = req.session.user; // { user_id, username, role, ... }
   
   res.json({ 
     message: `Hello ${user.username}`,
@@ -76,7 +76,7 @@ const data = await response.json();
 ```json
 {
   "message": "Hello john.doe",
-  "role": "NormalUser"
+  "role": "normaluser"
 }
 ```
 

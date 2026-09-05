@@ -62,7 +62,7 @@ npm run create-tables
 
 The script applies [docs/schema/db.sql](docs/schema/db.sql) (PostgreSQL) or [docs/schema/db.sqlite.sql](docs/schema/db.sqlite.sql) (SQLite) to the configured backend. You can also run the matching SQL file yourself.
 
-The schema includes a default SuperAdmin user (`support` / `12345678`). Change that password immediately. See the [database guide](docs/guides/database.md).
+The schema includes a default superadmin user (`support` / `12345678`). Change that password immediately. See the [database guide](docs/guides/database.md).
 
 5. Mount MBKAuthe in Express.
 
@@ -81,12 +81,12 @@ app.get("/dashboard", sessVal, (req, res) => {
   res.send(`Welcome ${req.session.user.username}!`);
 });
 
-app.get("/admin", sessVal, roleChk("SuperAdmin"), (req, res) => {
+app.get("/admin", sessVal, roleChk("superadmin"), (req, res) => {
   res.send("Admin Panel");
 });
 
 // Or combine session and role checks into one middleware:
-app.get("/admin", sessRole("SuperAdmin"), (req, res) => {
+app.get("/admin", sessRole("superadmin"), (req, res) => {
   res.send("Admin Panel");
 });
 
@@ -162,7 +162,7 @@ Development-only diagnostics are mounted when `process.env.env === "dev"`:
 - `/mbkauthe/db` - DB Query Monitor UI
 - `/mbkauthe/db.json` - DB Query Monitor JSON
 - `/mbkauthe/db/reset` - reset diagnostic query logs
-- `/mbkauthe/validate-superadmin` - SuperAdmin validation check
+- `/mbkauthe/validate-superadmin` - superadmin validation check
 
 ## Documentation
 
@@ -181,7 +181,7 @@ Development-only diagnostics are mounted when `process.env.env === "dev"`:
 ## Deployment Checklist
 
 - Set `IS_DEPLOYED=true`
-- Use strong `SESSION_SECRET_KEY` and `Main_SECRET_TOKEN` values
+- Use strong `SESSION_SECRET_KEY` and `MAIN_SECRET_TOKEN` values
 - Enable HTTPS
 - Set the correct `DOMAIN`
 - Set an appropriate `COOKIE_EXPIRE_TIME`

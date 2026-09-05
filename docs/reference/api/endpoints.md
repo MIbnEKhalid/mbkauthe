@@ -1,4 +1,4 @@
-﻿# Endpoints
+# Endpoints
 
 [Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
 
@@ -149,7 +149,7 @@ Returns recent DB query diagnostics.
         "method": "GET",
         "url": "/mbkauthe/login",
         "ip": "::1",
-        "userId": 1,
+        "user_id": 1,
         "username": "support"
       },
       "pool": {
@@ -192,7 +192,7 @@ Resets the DB query log and counters (dev-only).
 
 #### `GET /mbkauthe/validate-superadmin`
 
-Validates that the current session has `SuperAdmin` role and returns a JSON summary.
+Validates that the current session has `superadmin` role and returns a JSON summary.
 
 ---
 
@@ -218,19 +218,19 @@ The profile is referenced by `profileKey` (preferred, ≥6-char public key) or `
 ```json
 {
   "success": true,
-  "verificationUrl": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
-  "userCode": "XXXX-XXXX",
-  "deviceCode": "a3f9…(48 hex chars)",
-  "expiresIn": 900,
+  "verification_url": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
+  "user_code": "XXXX-XXXX",
+  "device_code": "a3f9…(48 hex chars)",
+  "expires_in": 900,
   "interval": 5,
-  "clientName": "my-cli",
+  "client_name": "my-cli",
   "profile": {
     "id": 3,
     "key": "1362403658a3",
     "name": "cli-default",
     "scope": "read-only",
-    "allowedApps": ["Portal"],
-    "expiresInDays": 30
+    "allowed_apps": ["Portal"],
+    "expires_in_days": 30
   }
 }
 ```
@@ -251,7 +251,7 @@ Approve or deny a CLI login request. Session-authenticated, rate-limited (30/min
 
 **Request Body:**
 ```json
-{ "userCode": "XXXX-XXXX", "action": "approve" }
+{ "user_code": "XXXX-XXXX", "action": "approve" }
 ```
 `action` must be `"approve"` or `"deny"`.
 
@@ -273,7 +273,7 @@ Polls for the issued token. Called by the CLI on `interval` seconds. Public, rat
 
 **Request Body:**
 ```json
-{ "deviceCode": "a3f9…(48 hex chars)" }
+{ "device_code": "a3f9…(48 hex chars)" }
 ```
 
 **Success — Token delivered (200 OK):**
@@ -282,7 +282,7 @@ Polls for the issued token. Called by the CLI on `interval` seconds. Public, rat
   "success": true,
   "status": "approved",
   "token": "mbk_…(64 hex chars)",
-  "tokenPrefix": "mbk_1234",
+  "token_prefix": "mbk_1234",
   "username": "jane",
   "message": "Login approved"
 }
@@ -308,7 +308,7 @@ Create a new API token (user-facing). Requires an authenticated session.
   "name": "My CI Token",
   "scope": "read-only",
   "expiresDays": 30,
-  "allowedApps": ["Portal", "mbkauthe"]
+  "allowed_apps": ["Portal", "mbkauthe"]
 }
 ```
 
@@ -340,7 +340,7 @@ Verify an API token's validity. Public.
   "success": true,
   "tokenValid": true,
   "username": "jane",
-  "permissions": { "scope": "read-only", "allowedApps": ["Portal"] },
+  "permissions": { "scope": "read-only", "allowed_apps": ["Portal"] },
   "expiresAt": "2026-09-01T00:00:00.000Z"
 }
 ```
@@ -360,7 +360,7 @@ Delete (revoke) your own API token. Requires an authenticated session.
 
 ## Admin API Token Management
 
-All admin endpoints require `SuperAdmin` role.
+All admin endpoints require `superadmin` role.
 
 #### `GET /api/admin/api-tokens/stats`
 
@@ -411,7 +411,7 @@ The endpoints below are active in the router but are not fully expanded above. U
 
 **Admin:**
 
-- `POST /mbkauthe/api/terminateAllSessions` - Terminates all sessions (requires `Main_SECRET_TOKEN`).
+- `POST /mbkauthe/api/terminateAllSessions` - Terminates all sessions (requires `MAIN_SECRET_TOKEN`).
 
 **Static Assets:**
 
@@ -445,18 +445,17 @@ Authenticates a user and creates a session.
 ```json
 {
   "success": true,
-  "message": "Login successful",
-  "sessionId": "64-character-hex-string"
+  "message": "Login successful"
 }
 ```
 
-Note: the server also sets an encrypted `sessionId` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
+Note: the server sets an encrypted `session_id` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
 
 **Success Response with 2FA (200 OK):**
 ```json
 {
   "success": true,
-  "twoFactorRequired": true
+  "two_factor_required": true
 }
 ```
 
@@ -488,12 +487,12 @@ fetch('/mbkauthe/api/login', {
 })
 .then(response => response.json())
 .then(data => {
-  if (data.success && data.twoFactorRequired) {
+  if (data.success && data.two_factor_required) {
     // Redirect to 2FA page
     window.location.href = '/mbkauthe/2fa';
   } else if (data.success) {
     // Login successful
-    window.location.href = data.redirectUrl || '/dashboard';
+    window.location.href = data.redirect_url || '/dashboard';
   }
 });
 ```
@@ -509,13 +508,13 @@ Checks whether the current session (cookie-based) is valid. Returns a JSON respo
 **Success Response (200 OK):**
 ```json
 {
-  "sessionValid": true,
+  "session_valid": true,
   "expiry": "2025-12-27T12:34:56.000Z"
 }
 ```
 
 **Error Responses (examples):**
-- 200 Session invalid ( { "sessionValid": false, "expiry": null } )
+- 200 Session invalid ( { "session_valid": false, "expiry": null } )
 - 500 Internal Server Error (rare)
 
 **Example Request:**
@@ -523,7 +522,7 @@ Checks whether the current session (cookie-based) is valid. Returns a JSON respo
 fetch('/mbkauthe/api/checkSession')
   .then(res => res.json())
   .then(data => {
-    if (data.sessionValid) {
+    if (data.session_valid) {
       // session active, expiry available in data.expiry
     } else {
       // not authenticated
@@ -535,49 +534,48 @@ fetch('/mbkauthe/api/checkSession')
 
 #### `POST /mbkauthe/api/checkSession` (body)
 
-Validate a session by providing a session identifier in the request body. Useful for server-to-server checks or when you have an encrypted `sessionId` value from a cookie and need to validate it server-side.
+Validate a session by providing a session identifier in the request body. Useful for server-to-server checks or when you have an encrypted `session_id` value from a cookie and need to validate it server-side.
 
 **Rate Limit:** 8 requests per minute (same limiter used by public session endpoints)
 
 **Request Body (JSON):**
 ```json
 {
-  "sessionId": "string (uuid or encrypted string)",
-  "isEncrypt": "boolean | 'true' (optional, indicates sessionId is encrypted)
+  "session_id": "string (uuid or encrypted string)",
+  "is_encrypt": "boolean | 'true' (optional, indicates session_id is encrypted)"
 }
 ```
 
 **Notes:**
-- The endpoint accepts `isEncrypt` or the misspelled `isEncryt` (both `true` or the string `'true'` are accepted).
-- If `isEncrypt` is true, the server will first attempt `decodeURIComponent()` on the value and then decrypt it (AES) to obtain a UUID session id. If decryption fails or the resulting value is not a UUID, the server returns `400 Bad Request` with `SESSION_INVALID`.
-- A missing `sessionId` returns `400 Bad Request` with `MISSING_REQUIRED_FIELD`.
+- If `is_encrypt` is true, the server will first attempt `decodeURIComponent()` on the value and then decrypt it (AES) to obtain a UUID session id. If decryption fails or the resulting value is not a UUID, the server returns `400 Bad Request` with `SESSION_INVALID`.
+- A missing `session_id` returns `400 Bad Request` with `MISSING_REQUIRED_FIELD`.
 
 **Success Response (200 OK):**
 ```json
 {
-  "sessionValid": true,
+  "session_valid": true,
   "expiry": "2025-12-27T12:34:56.000Z"
 }
 ```
 
 **Invalid/Expired Session:**
-- Returns 200 with `{ "sessionValid": false, "expiry": null }` for unknown/expired/inactive sessions.
+- Returns 200 with `{ "session_valid": false, "expiry": null }` for unknown/expired/inactive sessions.
 
 **Example Request (Fetch):**
 ```javascript
 fetch('/mbkauthe/api/checkSession', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ sessionId: '550e8400-e29b-41d4-a716-446655440000' })
+  body: JSON.stringify({ session_id: '550e8400-e29b-41d4-a716-446655440000' })
 }).then(r => r.json()).then(console.log);
 ```
 
-**Example Request (Encrypted sessionId):**
+**Example Request (Encrypted session_id):**
 ```javascript
 fetch('/mbkauthe/api/checkSession', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ sessionId: 'ENCRYPTED_VALUE', isEncrypt: true })
+  body: JSON.stringify({ session_id: 'ENCRYPTED_VALUE', is_encrypt: true })
 }).then(r => r.json()).then(console.log);
 ```
 
@@ -585,20 +583,20 @@ fetch('/mbkauthe/api/checkSession', {
 
 #### `POST /mbkauthe/api/verifySession`
 
-Returns session details for a provided `sessionId`. Intended for server-side validation and to retrieve associated user metadata without relying on an active cookie session.
+Returns session details for a provided `session_id`. Intended for server-side validation and to retrieve associated user metadata without relying on an active cookie session.
 
 **Request Body (JSON):**
 ```json
 {
-  "sessionId": "string (uuid or encrypted string)",
-  "isEncrypt": "boolean | 'true' (optional)"
+  "session_id": "string (uuid or encrypted string)",
+  "is_encrypt": "boolean | 'true' (optional)"
 }
 ```
 
 **Behavior and Notes:**
-- `isEncrypt`/`isEncryt` have the same behavior as in `/api/checkSession`.
+- `is_encrypt` has the same behavior as in `/api/checkSession`.
 - If the session is valid and active, the response includes `username` and `role`.
-- Missing or invalid `sessionId` results in `400 Bad Request` with an appropriate error code (`MISSING_REQUIRED_FIELD` or `SESSION_INVALID`).
+- Missing or invalid `session_id` results in `400 Bad Request` with an appropriate error code (`MISSING_REQUIRED_FIELD` or `SESSION_INVALID`).
 
 **Success Response (200 OK):**
 ```json
@@ -606,7 +604,7 @@ Returns session details for a provided `sessionId`. Intended for server-side val
   "valid": true,
   "expiry": "2025-12-27T12:34:56.000Z",
   "username": "john.doe",
-  "role": "NormalUser"
+  "role": "normaluser"
 }
 ```
 
@@ -618,7 +616,7 @@ Returns session details for a provided `sessionId`. Intended for server-side val
 fetch('/mbkauthe/api/verifySession', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ sessionId: '550e8400-e29b-41d4-a716-446655440000' })
+  body: JSON.stringify({ session_id: '550e8400-e29b-41d4-a716-446655440000' })
 }).then(r => r.json()).then(console.log);
 ```
 
@@ -657,12 +655,11 @@ Verifies the 2FA token and completes the login process.
 {
   "success": true,
   "message": "Login successful",
-  "sessionId": "64-character-hex-string",
-  "redirectUrl": "/dashboard"
+  "redirect_url": "/dashboard"
 }
 ```
 
-Note: the server also sets an encrypted `sessionId` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
+Note: the server sets an encrypted `session_id` cookie for browser sessions; treat the cookie as an opaque value and avoid parsing it client-side.
 
 **Error Responses:**
 
@@ -691,7 +688,7 @@ fetch('/mbkauthe/api/verify-2fa', {
 .then(response => response.json())
 .then(data => {
   if (data.success) {
-    window.location.href = data.redirectUrl;
+    window.location.href = data.redirect_url || '/dashboard';
   }
 });
 ```
@@ -771,7 +768,7 @@ Renders the account switching page, allowing users to switch between remembered 
 - `customURL` - Redirect URL after switch
 - `userLoggedIn` - Whether a user is currently logged in
 - `username` - Current username
-- `fullname` - Current user's full name
+- `full_name` - Current user's full name
 - `role` - Current user's role
 
 **Usage:**
@@ -792,19 +789,19 @@ Retrieves the list of remembered accounts for the current device.
 {
   "accounts": [
     {
-      "sessionId": "64-char-session-id",
+      "session_id": "64-char-session-id",
       "username": "john.doe",
-      "fullName": "John Doe",
-      "isCurrent": true
+      "full_name": "John Doe",
+      "is_current": true
     },
     {
-      "sessionId": "another-session-id",
+      "session_id": "another-session-id",
       "username": "jane.smith",
-      "fullName": "Jane Smith",
-      "isCurrent": false
+      "full_name": "Jane Smith",
+      "is_current": false
     }
   ],
-  "currentSessionId": "64-char-session-id"
+  "current_session_id": "64-char-session-id"
 }
 ```
 
@@ -824,7 +821,7 @@ Switches the active session to another remembered account.
 **Request Body:**
 ```json
 {
-  "sessionId": "target-session-id (required)",
+  "session_id": "target-session-id (required)",
   "redirect": "/dashboard (optional)"
 }
 ```
@@ -1115,7 +1112,7 @@ Test endpoint to verify authentication and display user session information.
   <script src="/mbkauthe/main.js"></script> 
 </head>
 <p>if you are seeing this page than User is logged in.</p>
-<p>id: '${req.session.user.id}', UserName: '${req.session.user.username}', Role: '${req.session.user.role}', SessionId: '${req.session.user.sessionId}'</p>
+<p>user_id: '${req.session.user.user_id}', username: '${req.session.user.username}', role: '${req.session.user.role}', session_id: '${req.session.user.session_id}'</p>
 <button onclick="logout()">Logout</button><br>
 <a href="/mbkauthe/info">Info Page</a><br>
 <a href="/mbkauthe/login">Login Page</a><br>
@@ -1180,7 +1177,7 @@ Handles the callback from GitHub after user authorization.
 
 **Response:** 
 - Redirects to 2FA page if 2FA is enabled for the user
-- Redirects to `loginRedirectURL` or stored redirect URL if 2FA is not required
+- Redirects to `LOGIN_REDIRECT_URL` or stored redirect URL if 2FA is not required
 - Renders error page if authentication fails
 
 **Error Handling:**
@@ -1193,14 +1190,14 @@ Handles the callback from GitHub after user authorization.
 ```
 GitHub → /api/github/login/callback 
   → (If 2FA enabled) → /mbkauthe/2fa 
-  → (If no 2FA) → loginRedirectURL or stored redirect
+  → (If no 2FA) → LOGIN_REDIRECT_URL or stored redirect
 ```
 
 **Database Query:**
 ```sql
-SELECT ug.*, u."UserName", u."Role", u."Active", u."AllowedApps", u."id" 
+SELECT ug.*, u.user_name, u.role, u.active, u.allowed_apps, u.id, u.user_id 
 FROM user_github ug 
-JOIN "Users" u ON ug.user_name = u."UserName" 
+JOIN users u ON ug.user_name = u.user_name 
 WHERE ug.github_id = $1
 ```
 
@@ -1260,7 +1257,7 @@ Handles the OAuth callback from Google after user authorization.
 
 **Response:** 
 - Redirects to 2FA page if 2FA is enabled for the user
-- Redirects to `loginRedirectURL` or stored redirect URL if 2FA is not required
+- Redirects to `LOGIN_REDIRECT_URL` or stored redirect URL if 2FA is not required
 - Renders error page if authentication fails
 
 **Error Handling:**
@@ -1276,14 +1273,14 @@ Handles the OAuth callback from Google after user authorization.
 Google → /api/google/login/callback 
   → (CSRF Validation)
   → (If 2FA enabled) → /mbkauthe/2fa 
-  → (If no 2FA) → loginRedirectURL or stored redirect
+  → (If no 2FA) → LOGIN_REDIRECT_URL or stored redirect
 ```
 
 **Database Query:**
 ```sql
-SELECT ug.*, u."UserName", u."Role", u."Active", u."AllowedApps", u."id" 
+SELECT ug.*, u.user_name, u.role, u.active, u.allowed_apps, u.id, u.user_id 
 FROM user_google ug 
-JOIN "Users" u ON ug.user_name = u."UserName" 
+JOIN users u ON ug.user_name = u.user_name 
 WHERE ug.google_id = $1
 ```
 

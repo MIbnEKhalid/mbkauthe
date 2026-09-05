@@ -1,4 +1,4 @@
-﻿# Code Examples
+# Code Examples
 
 [Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
 
@@ -22,7 +22,7 @@ process.env.mbkautheVar = JSON.stringify({
   LOGIN_DB: process.env.LOGIN_DB,
   MBKAUTH_TWO_FA_ENABLE: process.env.MBKAUTH_TWO_FA_ENABLE,
   COOKIE_EXPIRE_TIME: process.env.COOKIE_EXPIRE_TIME || 2,
-  loginRedirectURL: '/dashboard'
+  LOGIN_REDIRECT_URL: '/dashboard'
 });
 
 const app = express();
@@ -48,26 +48,26 @@ app.listen(3000, () => {
 import { sessVal, roleChk, sessRole } from 'mbkauthe';
 
 // Method 1: Separate middleware
-app.get('/admin', sessVal, roleChk('SuperAdmin'), (req, res) => {
+app.get('/admin', sessVal, roleChk('superadmin'), (req, res) => {
     res.send('Admin panel');
   }
 );
 
 // Method 2: Combined middleware
-app.get('/admin', sessRole('SuperAdmin'), (req, res) => {
+app.get('/admin', sessRole('superadmin'), (req, res) => {
     res.send('Admin panel');
   }
 );
 
 // Allow any role except Guest
-app.get('/content', sessVal, roleChk('Any', 'Guest'), (req, res) => {
+app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
     res.send('Content for registered users');
   }
 );
 
 // Multiple roles (using separate middleware)
 app.get('/moderator', sessVal, (req, res, next) => {
-    if (['SuperAdmin', 'NormalUser'].includes(req.session.user.role)) {
+    if (['superadmin', 'normaluser'].includes(req.session.user.role)) {
       next();
     } else {
       res.status(403).send('Access denied');
@@ -136,12 +136,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await response.json();
     
     if (data.success) {
-      if (data.twoFactorRequired) {
+      if (data.two_factor_required) {
         // Redirect to 2FA page
         window.location.href = '/mbkauthe/2fa';
       } else {
         // Login successful, redirect
-        window.location.href = data.redirectUrl || '/dashboard';
+        window.location.href = data.redirect_url || '/dashboard';
       }
     } else {
       alert(data.message || 'Login failed');
@@ -192,10 +192,10 @@ async function logout() {
 import { dblogin } from 'mbkauthe';
 
 // Custom query using the database pool
-app.get('/api/users', sessVal, roleChk('SuperAdmin'), async (req, res) => {
+app.get('/api/users', sessVal, sessRole('superadmin'), async (req, res) => {
   try {
     const result = await dblogin.query(
-      'SELECT id, "UserName", "Role", "Active" FROM "Users" ORDER BY id'
+      'SELECT id, user_name, role, active FROM users ORDER BY id'
     );
     
     res.json({ 

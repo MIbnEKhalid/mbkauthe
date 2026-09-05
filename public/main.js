@@ -6,7 +6,25 @@
  */
 
 (() => {
-  const SESSION_KEYS = ['sessionId', 'mbkauthe.sid', 'fullName', '_csrf', 'profileImageUser', 'profileImageUrl'];
+  const SESSION_KEYS = [
+    'sessionId',
+    'session_id',
+    'mbkauthe.sid',
+    'fullName',
+    'full_name',
+    'userId',
+    'user_id',
+    'username',
+    '_csrf',
+    'profileImageUser',
+    'profile_image_user',
+    'profileImageUrl',
+    'profile_image_url',
+    'device_token',
+    'lastLoginMethod',
+    'last_login_method',
+    'mbkauthe_accounts'
+  ];
   const LOG_PREFIX = '[mbkauthe]';
   const EXPIRED_COOKIE = 'expires=Thu, 01 Jan 1970 00:00:00 GMT';
   const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -78,7 +96,7 @@
       .then(async (response) => {
         if (!response.ok) return reloadPage();
         const session = await parseJson(response);
-        if (session.sessionValid === false) reloadPage();
+        if (session.session_valid === false || session.sessionValid === false) reloadPage();
       })
       .catch((error) => console.error(`${LOG_PREFIX} Error checking session:`, error));
   }

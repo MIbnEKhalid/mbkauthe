@@ -1,4 +1,4 @@
-﻿# Middleware
+# Middleware
 
 [Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
 
@@ -15,14 +15,14 @@ import { sessRole } from 'mbkauthe';
 app.get('/protected', sessRole, (req, res) => {
   // User is authenticated
   const user = req.session.user;
-  // user contains: { id, username, UserName, role, Role, sessionId }
+  // user contains: { user_id, username, role, session_id, allowed_apps, full_name }
   res.send(`Welcome ${user.username}!`);
 });
 ```
 
 **Behavior:**
 - Checks for active session in `req.session.user`
-- Attempts to restore session from `sessionId` cookie if session not found
+- Attempts to restore session from `session_id` cookie if session not found
 - Validates session against database
 - Checks if user account is still active
 - Verifies user is authorized for the current application
@@ -45,14 +45,14 @@ curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
 
 ### reloadSessionUser(req, res)
 
-Use this helper when you need to refresh the values stored in `req.session.user` from the authoritative database record (for example, after a profile update that changes FullName, or when session expiration policies are updated).
+Use this helper when you need to refresh the values stored in `req.session.user` from the authoritative database record (for example, after a profile update that changes full_name, or when session expiration policies are updated).
 
 - Behavior:
-  - Validates the session against the database (sessionId, active)
-  - Updates `req.session.user` fields: `username`, `role`, `allowedApps`, `fullname`
-  - Uses cached `fullName` cookie if available; falls back to querying `profiledata`
-  - Syncs `username`, `fullName`, and `sessionId` cookies for client display
-  - If the session is invalid (sessionId mismatch, inactive account, or unauthorized), it destroys the session and clears cookies
+  - Validates the session against the database (session_id, active)
+  - Updates `req.session.user` fields: `user_id`, `username`, `role`, `allowed_apps`, `full_name`
+  - Uses cached `full_name` cookie if available; falls back to querying database
+  - Syncs `full_name` and `session_id` cookies
+  - If the session is invalid (session_id mismatch, inactive account, or unauthorized), it destroys the session and clears cookies
 
 - Returns: `Promise<boolean>` — `true` if session was refreshed and still valid, `false` if session was invalidated or reload failed.
 
@@ -62,23 +62,24 @@ import { reloadSessionUser } from 'mbkauthe';
 
 // After updating profile data
 app.post('/mbkauthe/api/update-profile', sessRole, async (req, res) => {
-  // ... update profiledata.FullName in DB ...
+  // ... update profiledata.full_name in DB ...
   const refreshed = await reloadSessionUser(req, res);
   if (!refreshed) {
     return res.status(401).json({ success: false, message: 'Session invalidated' });
   }
-  res.json({ success: true, fullname: req.session.user.fullname });
+  res.json({ success: true, full_name: req.session.user.full_name });
 });
 ```
 
 **Session Object:**
 ```javascript
 req.session.user = {
-  id: 1,                    // User ID
+  user_id: 1,               // User ID
   username: "john.doe",     // Username (login name)
-  fullname: "John Doe",     // Optional display name fetched from profiledata
-  role: "NormalUser",       // User role
-  sessionId: "abc123...",   // 64-char hex session ID
+  full_name: "John Doe",    // Optional display name fetched from profiledata
+  role: "normaluser",       // User role
+  session_id: "abc123...",  // 64-char hex session ID
+  allowed_apps: ["portal"], // Allowed applications
 }
 ```
 
@@ -95,20 +96,20 @@ These cookies allow front-end UI to display a friendly name without making extra
 Checks if the authenticated user has the required role.
 
 **Parameters:**
-- `requiredRole` (string) - Required role: `"SuperAdmin"`, `"NormalUser"`, `"Guest"`, `"member"`, or `"Any"`/`"any"`
+- `requiredRole` (string) - Required role: `"superadmin"`, `"normaluser"`, `"guest"`, `"member"`, or `"Any"`/`"any"`
 - `notAllowed` (string, optional) - Role that is explicitly not allowed
 
 **Usage:**
 ```javascript
 import { sessVal, roleChk } from 'mbkauthe';
 
-// Only SuperAdmin can access
-app.get('/admin', sessVal, roleChk('SuperAdmin'), (req, res) => {
+// Only superadmin can access
+app.get('/admin', sessVal, roleChk('superadmin'), (req, res) => {
   res.send('Admin panel');
 });
 
 // Any authenticated user except Guest
-app.get('/content', sessVal, roleChk('Any', 'Guest'), (req, res) => {
+app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
   res.send('Protected content');
 });
 ```
@@ -135,14 +136,14 @@ Combined middleware for session validation and role checking.
 import { sessRole, roleChk } from 'mbkauthe';
 
 // Validate session AND check role in one middleware
-app.get('/moderator', sessRole('SuperAdmin'), (req, res) => {
+app.get('/moderator', sessRole('superadmin'), (req, res) => {
   res.send('Moderator panel');
 });
 ```
 
 **Equivalent to:**
 ```javascript
-app.get('/moderator', sessVal, roleChk('SuperAdmin'), (req, res) => {
+app.get('/moderator', sessVal, roleChk('superadmin'), (req, res) => {
   res.send('Moderator panel');
 });
 ```
@@ -166,7 +167,7 @@ app.get('/sensitive', strictSessVal, (req, res) => {
 });
 
 // Validate session AND role, using cookie-only authentication
-app.get('/admin', strictSessRole('SuperAdmin'), (req, res) => {
+app.get('/admin', strictSessRole('superadmin'), (req, res) => {
   res.send('Admin');
 });
 ```
@@ -177,7 +178,7 @@ app.get('/admin', strictSessRole('SuperAdmin'), (req, res) => {
 
 MBKAuthe exports small helpers to assist with page rendering and context:
 
-- `getUserContext(req)` — returns a lightweight context object for templates: `{ userLoggedIn, isuserlogin, username, fullname, role, allowedApps }`.
+- `getUserContext(req)` — returns a lightweight context object for templates: `{ userLoggedIn, user_id, username, full_name, role, allowed_apps }`.
 - `renderPage(req, res, fileLocation, layout = true, data = {})` — renders a template with the user/context merged into the data; returns a Promise and yields the typical Express `res.render` behavior.
 - `renderError(res, req, options)` — renders the standardized error page; note the signature is `(res, req, options)` and `options` follow the `ErrorRenderOptions` described in the types.
 

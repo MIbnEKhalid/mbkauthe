@@ -35,7 +35,7 @@
 
                 <div class="trust-device-container">
                     <label class="trust-device-label" for="trustDevice">
-                        <input type="checkbox" id="trustDevice" name="trustDevice" class="custom-checkbox" />
+                        <input type="checkbox" id="trustDevice" name="trust_device" class="custom-checkbox" />
                         <span class="checkbox-custom"></span>
                         <span class="checkbox-text">Trust this device for {{DEVICE_TRUST_DURATION_DAYS}} days</span>
                     </label>
@@ -71,7 +71,7 @@
         document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const token = document.getElementById('token')?.value;
-            const trustDevice = document.getElementById('trustDevice')?.checked;
+            const trust_device = document.getElementById('trustDevice')?.checked;
             const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
             const loginButton = document.getElementById('loginButton');
             const loginButtonText = document.getElementById('loginButtonText');
@@ -84,12 +84,12 @@
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, trustDevice, _csrf: csrfToken })
+                    body: JSON.stringify({ token, trust_device, _csrf: csrfToken })
                 });
                 const data = await response.json();
                 if (data.success) {
                     loginButtonText.textContent = 'Success! Redirecting...';
-                    window.location.href = data.redirectUrl || '{{ customURL }}';
+                    window.location.href = data.redirect_url || '{{ customURL }}';
                 } else {
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Verify';

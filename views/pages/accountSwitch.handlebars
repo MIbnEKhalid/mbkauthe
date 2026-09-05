@@ -115,7 +115,7 @@
                 const res = await fetch('/mbkauthe/api/account-sessions', { credentials: 'include' });
                 const data = await res.json();
                 const accounts = Array.isArray(data.accounts) ? data.accounts : [];
-                const currentId = data.currentSessionId || null;
+                const currentId = data.current_session_id || data.currentSessionId || null;
 
                 list.innerHTML = '';
                 if (!accounts.length) {
@@ -125,8 +125,10 @@
                 empty.style.display = 'none';
 
                 accounts.slice(0, 5).forEach((acct) => {
-                    const isCurrent = acct.isCurrent || (currentId && acct.sessionId === currentId);
-                    const initial = (acct.fullName || acct.username || '?').charAt(0).toUpperCase();
+                    const sid = acct.session_id;
+                    const fullName = acct.full_name || acct.username || '?';
+                    const isCurrent = acct.is_current !== undefined ? acct.is_current : (currentId && sid === currentId);
+                    const initial = fullName.charAt(0).toUpperCase();
 
                     const item = document.createElement('div');
                     item.className = 'account-item';
@@ -154,7 +156,7 @@
 
                     const info = document.createElement('div');
                     info.className = 'account-info';
-                    info.innerHTML = `<div class="account-name">${acct.fullName || acct.username}</div><div class="account-email">${acct.username}</div>`;
+                    info.innerHTML = `<div class="account-name">${fullName}</div><div class="account-email">${acct.username}</div>`;
 
                     item.appendChild(avatar);
                     item.appendChild(info);
@@ -165,7 +167,7 @@
                         item.appendChild(badge);
                     }
 
-                    const onSelect = () => { if (!isCurrent) switchSession(acct.sessionId); };
+                    const onSelect = () => { if (!isCurrent) switchSession(sid); };
                     item.addEventListener('click', onSelect);
                     item.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); }
@@ -185,7 +187,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ sessionId, redirect: redirectTarget })
+                    body: JSON.stringify({ session_id: sessionId, redirect: redirectTarget })
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {

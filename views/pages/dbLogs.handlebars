@@ -120,7 +120,7 @@
 
     const formatCompactRequest = (request) => {
       if (!request) return '';
-      return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${request.username || request.userId || 'anonymous'}`;
+      return `${request.method || ''} ${request.url || ''}`.trim() + ` | ${request.username || request.user_id || 'anonymous'}`;
     };
 
     const formatCodeTrigger = (callsite) => {
@@ -258,7 +258,7 @@
         const callsiteText = entry.callsite ? `${entry.callsite.function || '(anonymous)'}\n${entry.callsite.file}:${entry.callsite.line}:${entry.callsite.column}` : '';
         const statusBadge = entry.success ? '<span class="badge badge-success">OK</span>' : entry.success === false ? '<span class="badge badge-danger">ERR</span>' : '<span class="badge">N/A</span>';
         const errorText = entry.error ? `${entry.error.code ? `${entry.error.code}: ` : ''}${entry.error.message || ''}` : '';
-        const requestText = entry.request ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() + `\nuser: ${entry.request.username || entry.request.userId || 'anonymous'}\nip: ${entry.request.ip || ''}` : '';
+        const requestText = entry.request ? `${entry.request.method || ''} ${entry.request.url || ''}`.trim() + `\nuser: ${entry.request.username || entry.request.user_id || 'anonymous'}\nip: ${entry.request.ip || ''}` : '';
         const poolText = entry.pool ? `name:${entry.pool.name || ''} total:${entry.pool.total} idle:${entry.pool.idle} waiting:${entry.pool.waiting}` : '';
         const waitText = entry.poolWait ? `source:${entry.poolWait.source || 'n/a'}\nwait:${formatMs(entry.poolWait.waitMs || 0)}\nwaitingBefore:${entry.poolWait.waitingBefore || 0}\nwaitingAfter:${entry.poolWait.waitingAfter || 0}\npressure:${entry.poolWait.hadPoolPressure ? 'yes' : 'no'}` : '';
 

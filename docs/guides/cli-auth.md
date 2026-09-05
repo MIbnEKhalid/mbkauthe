@@ -20,21 +20,21 @@ sequenceDiagram
     participant Browser
     participant MBKCore
 
-    CLI->>MBKAuthe: POST /api/cli/device {clientName, profileId}
+    CLI->>MBKAuthe: POST /api/cli/device {client_name, profile_id}
     MBKAuthe->>MBKCore: read ApiTokenProfile (read-only)
-    MBKAuthe-->>CLI: 201 {verificationUrl, userCode, deviceCode, interval}
+    MBKAuthe-->>CLI: 201 {verification_url, user_code, device_code, interval}
 
     CLI-->>User: "Open https://…/mbkauthe/cli/device/XXXX-XXXX"
     User->>Browser: open URL (signs in if needed)
     Browser->>MBKAuthe: GET /mbkauthe/cli/device/:userCode
     User->>Browser: Approve
-    Browser->>MBKAuthe: POST /api/cli/device/approve {userCode, action}
+    Browser->>MBKAuthe: POST /api/cli/device/approve {user_code, action}
     MBKAuthe->>MBKCore: read active ApiTokenProfile
     MBKAuthe-->>MBKCore: create ApiToken from profile (scope, apps, expiry)
     MBKAuthe-->>Browser: 200 approved
 
     loop until approved / denied / expired
-        CLI->>MBKAuthe: POST /api/cli/device/token {deviceCode}
+        CLI->>MBKAuthe: POST /api/cli/device/token {device_code}
         MBKAuthe-->>CLI: pending
     end
     MBKAuthe-->>CLI: approved + token (delivered exactly once)
@@ -107,25 +107,25 @@ Response `201`:
 ```json
 {
   "success": true,
-  "verificationUrl": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
-  "userCode": "XXXX-XXXX",
-  "deviceCode": "a3f9…(48 hex chars, secret)",
-  "expiresIn": 900,
+  "verification_url": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
+  "user_code": "XXXX-XXXX",
+  "device_code": "a3f9…(48 hex chars, secret)",
+  "expires_in": 900,
   "interval": 5,
-  "clientName": "my-cli",
+  "client_name": "my-cli",
   "profile": {
     "id": 3,
     "key": "1362403658a3",
     "name": "cli-default",
     "scope": "read-only",
-    "allowedApps": ["Portal", "mbkauthe"],
-    "expiresInDays": 30
+    "allowed_apps": ["Portal", "mbkauthe"],
+    "expires_in_days": 30
   }
 }
 ```
 
-Errors: `400` for a missing `clientName` or an invalid/inactive
-`profileKey`/`profileId`.
+Errors: `400` for a missing `client_name` or an invalid/inactive
+`profile_key`/`profile_id`.
 
 ### 2. Browser approval page — `GET /mbkauthe/cli/device/:userCode`
 
@@ -139,12 +139,12 @@ signing in. Shows the requesting client, the token profile details, and
 Session-authenticated (rate-limited 30/min/IP). Called by the approval page.
 
 ```json
-{ "userCode": "XXXX-XXXX", "action": "approve" }
+{ "user_code": "XXXX-XXXX", "action": "approve" }
 ```
 
 On approval MBKAuthe:
 
-1. Reads the **active** API Token Profile for `ProfileId` (MBKCore-owned).
+1. Reads the **active** API Token Profile for `profile_id` (MBKCore-owned).
 2. Creates an API token from that template — scope, allowed applications, and
    expiration all come from the profile.
 3. Stages the raw token and marks the session `approved`.
@@ -162,7 +162,7 @@ Called by the CLI on `interval` seconds. Public, rate-limited (60/min/IP).
 ```bash
 curl -X POST https://portal.mbktech.org/api/cli/device/token \
   -H "Content-Type: application/json" \
-  -d '{"deviceCode": "a3f9…"}'
+  -d '{"device_code": "a3f9…"}'
 ```
 
 Possible responses:
@@ -216,8 +216,8 @@ Possible responses:
 | `200` | `false` | `"completed"` | Token was already delivered on a prior poll |
 | `200` | `false` | `"denied"` | User denied the request |
 | `200` | `false` | `"expired"` | Request expired |
-| `400` | `false` | — | Missing `deviceCode` |
-| `404` | `false` | `"invalid"` | Unknown `deviceCode` |
+| `400` | `false` | — | Missing `device_code` |
+| `404` | `false` | `"invalid"` | Unknown `device_code` |
 | `429` | — | — | Rate limit exceeded (60/min/IP) |
 | `500` | — | — | Internal server error |
 
@@ -238,7 +238,7 @@ Key configuration via environment variables:
 | `MBKCLI_BASE_URL` | `http://localhost:5555` | Server base URL |
 | `MBKCLI_CLIENT_NAME` | `mbkbucket-cli` | Display name shown in browser approval page |
 | `MBKCLI_PROFILE_KEY` | `"1362403658a3"` | API Token Profile public key (≥6 chars) |
-| `MBKCLI_PROFILE_ID` | *(none)* | Deprecated fallback — use `MBKCLI_PROFILE_KEY` instead |
+| `MBKCLI_PROFILE_ID` | *(none)* | Fallback profile ID |
 | `MBKCLI_TOKEN_FILE` | `~/.mbkcli_token` | Path to save the API token |
 
 ### Minimal polling loop
@@ -248,10 +248,10 @@ Key configuration via environment variables:
 const start = await fetch(`${BASE}/api/cli/device`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ clientName: "my-cli", profileKey: "1362403658a3" }),
+  body: JSON.stringify({ client_name: "my-cli", profile_key: "1362403658a3" }),
 }).then((r) => r.json());
 
-console.log(`Open: ${start.verificationUrl}`);
+console.log(`Open: ${start.verification_url}`);
 
 // 2. Poll
 for (;;) {
@@ -259,7 +259,7 @@ for (;;) {
   const res = await fetch(`${BASE}/api/cli/device/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deviceCode: start.deviceCode }),
+    body: JSON.stringify({ device_code: start.device_code }),
   }).then((r) => r.json());
 
   if (res.status === "approved") {

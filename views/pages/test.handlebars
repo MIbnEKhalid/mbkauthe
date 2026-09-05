@@ -10,8 +10,8 @@
 
         <div class="glass-card session-card" role="region" aria-label="User Session">
             <div class="avatar-large" aria-hidden="true">
-                <img src="/mbkauthe/user/profilepic?u={{profilePicUrl}}"
-                    alt="Avatar for {{username}}" title="{{displayName}}" loading="lazy" decoding="async" width="96" height="96"
+                <img src="/mbkauthe/user/profilepic?u={{profile_pic_url}}"
+                    alt="Avatar for {{username}}" title="{{display_name}}" loading="lazy" decoding="async" width="96" height="96"
                     class="avatar-img"
                     onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex');" />
                 <div class="avatar-initials" aria-hidden="true">{{initial}}</div>
@@ -21,14 +21,14 @@
                 <div>
                     <div class="session-status">✅ Authentication successful</div>
                     <h3 class="session-title">{{username}} <span class="session-role">· {{role}}</span></h3>
-                    <p class="session-sub">UserId: {{userId}} · Session: {{sessionIdShort}}…</p>
+                    <p class="session-sub">UserId: {{user_id}} · Session: {{session_id_short}}…</p>
                 </div>
 
                 <div class="session-details" aria-live="polite">
-                    <div><span class="text-highlight">Full Name:</span> {{fullname}}</div>
-                    <div><span class="text-highlight">Allowed Apps:</span> {{allowedApps}}</div>
-                    <div><span class="text-highlight">Session Expires:</span> <span id="session-expiry-display">{{#if sessionExpiry}}{{sessionExpiry}}{{else}}N/A{{/if}}</span></div>
-                    {{#if sessionExpiry}}<div id="session-countdown"><span class="text-highlight">Time Remaining:</span> <span id="countdown-value">calculating…</span></div>{{/if}}
+                    <div><span class="text-highlight">Full Name:</span> {{full_name}}</div>
+                    <div><span class="text-highlight">Allowed Apps:</span> {{allowed_apps}}</div>
+                    <div><span class="text-highlight">Session Expires:</span> <span id="session-expiry-display">{{#if session_expiry}}{{session_expiry}}{{else}}N/A{{/if}}</span></div>
+                    {{#if session_expiry}}<div id="session-countdown"><span class="text-highlight">Time Remaining:</span> <span id="countdown-value">calculating…</span></div>{{/if}}
                 </div>
 
                 <div class="session-actions">
@@ -39,7 +39,7 @@
                     <a class="btn btn-outline" href="https://portal.mbktech.org/user/settings"><i class="fas fa-user-cog"></i> User Settings</a>
                     <a class="btn btn-outline" href="/mbkauthe/info"><i class="fas fa-info-circle"></i> Info Page</a>
                     <a class="btn btn-outline" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i> Login Page</a>
-                    {{#if (eq role "SuperAdmin")}}
+                    {{#if (eq role "superadmin")}}
                     <a class="btn btn-outline" href="/mbkauthe/db"><i class="fas fa-database"></i> Database Logs</a>
                     <a class="btn btn-outline" href="/mbkauthe/validate-superadmin"><i class="fas fa-user-shield"></i> Validate SuperAdmin</a>
                     {{/if}}
@@ -48,10 +48,10 @@
         </div>
     </section>
 
-    {{#if sessionExpiry}}
+    {{#if session_expiry}}
     <script>
         (() => {
-            const expiry = new Date('{{sessionExpiry}}');
+            const expiry = new Date('{{session_expiry}}');
             const display = document.getElementById('session-expiry-display');
             const countdown = document.getElementById('countdown-value');
             if (display) display.textContent = expiry.toLocaleString();

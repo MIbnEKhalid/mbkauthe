@@ -23,10 +23,10 @@
                 <div class="cli-device-icon icon-pending"><i class="fas fa-terminal"></i></div>
                 <h1 class="cli-device-title title-underline">Approve CLI Login</h1>
                 <p class="cli-device-subtitle">
-                    <span class="cli-client-name">{{clientName}}</span> is requesting an API token for CLI access.
+                    <span class="cli-client-name">{{client_name}}</span> is requesting an API token for CLI access.
                 </p>
 
-                <div class="cli-user-code">{{userCode}}</div>
+                <div class="cli-user-code">{{user_code}}</div>
 
                 {{#if profile}}
                 <div class="cli-profile-box">
@@ -42,8 +42,8 @@
                     <div class="row">
                         <span class="label">Allowed applications</span>
                         <span class="value">
-                            {{#if profile.allowedApps}}
-                                {{#each profile.allowedApps}}<span class="cli-app-chip">{{this}}</span>{{/each}}
+                            {{#if profile.allowed_apps}}
+                                {{#each profile.allowed_apps}}<span class="cli-app-chip">{{this}}</span>{{/each}}
                             {{else}}
                                 Any
                             {{/if}}
@@ -51,7 +51,7 @@
                     </div>
                     <div class="row">
                         <span class="label">Expiration</span>
-                        <span class="value">{{#if profile.expiresInDays}}{{profile.expiresInDays}} day(s){{else}}Never{{/if}}</span>
+                        <span class="value">{{#if profile.expires_in_days}}{{profile.expires_in_days}} day(s){{else}}Never{{/if}}</span>
                     </div>
                     <div class="row"><span class="label">Requested by</span><span class="value">{{username}}</span></div>
                 </div>
@@ -62,7 +62,7 @@
                     <button class="btn-approve" id="btnApprove" onclick="submitApproval('approve')" type="button"><i class="fas fa-check"></i> Approve</button>
                 </div>
                 <p class="cli-device-message">
-                    {{#if expiresInSeconds}}This request expires in <strong>{{expiresInSeconds}} seconds</strong>.{{else}}This request is about to expire.{{/if}}
+                    {{#if expires_in_seconds}}This request expires in <strong>{{expires_in_seconds}} seconds</strong>.{{else}}This request is about to expire.{{/if}}
                 </p>
             {{else if (eq status 'approved')}}
                 <div class="cli-status-card">
@@ -101,7 +101,7 @@
     {{> versionInfo}}
 
     <script>
-        const userCode = {{#if userCode}}"{{userCode}}"{{else}}null{{/if}};
+        const user_code = {{#if user_code}}"{{user_code}}"{{else}}null{{/if}};
 
         window.submitApproval = async function (action) {
             const approveBtn = document.getElementById('btnApprove');
@@ -113,7 +113,7 @@
                 const res = await fetch('/api/cli/device/approve', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userCode, action }),
+                    body: JSON.stringify({ user_code, action }),
                 });
                 const data = await res.json();
                 if (res.ok && data.success) return window.location.reload();

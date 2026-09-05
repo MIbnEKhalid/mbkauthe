@@ -212,19 +212,20 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    if (data.twoFactorRequired) {
-                        const redirectTarget = data.redirectUrl || pageRedirect;
-                        window.location.href = `/mbkauthe/2fa${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
+                    const is2fa = Boolean(data.two_factor_required);
+                    const redirect = data.redirect_url || pageRedirect;
+                    if (is2fa) {
+                        window.location.href = `/mbkauthe/2fa${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`;
                     } else {
                         loginButtonText.textContent = 'Success! Redirecting...';
                         if (rememberMe) setCookie('rememberedUsername', username, 30);
                         else deleteCookie('rememberedUsername');
-                        window.location.href = data.redirectUrl || pageRedirect || '{{customURL}}';
+                        window.location.href = redirect || '{{customURL}}';
                     }
                 } else {
                     loginButton.disabled = false;
                     loginButtonText.textContent = 'Login';
-                    showMessage(data.message || 'Login failed. Please try again.', 'Login Error', data.errorCode);
+                    showMessage(data.message || 'Login failed. Please try again.', 'Login Error', data.error_code);
                 }
             } catch (error) {
                 loginButton.disabled = false;

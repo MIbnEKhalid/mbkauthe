@@ -1,3 +1,10 @@
+/**
+ * MBKAuthe
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
+ * Source: https://github.com/MIbnEKhalid/mbkauthe
+ */
+
 import express from "express";
 import { engine } from "express-handlebars";
 import path from "path";

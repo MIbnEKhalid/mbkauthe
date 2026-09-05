@@ -1,7 +1,7 @@
 # MBKAuthe - Node.js Authentication System
 
 [![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
-[![License](https://img.shields.io/badge/License-LGPL--3.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Publish](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/publish.yml)
 [![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
@@ -193,7 +193,7 @@ Vercel deployments can use shared OAuth credentials through `mbkauthShared`.
 
 ## License
 
-LGPL v3.0 - see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
 
 ## Author
 
@@ -210,3 +210,11 @@ LGPL v3.0 - see [LICENSE](LICENSE).
 ---
 
 Made with love by [MBKTech.org](https://mbktech.org).
+
+
+<!--
+ * MBKAuthe
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
+ * Source: https://github.com/MIbnEKhalid/mbkauthe
+-->

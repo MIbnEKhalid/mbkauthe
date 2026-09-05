@@ -33,3 +33,11 @@ This directory is organized by how the documentation is used:
 - [Authentication flow Mermaid source](diagrams/auth-flows.mmd)
 - [Authentication process Mermaid source](diagrams/auth-processes.mmd)
 - [Rendered diagram images](images/)
+
+
+<!--
+ * MBKAuthe
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
+ * Source: https://github.com/MIbnEKhalid/mbkauthe
+-->

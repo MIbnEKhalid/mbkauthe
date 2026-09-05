@@ -1,3 +1,10 @@
+/**
+ * MBKAuthe
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
+ * Source: https://github.com/MIbnEKhalid/mbkauthe
+ */
+
 (() => {
   const SESSION_KEYS = ['sessionId', 'mbkauthe.sid', 'fullName', '_csrf', 'profileImageUser', 'profileImageUrl'];
   const LOG_PREFIX = '[mbkauthe]';

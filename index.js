@@ -116,8 +116,8 @@ if (isDevMode) {
 
   const DEV_PORT = 5555;
   app.listen(DEV_PORT, () => logServer(`Server running on http://localhost:${DEV_PORT}`));
-} else {
-  await checkVersion();
+} else if (process.env.NODE_ENV !== 'test' && !process.env.MBKAUTHE_SKIP_VERSION_CHECK) {
+  checkVersion().catch(() => {});
 }
 
 export * from "./lib/middleware/auth.js";

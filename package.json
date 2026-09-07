@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "5.7.0",
+  "version": "5.7.1",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "index.js",
   "type": "module",
@@ -12,6 +12,29 @@
     "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.svg",
     "render:mermaid:png": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.png -s 20",
     "install-mermaid": "npm i @mermaid-js/mermaid-cli@11.15.0 --save-dev"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./db": {
+      "types": "./index.d.ts",
+      "default": "./lib/db/index.js"
+    },
+    "./config": {
+      "types": "./index.d.ts",
+      "default": "./lib/config/index.js"
+    },
+    "./middleware": {
+      "types": "./index.d.ts",
+      "default": "./lib/middleware/index.js"
+    },
+    "./utils": {
+      "types": "./index.d.ts",
+      "default": "./lib/utils/response.js"
+    },
+    "./package.json": "./package.json"
   },
   "imports": {
     "#pool.js": "./lib/pool.js",

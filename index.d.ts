@@ -139,11 +139,11 @@ export interface PreAuthUser {
 // Database Schema Types
 export interface DBUser {
   id: number;
-  user_name: string;
+  username: string;
   user_id?: string;
-  password_enc?: string;
+  password_hash?: string;
   role: UserRole;
-  active: boolean;
+  is_active: boolean;
   allowed_apps: string[];
   created_at?: Date;
   updated_at?: Date;
@@ -151,14 +151,14 @@ export interface DBUser {
 }
 
 export interface TwoFARecord {
-  user_name: string;
-  two_fa_status: boolean;
+  username: string;
+  is_enabled: boolean;
   two_fa_secret?: string;
 }
 
 export interface TrustedDevice {
   id: number;
-  user_name: string;
+  username: string;
   device_token: string;
   device_name?: string;
   user_agent?: string;
@@ -170,7 +170,7 @@ export interface TrustedDevice {
 
 export interface GitHubUser {
   id: number;
-  user_name: string;
+  username: string;
   github_id: string;
   github_username: string;
   installation_id?: number;
@@ -182,7 +182,7 @@ export interface GitHubUser {
 
 export interface GoogleUser {
   id: number;
-  user_name: string;
+  username: string;
   google_id: string;
   google_email: string;
   access_token: string;
@@ -200,7 +200,7 @@ export interface TokenPermissions {
 
 export interface ApiToken {
   id: number;
-  user_name: string;
+  username: string;
   name: string;
   token_hash: string;
   prefix: string;
@@ -221,7 +221,7 @@ export interface ApiTokenRow {
   last_used?: Date;
   created_at?: Date;
   expires_at?: Date;
-  user_name?: string;
+  username?: string;
   email?: string;
   role?: string;
   full_name?: string;
@@ -326,7 +326,7 @@ export class ApiTokenRepository {
   listAll(): Promise<ApiTokenRow[]>;
   stats(): Promise<Record<string, number | string>>;
   listForUserAdmin(username: string): Promise<ApiTokenRow[]>;
-  findInfoById(id: number): Promise<{ user_name: string; name: string } | null>;
+  findInfoById(id: number): Promise<{ username: string; name: string } | null>;
   deleteById(id: number): Promise<{ rowCount: number }>;
   deleteByIds(ids: number[]): Promise<{ rowCount: number }>;
   deleteAllByUsername(username: string): Promise<{ rowCount: number }>;
@@ -604,6 +604,94 @@ export const dialect: {
   /** `null` on SQLite, which has no table-level lock statement. */
   lockTable: ((tableSql: string, mode?: string) => string) | null;
 };
+
+export class Mutex {
+  acquire(): Promise<() => void>;
+}
+
+export class SqliteClient {
+  constructor(db: any, releaseLock: () => void, queryFn?: Function);
+  query(queryOrText: string | { text: string; values?: any[]; name?: string }, maybeValues?: any[]): Promise<{ rows: any[]; rowCount: number; command?: string }>;
+  release(): void;
+}
+
+export interface SqliteAdapterOptions {
+  filePath?: string;
+  dialect?: any;
+  jsonColumns?: string[];
+  booleanColumns?: string[];
+  timestampColumns?: string[];
+}
+
+export class SqliteAdapter {
+  constructor(filePathOrDb: string | any, options?: SqliteAdapterOptions);
+  dialect: any;
+  query(queryOrText: string | { text: string; values?: any[]; name?: string }, maybeValues?: any[]): Promise<{ rows: any[]; rowCount: number; command?: string }>;
+  connect(): Promise<SqliteClient>;
+  exec(sql: string): void;
+  execScript(sql: string): void;
+  close(): void;
+  end(): Promise<void>;
+}
+
+export const SqlitePool: typeof SqliteAdapter;
+
+export class PostgresAdapter {
+  pool: Pool;
+  dialect: typeof postgresDialect;
+  constructor(pool: Pool, dialect?: typeof postgresDialect);
+  query(configOrText: string | { text: string; values?: any[]; name?: string }, values?: any[]): Promise<{ rows: any[]; rowCount: number }>;
+  connect(): Promise<PoolClient>;
+  close(): Promise<void>;
+  end(): Promise<void>;
+}
+
+export function translatePgToSqlite(text: string, values?: any[]): { text: string; values: any[] };
+
+export const postgresDialect: typeof dialect;
+export const sqliteDialect: typeof dialect;
+
+export interface ApplySchemaOptions {
+  silent?: boolean;
+  name?: string;
+}
+
+export function applySchema(
+  adapterOrPool: any,
+  schemaPathOrSql: string,
+  options?: ApplySchemaOptions
+): Promise<{ success: boolean }>;
+
+export interface GracefulShutdownOptions {
+  signals?: string[];
+  timeoutMs?: number;
+  onShutdown?: () => void | Promise<void>;
+}
+
+export function registerGracefulShutdown(
+  targets: any,
+  options?: GracefulShutdownOptions
+): () => Promise<void>;
+
+export function closeAllConnections(): Promise<void>;
+
+export class BaseRepository {
+  db: any;
+  dialect: any;
+  constructor(options?: { db?: any; dialect?: any });
+  execute(name: string, query: { text: string; values?: any[] }): Promise<any>;
+  executeRaw(query: { text: string; values?: any[] }): Promise<any>;
+  withTransaction<T>(fn: (txRepo: any) => Promise<T>): Promise<T>;
+}
+
+export function isJsonRequest(req: Request): boolean;
+export function sendSuccess(res: Response, data?: any, options?: { statusCode?: number; message?: string; [key: string]: any }): Response;
+export function sendError(res: Response, errorInput: any, options?: { statusCode?: number; code?: string | number; req?: Request; details?: any; errorCode?: number; [key: string]: any }): Response;
+export function createErrorHandler(options?: { appName?: string; defaultPage?: string; defaultPageName?: string }): (err: any, req: Request, res: Response, next: NextFunction) => any;
+export function createNotFoundHandler(options?: { appName?: string; defaultPage?: string; defaultPageName?: string }): (req: Request, res: Response) => any;
+export function renderError(res: Response, req: Request, options: { code: number; error?: string; message?: string; page?: string; pagename?: string; details?: any }): any;
+export function renderPage(req: Request, res: Response, fileLocation: string, layout?: boolean, data?: Record<string, any>): Promise<any>;
+export function sanitizeErrorDetails(details: any): string | null;
 
 // Configuration Constants
 export const mbkautheVar: MBKAuthConfig;

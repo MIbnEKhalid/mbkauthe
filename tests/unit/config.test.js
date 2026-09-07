@@ -1,4 +1,4 @@
-import { validateConfiguration, findValue } from '../config/index.js';
+import { validateConfiguration, findValue } from '../../lib/config/index.js';
 
 describe('Config Resolution and Validation', () => {
   const originalEnv = { ...process.env };

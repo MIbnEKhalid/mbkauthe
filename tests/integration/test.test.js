@@ -3,7 +3,7 @@ import express from 'express';
 import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,26 +14,26 @@ process.env.dbLogs = 'true';
 process.env.dbLogsCallsite = 'false';
 delete process.env.mbkauthShared;
 
-const { default: router } = await import('../main.js');
-const { packageJson, mbkautheVar } = await import('../config/index.js');
+const { default: router } = await import('../../lib/main.js');
+const { packageJson, mbkautheVar } = await import('../../lib/config/index.js');
 const {
   resolveCookieDomain,
   isAllowedOriginHostname,
   getCookieDomain,
   cachedCookieOptions
-} = await import('../config/cookies.js');
-const { dblogin } = await import('../pool.js');
+} = await import('../../lib/config/cookies.js');
+const { dblogin } = await import('../../lib/pool.js');
 const {
   attachDevQueryLogger,
   resetQueryCount,
   resetQueryLog,
   runWithRequestContext
-} = await import('../utils/dbQueryLogger.js');
+} = await import('../../lib/utils/dbQueryLogger.js');
 
-const { isSafeRelativeRedirect, sanitizeRelativeRedirect } = await import('../utils/redirect.js');
-const { isSafeFetchUrl } = await import('../utils/urlSafety.js');
-const { hashPassword, verifyPassword } = await import('../config/index.js');
-const { hashDeviceToken } = await import('../config/cookies.js');
+const { isSafeRelativeRedirect, sanitizeRelativeRedirect } = await import('../../lib/utils/redirect.js');
+const { isSafeFetchUrl } = await import('../../lib/utils/urlSafety.js');
+const { hashPassword, verifyPassword } = await import('../../lib/config/index.js');
+const { hashDeviceToken } = await import('../../lib/config/cookies.js');
 
 const viewsPath = path.join(__dirname, '../../views');
 
@@ -53,15 +53,14 @@ const handlebarsHelpers = {
 const app = express();
 app.set('views', [
   viewsPath,
-  path.join(__dirname, 'node_modules/mbkauthe/views')
+  path.join(__dirname, '../../views')
 ]);
 app.engine('handlebars', engine({
   defaultLayout: false,
   cache: true,
   partialsDir: [
     viewsPath,
-    path.join(__dirname, 'node_modules/mbkauthe/views'),
-    path.join(__dirname, 'node_modules/mbkauthe/views/Error'),
+    path.join(viewsPath, 'Error'),
   ],
   helpers: handlebarsHelpers
 }));
@@ -80,19 +79,19 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 beforeAll(() => {
-  jest.spyOn(console, 'log').mockImplementation((...args) => {
+  vi.spyOn(console, 'log').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) {
       originalConsoleLog(...args);
     }
   });
 
-  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+  vi.spyOn(console, 'warn').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) {
       originalConsoleWarn(...args);
     }
   });
 
-  jest.spyOn(console, 'error').mockImplementation((...args) => {
+  vi.spyOn(console, 'error').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) {
       originalConsoleError(...args);
     }
@@ -100,7 +99,7 @@ beforeAll(() => {
 });
 
 afterAll(async () => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   await dblogin.end().catch(() => {});
 });
 
@@ -374,7 +373,7 @@ describe('mbkauthe Routes', () => {
           ip: '127.0.0.1',
           session: { user: { id: '1', username: 'support' } }
         },
-        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [1], name: 'userLookup' })
+        () => fakePool.query({ text: 'SELECT * FROM mbkcore_users WHERE id = $1', values: [1], name: 'userLookup' })
       );
 
       await sleep(4);
@@ -387,7 +386,7 @@ describe('mbkauthe Routes', () => {
           ip: '127.0.0.1',
           session: { user: { id: '1', username: 'support' } }
         },
-        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [2], name: 'userLookup' })
+        () => fakePool.query({ text: 'SELECT * FROM mbkcore_users WHERE id = $1', values: [2], name: 'userLookup' })
       );
 
       await sleep(4);
@@ -457,7 +456,7 @@ describe('mbkauthe Routes', () => {
           ip: '127.0.0.1',
           session: { user: { id: '1', username: 'support' } }
         },
-        () => fakePool.query({ text: 'SELECT * FROM users WHERE id = $1', values: [7], name: 'loginLookup' })
+        () => fakePool.query({ text: 'SELECT * FROM mbkcore_users WHERE id = $1', values: [7], name: 'loginLookup' })
       );
 
       await runWithRequestContext(
@@ -504,7 +503,7 @@ describe('mbkauthe Routes', () => {
           session: {}
         },
         () => fakePool.query({
-          text: 'SELECT sess FROM "session" WHERE sid = $1 AND expire >= to_timestamp($2)',
+          text: 'SELECT sess FROM "mbkcore_session" WHERE sid = $1 AND expire >= to_timestamp($2)',
           values: ['abc', 123],
           name: 'sessionLookup'
         })

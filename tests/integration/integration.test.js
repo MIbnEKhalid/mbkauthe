@@ -4,7 +4,7 @@ import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFile } from 'fs/promises';
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 import speakeasy from 'speakeasy';
 import dotenv from 'dotenv';
 
@@ -34,12 +34,12 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { default: router } = await import('../main.js');
-const { packageJson, mbkautheVar, hashPassword, hashApiToken } = await import('../config/index.js');
-const { encryptSessionId } = await import('../config/cookies.js');
-const { dblogin } = await import('../pool.js');
-const { checkRolePermission, strictValidateSession } = await import('../middleware/auth.js');
-const { ErrorCodes } = await import('../utils/errors.js');
+const { default: router } = await import('../../lib/main.js');
+const { packageJson, mbkautheVar, hashPassword, hashApiToken } = await import('../../lib/config/index.js');
+const { encryptSessionId } = await import('../../lib/config/cookies.js');
+const { dblogin } = await import('../../lib/pool.js');
+const { checkRolePermission, strictValidateSession } = await import('../../lib/middleware/auth.js');
+const { ErrorCodes } = await import('../../lib/utils/errors.js');
 
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
 
@@ -84,13 +84,13 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 beforeAll(async () => {
-  jest.spyOn(console, 'log').mockImplementation((...args) => {
+  vi.spyOn(console, 'log').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleLog(...args);
   });
-  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+  vi.spyOn(console, 'warn').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleWarn(...args);
   });
-  jest.spyOn(console, 'error').mockImplementation((...args) => {
+  vi.spyOn(console, 'error').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleError(...args);
   });
 
@@ -100,7 +100,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   await dblogin.end().catch(() => {});
 });
 
@@ -160,13 +160,13 @@ async function createUser(username, {
   twoFAStatus = 0
 } = {}) {
   await dblogin.query(
-    `INSERT INTO users (username, password_hash, role, is_active, allowed_apps, full_name)
+    `INSERT INTO mbkcore_users (username, password_hash, role, is_active, allowed_apps, full_name)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [username, hashPassword(PASSWORD, username), role, active, JSON.stringify(allowedApps), fullName || `Full ${username}`]
   );
   if (twoFASecret) {
     await dblogin.query(
-      `INSERT INTO two_factor (username, is_enabled, two_fa_secret) VALUES ($1, $2, $3)`,
+      `INSERT INTO mbkcore_two_factor (username, is_enabled, two_fa_secret) VALUES ($1, $2, $3)`,
       [username, twoFAStatus, twoFASecret]
     );
   }
@@ -211,7 +211,7 @@ function jsonGet(pathname, jar, opts = {}) {
 
 async function getAppSessionId(username) {
   const result = await dblogin.query(
-    'SELECT id FROM sessions WHERE username = $1 ORDER BY created_at DESC',
+    'SELECT id FROM mbkcore_sessions WHERE username = $1 ORDER BY created_at DESC',
     [username]
   );
   return result.rows[0]?.id || null;
@@ -219,7 +219,7 @@ async function getAppSessionId(username) {
 
 async function countAppSessions(username) {
   const result = await dblogin.query(
-    'SELECT COUNT(*) AS count FROM sessions WHERE username = $1',
+    'SELECT COUNT(*) AS count FROM mbkcore_sessions WHERE username = $1',
     [username]
   );
   return Number(result.rows[0].count);
@@ -386,7 +386,7 @@ describe('Session validation edge cases', () => {
     const { jar } = await login('edge.expired');
 
     await dblogin.query(
-      `UPDATE sessions SET expires_at = '2020-01-01 00:00:00' WHERE username = $1`,
+      `UPDATE mbkcore_sessions SET expires_at = '2020-01-01 00:00:00' WHERE username = $1`,
       ['edge.expired']
     );
 
@@ -399,7 +399,7 @@ describe('Session validation edge cases', () => {
     await createUser('edge.deleted');
     const { jar } = await login('edge.deleted');
 
-    await dblogin.query('DELETE FROM sessions WHERE username = $1', ['edge.deleted']);
+    await dblogin.query('DELETE FROM mbkcore_sessions WHERE username = $1', ['edge.deleted']);
 
     const res = await jsonGet('/mbkauthe/test', jar);
     expect(res.status).toBe(401);
@@ -410,7 +410,7 @@ describe('Session validation edge cases', () => {
     await createUser('edge.deactivated');
     const { jar } = await login('edge.deactivated');
 
-    await dblogin.query('UPDATE users SET is_active = 0 WHERE username = $1', ['edge.deactivated']);
+    await dblogin.query('UPDATE mbkcore_users SET is_active = 0 WHERE username = $1', ['edge.deactivated']);
 
     const res = await jsonGet('/mbkauthe/test', jar);
     expect(res.status).toBe(401);
@@ -422,7 +422,7 @@ describe('Session validation edge cases', () => {
     const { jar } = await login('edge.revoked');
 
     await dblogin.query(
-      `UPDATE users SET allowed_apps = '["SomeOtherApp"]' WHERE username = $1`,
+      `UPDATE mbkcore_users SET allowed_apps = '["SomeOtherApp"]' WHERE username = $1`,
       ['edge.revoked']
     );
 
@@ -436,12 +436,12 @@ describe('Session validation edge cases', () => {
     const { jar } = await login('edge.corrupt');
 
     // Corrupt the sessionId inside the express-session store row.
-    const stored = await dblogin.query('SELECT sid, sess FROM session');
+    const stored = await dblogin.query('SELECT sid, sess FROM mbkcore_session');
     const row = stored.rows.find((r) => String(r.sess).includes('"username":"edge.corrupt"'));
     expect(row).toBeDefined();
     const sess = JSON.parse(row.sess);
     sess.user.session_id = 'not-a-uuid';
-    await dblogin.query('UPDATE session SET sess = $1 WHERE sid = $2', [JSON.stringify(sess), row.sid]);
+    await dblogin.query('UPDATE mbkcore_session SET sess = $1 WHERE sid = $2', [JSON.stringify(sess), row.sid]);
 
     const res = await jsonGet('/mbkauthe/test', jar);
     expect(res.status).toBe(401);
@@ -452,7 +452,7 @@ describe('Session validation edge cases', () => {
     await createUser('edge.browser');
     const { jar, ua } = await login('edge.browser');
 
-    await dblogin.query('DELETE FROM sessions WHERE username = $1', ['edge.browser']);
+    await dblogin.query('DELETE FROM mbkcore_sessions WHERE username = $1', ['edge.browser']);
 
     const res = await jarGet('/mbkauthe/test', jar, { ua });
     // HTML clients get the rendered "Session Expired" error page (401)
@@ -468,7 +468,7 @@ describe('API token authentication', () => {
   async function createApiToken(username, { scope = 'read-only', allowed_apps = null, name = 'test-token' } = {}) {
     const token = `mbk_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
     await dblogin.query(
-      `INSERT INTO api_tokens (username, name, token_hash, prefix, permissions)
+      `INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix, permissions)
        VALUES ($1, $2, $3, $4, $5)`,
       [username, name, hashApiToken(token), 'mbk_', JSON.stringify({ scope, allowed_apps })]
     );
@@ -523,7 +523,7 @@ describe('API token authentication', () => {
     const token = await createApiToken('token.expired');
     // CHECK constraint requires expires_at > created_at, so backdate both.
     await dblogin.query(
-      `UPDATE api_tokens SET created_at = '2020-01-01 00:00:00', expires_at = '2020-01-02 00:00:00'
+      `UPDATE mbkcore_api_tokens SET created_at = '2020-01-01 00:00:00', expires_at = '2020-01-02 00:00:00'
        WHERE username = $1`,
       ['token.expired']
     );
@@ -594,7 +594,7 @@ describe('API token authentication', () => {
 // 4. Role permission middleware
 // =====================================================================
 describe('Role permission middleware', () => {
-  test('SuperAdmin passes the SuperAdmin-only route', async () => {
+  test('superadmin passes the superadmin-only route', async () => {
     await createUser('role.admin', { role: 'superadmin' });
     const { jar } = await login('role.admin');
 
@@ -604,7 +604,7 @@ describe('Role permission middleware', () => {
     expect(res.body.user.username).toBe('role.admin');
   });
 
-  test('NormalUser gets 403 INSUFFICIENT_PERMISSIONS as JSON', async () => {
+  test('normaluser gets 403 INSUFFICIENT_PERMISSIONS as JSON', async () => {
     await createUser('role.normal');
     const { jar } = await login('role.normal');
 
@@ -613,7 +613,7 @@ describe('Role permission middleware', () => {
     expect(res.body).toHaveProperty('errorCode', ErrorCodes.INSUFFICIENT_PERMISSIONS);
   });
 
-  test('NormalUser gets a rendered 403 page as a browser client', async () => {
+  test('normaluser gets a rendered 403 page as a browser client', async () => {
     await createUser('role.html');
     const { jar, ua } = await login('role.html');
 

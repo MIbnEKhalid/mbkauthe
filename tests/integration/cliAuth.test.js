@@ -12,7 +12,7 @@ import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFile } from 'fs/promises';
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,12 +32,12 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { default: router } = await import('../main.js');
-const { packageJson, mbkautheVar, hashPassword } = await import('../config/index.js');
-const { hashApiToken } = await import('../config/security.js');
-const { dblogin } = await import('../pool.js');
-const { default: cliAuthRouter } = await import('../routes/cliAuth.js');
-const { default: apiTokensRouter } = await import('../routes/apiTokens.js');
+const { default: router } = await import('../../lib/main.js');
+const { packageJson, mbkautheVar, hashPassword } = await import('../../lib/config/index.js');
+const { hashApiToken } = await import('../../lib/config/security.js');
+const { dblogin } = await import('../../lib/pool.js');
+const { default: cliAuthRouter } = await import('../../lib/routes/cliAuth.js');
+const { default: apiTokensRouter } = await import('../../lib/routes/apiTokens.js');
 
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
 const viewsPath = path.join(__dirname, '../../views');
@@ -71,7 +71,7 @@ app.use(router);
 app.use(apiTokensRouter);
 app.use(cliAuthRouter);
 
-// ---- console silencing (same pattern as integration.spec.js) ----
+// ---- console silencing (same pattern as integration tests) ----
 const shouldSilenceConsole = (args) => {
   const [firstArg = ''] = args;
   const text = typeof firstArg === 'string' ? firstArg : '';
@@ -114,7 +114,7 @@ class CookieJar {
 
 async function createUser(username, { role = 'normaluser', active = 1, allowedApps = ['Portal', 'mbkauthe'] } = {}) {
   await dblogin.query(
-    `INSERT INTO users (username, password_hash, role, is_active, allowed_apps, full_name)
+    `INSERT INTO mbkcore_users (username, password_hash, role, is_active, allowed_apps, full_name)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [username, hashPassword(PASSWORD, username), role, active, JSON.stringify(allowedApps), `Full ${username}`]
   );
@@ -126,7 +126,7 @@ async function createProfile({ name, scope = 'read-only', allowedApps = null, ex
   const profileName = name || `profile-${profileCounter}`;
   const profileKey = key || `key${String(profileCounter).padStart(6, '0')}`; // >= 6 chars
   const { rows } = await dblogin.query(
-    `INSERT INTO api_token_profiles (profile_key, name, description, allowed_apps, scope, expires_in_days, is_active)
+    `INSERT INTO mbkcore_api_token_profiles (profile_key, name, description, allowed_apps, scope, expires_in_days, is_active)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id, profile_key`,
     [profileKey, profileName, 'test profile', allowedApps ? JSON.stringify(allowedApps) : null, scope, expiresInDays, active]
@@ -168,13 +168,13 @@ function jarPostJson(pathname, jar, body, { ip = nextIp(), ua = BROWSER_UA } = {
 }
 
 beforeAll(async () => {
-  jest.spyOn(console, 'log').mockImplementation((...args) => {
+  vi.spyOn(console, 'log').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleLog(...args);
   });
-  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+  vi.spyOn(console, 'warn').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleWarn(...args);
   });
-  jest.spyOn(console, 'error').mockImplementation((...args) => {
+  vi.spyOn(console, 'error').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) originalConsoleError(...args);
   });
 
@@ -183,9 +183,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
   await dblogin.end().catch(() => {});
 });
+
 describe('POST /api/cli/device', () => {
   test('creates a device session and returns verification info', async () => {
     const { id: profileId } = await createProfile({ name: 'cli-default' });
@@ -358,7 +359,7 @@ describe('CLI device flow (happy path)', () => {
 
     // Backdate the session expiry into the past.
     await dblogin.query(
-      `UPDATE cli_auth_sessions SET expires_at = ? WHERE device_code_hash = ?`,
+      `UPDATE mbkcore_cli_auth_sessions SET expires_at = ? WHERE device_code_hash = ?`,
       ['2020-01-01 00:00:00', hashApiToken(deviceCode)]
     );
 

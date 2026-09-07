@@ -108,7 +108,7 @@ app.get('/admin', sessVal, roleChk('superadmin'), (req, res) => {
   res.send('Admin panel');
 });
 
-// Any authenticated user except Guest
+// Any authenticated user except guest
 app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
   res.send('Protected content');
 });

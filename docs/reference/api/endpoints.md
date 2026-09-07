@@ -198,7 +198,7 @@ Validates that the current session has `superadmin` role and returns a JSON summ
 
 ## CLI Device Flow Endpoints (RFC 8628)
 
-See the [CLI Authentication guide](../../guides/cli-auth.md) for the full flow description and a complete reference client implementation (`lib/tests/mbkcli.mjs`).
+See the [CLI Authentication guide](../../guides/cli-auth.md) for the full flow description and a complete reference client implementation (`tests/helpers/mbkcli.mjs`).
 
 #### `POST /api/cli/device`
 
@@ -1195,9 +1195,9 @@ GitHub → /api/github/login/callback
 
 **Database Query:**
 ```sql
-SELECT ug.*, u.user_name, u.role, u.active, u.allowed_apps, u.id, u.user_id 
-FROM user_github ug 
-JOIN users u ON ug.user_name = u.user_name 
+SELECT ug.*, u.username, u.role, u.is_active, u.allowed_apps, u.id, u.user_id 
+FROM mbkcore_user_github ug 
+JOIN mbkcore_users u ON ug.username = u.username 
 WHERE ug.github_id = $1
 ```
 
@@ -1278,9 +1278,9 @@ Google → /api/google/login/callback
 
 **Database Query:**
 ```sql
-SELECT ug.*, u.user_name, u.role, u.active, u.allowed_apps, u.id, u.user_id 
-FROM user_google ug 
-JOIN users u ON ug.user_name = u.user_name 
+SELECT ug.*, u.username, u.role, u.is_active, u.allowed_apps, u.id, u.user_id 
+FROM mbkcore_user_google ug 
+JOIN mbkcore_users u ON ug.username = u.username 
 WHERE ug.google_id = $1
 ```
 

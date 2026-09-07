@@ -20,11 +20,11 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { dblogin } = await import('../pool.js');
-const { sqliteDialect } = await import('../db/dialects/sqlite.js');
-const { ApiTokenRepository } = await import('../db/ApiTokenRepository.js');
-const { hashApiToken, generatePrefixedToken } = await import('../config/security.js');
-const { default: apiTokensRouter } = await import('../routes/apiTokens.js');
+const { dblogin } = await import('../../lib/pool.js');
+const { sqliteDialect } = await import('../../lib/db/dialects/sqlite.js');
+const { ApiTokenRepository } = await import('../../lib/db/ApiTokenRepository.js');
+const { hashApiToken, generatePrefixedToken } = await import('../../lib/config/security.js');
+const { default: apiTokensRouter } = await import('../../lib/routes/apiTokens.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
@@ -36,7 +36,7 @@ const repo = new ApiTokenRepository({ db: dblogin, dialect: sqliteDialect });
 
 async function insertUser(username, { role = 'normaluser', active = 1 } = {}) {
   await dblogin.query(
-    `INSERT INTO users (username, password_hash, role, is_active)
+    `INSERT INTO mbkcore_users (username, password_hash, role, is_active)
      VALUES (?, ?, ?, ?)`,
     [username, 'test-hash', role, active]
   );
@@ -77,7 +77,7 @@ describe('POST /api/tokens/verify', () => {
     const raw = generatePrefixedToken();
     await repo.insert('verify-expired', 'E', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ scope: 'read-only', allowed_apps: null }), null);
     // Schema requires expires_at > created_at, so backdate both into the past.
-    await dblogin.query(`UPDATE api_tokens SET created_at = '2019-01-01 00:00:00', expires_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, [hashApiToken(raw)]);
+    await dblogin.query(`UPDATE mbkcore_api_tokens SET created_at = '2019-01-01 00:00:00', expires_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, [hashApiToken(raw)]);
 
     const res = await request(app).post('/api/tokens/verify').set('Authorization', `Bearer ${raw}`);
     expect(res.status).toBe(401);

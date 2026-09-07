@@ -1,5 +1,6 @@
 # MBKAuthe - Node.js Authentication System
 
+[![Website](https://img.shields.io/badge/website-mbkauthe.mbktech.org-0284c7.svg)](https://mbkauthe.mbktech.org)
 [![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
@@ -11,6 +12,8 @@
 </p>
 
 **MBKAuthe** is an open source authentication package for Node.js and Express, backed by PostgreSQL or SQLite. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, and multi-session management.
+
+🌐 **Official Website & Live Docs**: [https://mbkauthe.mbktech.org](https://mbkauthe.mbktech.org)
 
 > **Note:** MBKAuthe is intentionally focused on authentication and session validation. The broader user, permission, and dashboard management system is a separate MBKTech product named **MBKCore**(closed source for now).
 
@@ -103,7 +106,15 @@ app.listen(3000);
 - `authenticate(token)` - protect server-to-server routes with a static bearer token.
 - `dblogin` - access the configured database pool (`pg.Pool` or the SQLite adapter, per `DB_TYPE`).
 - `dbType` - the active backend: `"postgres"` or `"sqlite"`.
+- `SqliteAdapter` / `SqlitePool` - universal SQLite adapter wrapping `better-sqlite3` with FIFO transaction mutex, type coercion, and row normalization.
+- `PostgresAdapter` - PostgreSQL database adapter wrapping `pg.Pool` with dialect binding.
+- `translatePgToSqlite` - runtime SQL translator for converting PostgreSQL queries ($1, `ANY()`, casts, `ILIKE`, `NOW()`, `to_char`, `gen_random_uuid`) to SQLite.
+- `BaseRepository` - extensible base repository with `execute()`, `query()`, `withTransaction()`, `setDb()`, and dialect query helpers.
+- `postgresDialect` / `sqliteDialect` - dialect SQL tokens for quoting, parameters, and pagination.
 - `cliAuthRouter` - the browser-based CLI/device-login routes, mounted automatically unless disabled.
+
+See the **[Dual-Database & Repository Architecture Guide](docs/guides/dual-database-guide.md)** for integrating the standardized database layer and PostgreSQL + SQLite in host apps.
+
 
 
 ## API Token Management
@@ -202,14 +213,16 @@ MIT - see [LICENSE](LICENSE).
 [GitHub @MIbnEKhalid](https://github.com/MIbnEKhalid)
 
 ## Links
-
-- [npm](https://www.npmjs.com/package/mbkauthe)
-- [GitHub](https://github.com/MIbnEKhalid/mbkauthe)
-- [Support](https://github.com/MIbnEKhalid/mbkauthe/issues)
-
----
-
-Made with love by [MBKTech.org](https://mbktech.org).
+ 
+- [Official Website](https://mbkauthe.mbktech.org)
+- [Interactive Documentation](https://mbkauthe.mbktech.org/docs)
+- [API Reference](https://mbkauthe.mbktech.org/api-reference)
+- [Code Examples](https://mbkauthe.mbktech.org/examples)
+- [npm Package](https://www.npmjs.com/package/mbkauthe)
+- [GitHub Repository](https://github.com/MIbnEKhalid/mbkauthe)
+- [Support Desk](https://mbktech.org/Support&Contact)
+- [Bug Tracker](https://github.com/MIbnEKhalid/mbkauthe/issues)
+- [MBKTech Studio](https://mbktech.org)
 
 
 <!--

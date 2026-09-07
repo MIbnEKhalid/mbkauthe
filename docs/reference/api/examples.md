@@ -59,7 +59,7 @@ app.get('/admin', sessRole('superadmin'), (req, res) => {
   }
 );
 
-// Allow any role except Guest
+// Allow any role except guest
 app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
     res.send('Content for registered users');
   }
@@ -186,31 +186,41 @@ async function logout() {
 
 ---
 
-### Database Access
+### Database Access via BaseRepository
+
+Applications should access the database through repositories extending `BaseRepository`:
 
 ```javascript
-import { dblogin } from 'mbkauthe';
+import { BaseRepository } from 'mbkauthe';
+import { defaultAdapter } from '../db/index.js';
 
-// Custom query using the database pool
+export class UserRepository extends BaseRepository {
+  constructor(adapter = defaultAdapter) {
+    super(adapter);
+  }
+
+  async findActiveUsers() {
+    const { rows } = await this.query(
+      'SELECT id, username, role, is_active FROM users WHERE is_active = TRUE ORDER BY id'
+    );
+    return rows;
+  }
+}
+
+export const userRepository = new UserRepository();
+
+// In routes / controllers:
 app.get('/api/users', sessVal, sessRole('superadmin'), async (req, res) => {
   try {
-    const result = await dblogin.query(
-      'SELECT id, user_name, role, active FROM users ORDER BY id'
-    );
-    
-    res.json({ 
-      success: true, 
-      users: result.rows 
-    });
+    const users = await userRepository.findActiveUsers();
+    res.json({ success: true, users });
   } catch (error) {
     console.error('Database error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Internal Server Error' 
-    });
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 });
 ```
+
 
 ---
 

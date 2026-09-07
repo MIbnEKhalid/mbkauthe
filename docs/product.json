@@ -1,0 +1,93 @@
+{
+  "name": "MBKAuthe",
+  "tagline": "Modern, developer-first authentication & session engine for Node.js and Express",
+  "description": "MBKAuthe is an open-source authentication package for Node.js and Express, backed by PostgreSQL or SQLite. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, RFC 8628 CLI device flows, and multi-session management.",
+  "version": "5.6.0",
+  "license": "MIT",
+  "nodeVersion": ">=18.0.0",
+  "author": "Muhammad Bin Khalid",
+  "authorUrl": "https://github.com/MIbnEKhalid",
+  "websiteUrl": "https://mbkauthe.mbktech.org",
+  "docsUrl": "https://mbkauthe.mbktech.org/docs",
+  "githubUrl": "https://github.com/MIbnEKhalid/mbkauthe",
+  "npmUrl": "https://www.npmjs.com/package/mbkauthe",
+  "issuesUrl": "https://github.com/MIbnEKhalid/mbkauthe/issues",
+  "installCommand": "npm install mbkauthe",
+  "stats": {
+    "version": "v5.6.0",
+    "license": "MIT",
+    "node": ">=18.0.0",
+    "databases": "PostgreSQL & SQLite",
+    "security": "PBKDF2 & TOTP"
+  },
+  "keyFeatures": [
+    {
+      "id": "dual-database",
+      "icon": "lni-database",
+      "title": "Dual-Database Architecture",
+      "badge": "PostgreSQL + SQLite",
+      "description": "First-class support for both PostgreSQL (connection pooled) and SQLite (via better-sqlite3 with WAL mode and FIFO mutex). Switch effortlessly with zero code changes."
+    },
+    {
+      "id": "session-engine",
+      "icon": "lni-shield",
+      "title": "Robust Session Engine",
+      "badge": "AES Encrypted",
+      "description": "Encrypted session cookies, automatic database validation, session fixation prevention, and configurable multi-session limits per user."
+    },
+    {
+      "id": "rbac",
+      "icon": "lni-lock",
+      "title": "Granular Role-Based Access (RBAC)",
+      "badge": "Express Middleware",
+      "description": "Drop-in middleware helpers (sessVal, roleChk, sessRole, strictSessRole) for superadmin, normaluser, member, and guest role enforcement."
+    },
+    {
+      "id": "two-fa",
+      "icon": "lni-key",
+      "title": "Two-Factor Auth (TOTP)",
+      "badge": "RFC 6238",
+      "description": "Time-based One-Time Passwords compatible with Google Authenticator, Authy, and 1Password, featuring trusted device remember periods."
+    },
+    {
+      "id": "oauth",
+      "icon": "lni-github",
+      "title": "GitHub & Google OAuth",
+      "badge": "Social Login",
+      "description": "Native GitHub App and Google OAuth2 integration with unified user account linking and shared credential support for microservices."
+    },
+    {
+      "id": "api-tokens",
+      "icon": "lni-code",
+      "title": "API Tokens & RFC 8628 CLI Auth",
+      "badge": "Bearer mbk_*",
+      "description": "SHA-256 hashed API tokens with read-only/write scopes, plus a browser-based CLI device flow for seamless command-line logins."
+    }
+  ],
+  "securityHighlights": [
+    {
+      "title": "PBKDF2 Password Hashing",
+      "description": "Cryptographically strong password hashing using Node.js crypto PBKDF2 with unique per-user salts."
+    },
+    {
+      "title": "Session Fixation Prevention",
+      "description": "Session identifiers are rotated and encrypted on authentication to thwart session hijacking."
+    },
+    {
+      "title": "CSRF & Rate Limiting",
+      "description": "Built-in double-submit CSRF cookie validation and IP-level rate limiting on sensitive endpoints."
+    },
+    {
+      "title": "Multi-Session Auto-Pruning",
+      "description": "Configurable maximum concurrent sessions per user (MAX_SESSIONS_PER_USER) with automatic eviction of stale logins."
+    },
+    {
+      "title": "Timing-Safe Comparisons",
+      "description": "Constant-time string comparison for secret tokens and API hashes to defeat side-channel attacks."
+    },
+    {
+      "title": "Strict Cookie Policies",
+      "description": "HttpOnly, SameSite=Lax, and Secure cookie flags configured with cross-subdomain sharing support."
+    }
+  ]
+}

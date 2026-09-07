@@ -12,8 +12,8 @@
  * Requires Node 18+ (uses the built-in fetch). No third-party dependencies.
  *
  * Run:
- *   node scripts/mbkcli.mjs
- *   MBKCLI_BASE_URL=http://172.19.208.1:5001 node scripts/mbkcli.mjs   # e.g. from WSL
+ *   node tests/helpers/mbkcli.mjs
+ *   MBKCLI_BASE_URL=http://172.19.208.1:5001 node tests/helpers/mbkcli.mjs   # e.g. from WSL
  */
 import { homedir } from "node:os";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -26,12 +26,9 @@ const CONFIG = {
   // NOTE: default is 127.0.0.1 (not localhost) because Node resolves localhost to
   // ::1 on some systems, while the server listens on IPv4 only -> ECONNREFUSED.
   baseUrl: process.env.MBKCLI_BASE_URL || "http://localhost:5555",
-  clientName: process.env.MBKCLI_CLIENT_NAME || "mbkbucket-cli", // this CLI's name (shown in the browser)
-  // Public random key (>= 6 chars) of the API Token Profile to request.
-  // Find it on the admin page: /dashboard/admin/api-token-profiles
-  profileKey: process.env.MBKCLI_PROFILE_KEY || "1362403658a3",
-  // Deprecated fallback: numeric profile id (MBKCLI_PROFILE_ID).
-  profileId: process.env.MBKCLI_PROFILE_ID ? Number(process.env.MBKCLI_PROFILE_ID) : null,
+  client_name: process.env.MBKCLI_CLIENT_NAME || "mbkbucket-cli", // this CLI's name (shown in the browser)
+  profile_key: process.env.MBKCLI_PROFILE_KEY || "1362403658a3",
+  profile_id: process.env.MBKCLI_PROFILE_ID ? Number(process.env.MBKCLI_PROFILE_ID) : null,
   tokenFile: process.env.MBKCLI_TOKEN_FILE || join(homedir(), ".mbkcli_token"), // where the token is saved
   protectedMethod: "GET", // method for the protected API call
   protectedRoute: "/mbkauthe/test.json", // protected API route to test
@@ -100,10 +97,10 @@ function saveToken(token) {
 
 /** Step 2: run the browser-based device login and return the issued token. */
 async function deviceLogin() {
-  const profileRef = CONFIG.profileKey
-    ? { profile_key: CONFIG.profileKey }
-    : CONFIG.profileId
-      ? { profile_id: CONFIG.profileId }
+  const profileRef = CONFIG.profile_key
+    ? { profile_key: CONFIG.profile_key }
+    : CONFIG.profile_id
+      ? { profile_id: CONFIG.profile_id }
       : null;
   if (!profileRef) {
     console.error("ERROR: No API Token Profile configured.");
@@ -113,11 +110,11 @@ async function deviceLogin() {
   }
 
   console.log(
-    `\n==> Requesting login (${CONFIG.clientName}, profile ${CONFIG.profileKey || CONFIG.profileId}) from ${CONFIG.baseUrl}`
+    `\n==> Requesting login (${CONFIG.client_name}, profile ${CONFIG.profile_key || CONFIG.profile_id}) from ${CONFIG.baseUrl}`
   );
 
   const start = await api("POST", "/api/cli/device", {
-    body: { client_name: CONFIG.clientName, ...profileRef },
+    body: { client_name: CONFIG.client_name, ...profileRef },
   });
   const { verification_url, user_code, device_code, interval, expires_in } = start.data;
   if (!verification_url || !device_code) {

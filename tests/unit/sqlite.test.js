@@ -2,11 +2,11 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { SqlitePool } from '../db/sqlitePool.js';
-import { translatePgToSqlite } from '../db/sqlSqliteTranslate.js';
-import { SqliteSessionStore } from '../session/SqliteSessionStore.js';
-import { sqliteDialect } from '../db/dialects/sqlite.js';
-import { AuthRepository } from '../db/AuthRepository.js';
+import { SqlitePool } from '../../lib/db/sqlitePool.js';
+import { translatePgToSqlite } from '../../lib/db/sqlSqliteTranslate.js';
+import { SqliteSessionStore } from '../../lib/session/SqliteSessionStore.js';
+import { sqliteDialect } from '../../lib/db/dialects/sqlite.js';
+import { AuthRepository } from '../../lib/db/AuthRepository.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
@@ -32,7 +32,7 @@ async function insertUser(pool, { username, role = 'normaluser', active = 1, all
     values.push(JSON.stringify(allowedApps));
   }
   await pool.query(
-    `INSERT INTO users (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+    `INSERT INTO mbkcore_users (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
     values
   );
 }
@@ -40,19 +40,19 @@ async function insertUser(pool, { username, role = 'normaluser', active = 1, all
 describe('translatePgToSqlite', () => {
   test('passes native ?-placeholder queries through with values intact', () => {
     const { text, values } = translatePgToSqlite(
-      'SELECT sess FROM session WHERE sid = ?',
+      'SELECT sess FROM mbkcore_session WHERE sid = ?',
       ['abc']
     );
-    expect(text).toBe('SELECT sess FROM session WHERE sid = ?');
+    expect(text).toBe('SELECT sess FROM mbkcore_session WHERE sid = ?');
     expect(values).toEqual(['abc']);
   });
 
   test('rewrites $N placeholders to ? preserving order', () => {
     const { text, values } = translatePgToSqlite(
-      'SELECT * FROM users WHERE username = $1 AND role = $2',
+      'SELECT * FROM mbkcore_users WHERE username = $1 AND role = $2',
       ['support', 'superadmin']
     );
-    expect(text).toBe('SELECT * FROM users WHERE username = ? AND role = ?');
+    expect(text).toBe('SELECT * FROM mbkcore_users WHERE username = ? AND role = ?');
     expect(values).toEqual(['support', 'superadmin']);
   });
 
@@ -67,19 +67,19 @@ describe('translatePgToSqlite', () => {
 
   test('expands = ANY($1) with an array into IN (?, ?, ...)', () => {
     const { text, values } = translatePgToSqlite(
-      'DELETE FROM sessions WHERE id = ANY($1)',
+      'DELETE FROM mbkcore_sessions WHERE id = ANY($1)',
       [['a', 'b', 'c']]
     );
-    expect(text).toBe('DELETE FROM sessions WHERE id IN (?, ?, ?)');
+    expect(text).toBe('DELETE FROM mbkcore_sessions WHERE id IN (?, ?, ?)');
     expect(values).toEqual(['a', 'b', 'c']);
   });
 
   test('expands = ANY($1) with an empty array into IN (NULL)', () => {
     const { text, values } = translatePgToSqlite(
-      'DELETE FROM sessions WHERE id = ANY($1)',
+      'DELETE FROM mbkcore_sessions WHERE id = ANY($1)',
       [[]]
     );
-    expect(text).toBe('DELETE FROM sessions WHERE id IN (NULL)');
+    expect(text).toBe('DELETE FROM mbkcore_sessions WHERE id IN (NULL)');
     expect(values).toEqual([]);
   });
 
@@ -90,6 +90,26 @@ describe('translatePgToSqlite', () => {
     );
     expect(text).toBe(
       'SELECT COUNT(*) AS c FROM t WHERE ok = 1 AND bad = 0 AND ts <= CURRENT_TIMESTAMP'
+    );
+  });
+
+  test('translates STRING_AGG, ARRAY_AGG, and SERIAL PRIMARY KEY', () => {
+    const { text } = translatePgToSqlite(
+      "CREATE TABLE t (id SERIAL PRIMARY KEY); SELECT STRING_AGG(DISTINCT c.name, ', ') as cats, STRING_AGG(t.name, ' - ') as tags, ARRAY_AGG(DISTINCT c.id) FILTER (WHERE c.id IS NOT NULL) as ids FROM t",
+      []
+    );
+    expect(text).toBe(
+      "CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT); SELECT replace(group_concat(DISTINCT c.name), ',', ', ') as cats, group_concat(t.name, ' - ') as tags, json_group_array(DISTINCT c.id) FILTER (WHERE c.id IS NOT NULL) as ids FROM t"
+    );
+  });
+
+  test('strips FOR UPDATE and translates EXTRACT(field FROM expr)', () => {
+    const { text } = translatePgToSqlite(
+      "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count FROM t WHERE created_at >= CURRENT_DATE FOR UPDATE",
+      []
+    );
+    expect(text).toBe(
+      "SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count FROM t WHERE created_at >= CURRENT_DATE "
     );
   });
 });
@@ -109,13 +129,13 @@ describe('SqlitePool bind-value coercion', () => {
     await insertUser(pool, { username: 'u1' });
     const expiresAt = new Date('2030-01-02T03:04:05.678Z');
     await pool.query({
-      text: 'INSERT INTO sessions (username, expires_at) VALUES ($1, $2)',
+      text: 'INSERT INTO mbkcore_sessions (username, expires_at) VALUES ($1, $2)',
       values: ['u1', expiresAt]
     });
 
     // Read the raw stored text via a column normalizeRow does not touch.
     const raw = await pool.query(
-      'SELECT CAST(expires_at AS TEXT) AS raw_expires FROM sessions'
+      'SELECT CAST(expires_at AS TEXT) AS raw_expires FROM mbkcore_sessions'
     );
     expect(raw.rows[0].raw_expires).toBe('2030-01-02 03:04:05');
   });
@@ -123,10 +143,10 @@ describe('SqlitePool bind-value coercion', () => {
   test('binds booleans as 1/0 and undefined as null', async () => {
     await insertUser(pool, { username: 'u1' });
     await pool.query({
-      text: 'UPDATE users SET is_active = $1, full_name = $2 WHERE username = $3',
+      text: 'UPDATE mbkcore_users SET is_active = $1, full_name = $2 WHERE username = $3',
       values: [false, undefined, 'u1']
     });
-    const row = (await pool.query('SELECT is_active, full_name FROM users WHERE username = ?', ['u1'])).rows[0];
+    const row = (await pool.query('SELECT is_active, full_name FROM mbkcore_users WHERE username = ?', ['u1'])).rows[0];
     expect(row.is_active).toBe(0);
     expect(row.full_name).toBeNull();
   });
@@ -135,11 +155,11 @@ describe('SqlitePool bind-value coercion', () => {
     await insertUser(pool, { username: 'u1' });
     const meta = { ip: '::1', nested: { depth: 2 } };
     const inserted = await pool.query({
-      text: 'INSERT INTO sessions (username, meta) VALUES ($1, $2) RETURNING id',
+      text: 'INSERT INTO mbkcore_sessions (username, meta) VALUES ($1, $2) RETURNING id',
       values: ['u1', meta]
     });
     const row = (await pool.query({
-      text: 'SELECT meta FROM sessions WHERE id = $1',
+      text: 'SELECT meta FROM mbkcore_sessions WHERE id = $1',
       values: [inserted.rows[0].id]
     })).rows[0];
     expect(row.meta).toEqual(meta);
@@ -160,7 +180,7 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
   test('returns JSON columns as parsed values, not strings', async () => {
     await insertUser(pool, { username: 'u1', allowedApps: ['Portal', 'mbkauthe'] });
     const row = (await pool.query({
-      text: 'SELECT allowed_apps, positions, social_accounts FROM users WHERE username = $1',
+      text: 'SELECT allowed_apps, positions, social_accounts FROM mbkcore_users WHERE username = $1',
       values: ['u1']
     })).rows[0];
 
@@ -173,12 +193,12 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
   test('parses aliased JSON column user_allowed_apps (getApiTokenByHash shape)', async () => {
     await insertUser(pool, { username: 'u1' });
     await pool.query({
-      text: 'INSERT INTO api_tokens (username, name, token_hash, prefix) VALUES ($1, $2, $3, $4)',
+      text: 'INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix) VALUES ($1, $2, $3, $4)',
       values: ['u1', 'token', 'hash-1', 'mbk_']
     });
     const row = (await pool.query({
       text: `SELECT t.permissions, u.allowed_apps AS user_allowed_apps
-             FROM api_tokens t JOIN users u ON t.username = u.username
+             FROM mbkcore_api_tokens t JOIN mbkcore_users u ON t.username = u.username
              WHERE t.token_hash = $1`,
       values: ['hash-1']
     })).rows[0];
@@ -191,10 +211,10 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
     await insertUser(pool, { username: 'u1' });
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await pool.query({
-      text: 'INSERT INTO sessions (username, expires_at) VALUES ($1, $2)',
+      text: 'INSERT INTO mbkcore_sessions (username, expires_at) VALUES ($1, $2)',
       values: ['u1', expiresAt]
     });
-    const row = (await pool.query('SELECT expires_at, created_at FROM sessions')).rows[0];
+    const row = (await pool.query('SELECT expires_at, created_at FROM mbkcore_sessions')).rows[0];
 
     expect(row.expires_at).toBeInstanceOf(Date);
     expect(row.created_at).toBeInstanceOf(Date);
@@ -206,17 +226,17 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
 
   test('leaves session-store columns sess and expire as raw strings', async () => {
     await pool.query(
-      'INSERT INTO session (sid, sess, expire) VALUES (?, ?, ?)',
-      ['sid-1', '{"cookie":{}}', '2030-01-01 00:00:00']
+      'INSERT INTO mbkcore_session (sid, sess, expire) VALUES (?, ?, ?)',
+      ['store-sid', '{"cookie":{}}', '2030-01-01 00:00:00']
     );
-    const row = (await pool.query('SELECT sess, expire FROM session WHERE sid = ?', ['sid-1'])).rows[0];
+    const row = (await pool.query('SELECT sess, expire FROM mbkcore_session WHERE sid = ?', ['store-sid'])).rows[0];
     expect(typeof row.sess).toBe('string');
     expect(typeof row.expire).toBe('string');
   });
 
   test('leaves non-JSON text that happens to sit in a JSON column intact on parse failure', async () => {
-    await pool.query('INSERT INTO users (username, allowed_apps) VALUES (?, ?)', ['u1', 'not-json']);
-    const row = (await pool.query('SELECT allowed_apps FROM users WHERE username = ?', ['u1'])).rows[0];
+    await pool.query('INSERT INTO mbkcore_users (username, allowed_apps) VALUES (?, ?)', ['u1', 'not-json']);
+    const row = (await pool.query('SELECT allowed_apps FROM mbkcore_users WHERE username = ?', ['u1'])).rows[0];
     expect(row.allowed_apps).toBe('not-json');
   });
 });
@@ -319,7 +339,7 @@ describe('AuthRepository against the SQLite schema', () => {
 
   test('schema seeds the support superadmin user', async () => {
     const row = (await pool.query({
-      text: 'SELECT username, role, is_active, password_hash FROM users WHERE username = $1',
+      text: 'SELECT username, role, is_active, password_hash FROM mbkcore_users WHERE username = $1',
       values: ['support']
     })).rows[0];
     expect(row).toBeDefined();
@@ -335,7 +355,7 @@ describe('AuthRepository against the SQLite schema', () => {
     expect(Array.isArray(user.allowed_apps)).toBe(true);
     // The login route's app-authorization check must not throw.
     expect(user.allowed_apps.some((app) => app && app.toLowerCase() === 'mbkauthe')).toBe(true);
-    expect(user.two_fa_status ?? null).toBeNull(); // LEFT JOIN with no two_factor row
+    expect(user.is_enabled ?? null).toBeNull(); // LEFT JOIN with no two_factor row
   });
 
   test('insertAppSession stores a Date expiry and returns a UUID id', async () => {
@@ -363,7 +383,7 @@ describe('AuthRepository against the SQLite schema', () => {
     for (let i = 0; i < 3; i += 1) {
       const inserted = await repo.insertAppSession('normal', null, null);
       await pool.query({
-        text: 'UPDATE sessions SET created_at = $1 WHERE id = $2',
+        text: 'UPDATE mbkcore_sessions SET created_at = $1 WHERE id = $2',
         values: [new Date(Date.UTC(2030, 0, 1, 0, 0, i)), inserted.id]
       });
     }
@@ -382,7 +402,7 @@ describe('AuthRepository against the SQLite schema', () => {
   test('getSessionValidity falls back to the session-store expire via CASE subquery', async () => {
     const inserted = await repo.insertAppSession('normal', null, null);
     await pool.query(
-      'INSERT INTO session (sid, sess, expire) VALUES (?, ?, ?)',
+      'INSERT INTO mbkcore_session (sid, sess, expire) VALUES (?, ?, ?)',
       ['store-sid', '{}', '2030-06-01 12:00:00']
     );
     const row = await repo.getSessionValidity(inserted.id, 'store-sid');
@@ -396,7 +416,7 @@ describe('AuthRepository against the SQLite schema', () => {
     expect(profile).toHaveProperty('full_name');
     expect(profile).toHaveProperty('image');
 
-    const row = (await pool.query('SELECT last_login FROM users WHERE username = ?', ['normal'])).rows[0];
+    const row = (await pool.query('SELECT last_login FROM mbkcore_users WHERE username = ?', ['normal'])).rows[0];
     expect(row.last_login).toBeInstanceOf(Date);
   });
 
@@ -405,7 +425,7 @@ describe('AuthRepository against the SQLite schema', () => {
       username: 'normal',
       device_token_hash: 'device-hash',
       device_name: 'laptop',
-      user_agent: 'jest',
+      user_agent: 'vitest',
       ip_address: '::1',
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
@@ -432,7 +452,7 @@ describe('AuthRepository against the SQLite schema', () => {
 
   test('getApiTokenByHash returns parsed Permissions and user apps', async () => {
     await pool.query({
-      text: 'INSERT INTO api_tokens (username, name, token_hash, prefix, permissions) VALUES ($1, $2, $3, $4, $5)',
+      text: 'INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix, permissions) VALUES ($1, $2, $3, $4, $5)',
       values: ['normal', 'ci-token', 'token-hash', 'mbk_', JSON.stringify({ scope: 'write', allowed_apps: ['mbkauthe'] })]
     });
     const row = await repo.getApiTokenByHash('token-hash');
@@ -443,10 +463,10 @@ describe('AuthRepository against the SQLite schema', () => {
 
   test('updateApiTokenLastUsed (sqlite branch) throttles by interval', async () => {
     await pool.query({
-      text: 'INSERT INTO api_tokens (username, name, token_hash, prefix) VALUES ($1, $2, $3, $4)',
+      text: 'INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix) VALUES ($1, $2, $3, $4)',
       values: ['normal', 'ci-token', 'token-hash', 'mbk_']
     });
-    const { id } = (await pool.query('SELECT id FROM api_tokens WHERE token_hash = ?', ['token-hash'])).rows[0];
+    const { id } = (await pool.query('SELECT id FROM mbkcore_api_tokens WHERE token_hash = ?', ['token-hash'])).rows[0];
 
     const first = await repo.updateApiTokenLastUsed(id);
     expect(first.rowCount).toBe(1); // last_used was NULL
@@ -504,7 +524,7 @@ describe('SqliteSessionStore', () => {
 
   beforeEach(async () => {
     pool = createPool();
-    store = new SqliteSessionStore({ db: pool, tableName: 'session', createTableIfMissing: true });
+    store = new SqliteSessionStore({ db: pool, tableName: 'mbkcore_session', createTableIfMissing: true });
     await insertUser(pool, { username: 'normal' });
   });
 
@@ -527,7 +547,7 @@ describe('SqliteSessionStore', () => {
     expect(sess.user.role).toBe('superadmin');
     expect(await storeLength()).toBe(1);
 
-    const row = (await pool.query('SELECT username FROM "session" WHERE sid = ?', ['sid-1'])).rows[0];
+    const row = (await pool.query('SELECT username FROM "mbkcore_session" WHERE sid = ?', ['sid-1'])).rows[0];
     expect(row.username).toBe('normal');
   });
 
@@ -549,22 +569,22 @@ describe('SqliteSessionStore', () => {
 
   test('touch extends the expiry', async () => {
     await storeSet('sid-1', sessionData(60000));
-    const before = (await pool.query('SELECT expire FROM "session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
+    const before = (await pool.query('SELECT expire FROM "mbkcore_session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
 
     await storeTouch('sid-1', sessionData(60 * 60 * 1000));
-    const after = (await pool.query('SELECT expire FROM "session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
+    const after = (await pool.query('SELECT expire FROM "mbkcore_session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
     expect(after > before).toBe(true); // CURRENT_TIMESTAMP text sorts chronologically
   });
 
   test('touch is a no-op when disableTouch is set (production config)', async () => {
-    const quietStore = new SqliteSessionStore({ db: pool, tableName: 'session', disableTouch: true });
+    const quietStore = new SqliteSessionStore({ db: pool, tableName: 'mbkcore_session', disableTouch: true });
     await storeSet('sid-1', sessionData(60000));
-    const before = (await pool.query('SELECT expire FROM "session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
+    const before = (await pool.query('SELECT expire FROM "mbkcore_session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
 
     await new Promise((resolve, reject) => {
       quietStore.touch('sid-1', sessionData(60 * 60 * 1000), (err) => (err ? reject(err) : resolve()));
     });
-    const after = (await pool.query('SELECT expire FROM "session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
+    const after = (await pool.query('SELECT expire FROM "mbkcore_session" WHERE sid = ?', ['sid-1'])).rows[0].expire;
     expect(after).toBe(before);
   });
 

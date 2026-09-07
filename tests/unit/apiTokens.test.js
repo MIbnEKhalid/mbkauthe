@@ -18,9 +18,9 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { SqlitePool } = await import('../db/sqlitePool.js');
-const { sqliteDialect } = await import('../db/dialects/sqlite.js');
-const { ApiTokenRepository } = await import('../db/ApiTokenRepository.js');
+const { SqlitePool } = await import('../../lib/db/sqlitePool.js');
+const { sqliteDialect } = await import('../../lib/db/dialects/sqlite.js');
+const { ApiTokenRepository } = await import('../../lib/db/ApiTokenRepository.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
@@ -40,7 +40,7 @@ function createPool() {
 
 async function insertUser(pool, { username, role = 'normaluser', active = 1 } = {}) {
   await pool.query(
-    `INSERT INTO users (username, password_hash, role, is_active)
+    `INSERT INTO mbkcore_users (username, password_hash, role, is_active)
      VALUES (?, ?, ?, ?)`,
     [username, 'test-hash', role, active]
   );
@@ -66,7 +66,7 @@ describe('ApiTokenRepository', () => {
       await repo.insert('tokentest', 'Token A', 'hash_a', 'mbk_a', { scope: 'read-only', allowed_apps: null }, null);
       await repo.insert('tokentest', 'Token B', 'hash_b', 'mbk_b', { scope: 'write', allowed_apps: ['Portal'] }, '2099-01-01');
       // Force Token A to be older so ordering is deterministic (same-millisecond inserts can tie).
-      await pool.query(`UPDATE api_tokens SET created_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, ['hash_a']);
+      await pool.query(`UPDATE mbkcore_api_tokens SET created_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, ['hash_a']);
 
       const rows = await repo.listForUser('tokentest');
       expect(rows).toHaveLength(2);
@@ -238,7 +238,7 @@ describe('ApiTokenRepository', () => {
       await insertUser(pool, { username: 'tokentest' });
       await repo.insert('tokentest', 'Old', 'ho', 'mbk_', { scope: 'read-only', allowed_apps: null }, null);
       // Schema requires ExpiresAt > CreatedAt, so backdate both into the past.
-      await pool.query(`UPDATE api_tokens SET created_at = '2019-01-01 00:00:00', expires_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, ['ho']);
+      await pool.query(`UPDATE mbkcore_api_tokens SET created_at = '2019-01-01 00:00:00', expires_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, ['ho']);
 
       const rows = await repo.listForUserDetail('tokentest');
       expect(rows[0].is_active).toBe(false);

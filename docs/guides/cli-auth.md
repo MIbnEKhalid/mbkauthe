@@ -93,13 +93,13 @@ Example:
 
 Called by the CLI. Public, rate-limited (20/min/IP).
 
-The profile can be referenced by its **`profileKey`** (a random ≥6-char unique
-id, preferred) or its numeric serial **`profileId`** (backwards compatible).
+The profile can be referenced by its **`profile_key`** (a random ≥6-char unique
+id, preferred) or its numeric serial **`profile_id`**.
 
 ```bash
 curl -X POST https://portal.mbktech.org/api/cli/device \
   -H "Content-Type: application/json" \
-  -d '{"clientName": "my-cli", "profileKey": "1362403658a3"}'
+  -d '{"client_name": "my-cli", "profile_key": "1362403658a3"}'
 ```
 
 Response `201`:
@@ -127,7 +127,7 @@ Response `201`:
 Errors: `400` for a missing `client_name` or an invalid/inactive
 `profile_key`/`profile_id`.
 
-### 2. Browser approval page — `GET /mbkauthe/cli/device/:userCode`
+### 2. Browser approval page — `GET /mbkauthe/cli/device/:user_code`
 
 Opened by the user. Requires an authenticated session; if not logged in, the
 user is redirected to `/mbkauthe/login?redirect=…` and returned here after
@@ -177,7 +177,7 @@ Possible responses:
 | `invalid` (`404`) | Unknown device code |
 
 ```json
-{ "success": true, "status": "approved", "token": "mbk_…", "tokenPrefix": "mbk_1234", "username": "jane", "message": "Login approved" }
+{ "success": true, "status": "approved", "token": "mbk_…", "token_prefix": "mbk_1234", "username": "jane", "message": "Login approved" }
 ```
 
 ## Error Response Reference
@@ -200,7 +200,7 @@ Possible responses:
 | `200` | `"approved"` | Login approved, token staged |
 | `200` | `"denied"` | Login explicitly denied |
 | `400` | — | Missing `userCode` or invalid `action` |
-| `403` | — | Token limit reached for non-SuperAdmin (max 10) |
+| `403` | — | Token limit reached for non-superadmin (max 10) |
 | `404` | — | `userCode` not found |
 | `409` | `"approved"` / `"denied"` / `"expired"` | Request already processed |
 | `410` | `"expired"` | Request expired before decision |
@@ -224,7 +224,7 @@ Possible responses:
 ## CLI Client Example
 
 A complete reference implementation is available at
-[`lib/tests/mbkcli.mjs`](../../lib/tests/mbkcli.mjs). It covers:
+[`tests/helpers/mbkcli.mjs`](../../tests/helpers/mbkcli.mjs). It covers:
 
 1. **Token persistence** — saves the token to `~/.mbkcli_token` (0600)
 2. **Token verification** — on startup, validates any saved token via `POST /api/tokens/verify`

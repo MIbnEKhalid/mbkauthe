@@ -24,20 +24,20 @@ Indexes cover username, role, active, email, last login, and GIN indexes on JSON
 
 ## 3. OAuth: `user_github` and `user_google`
 
-Link rows from `users(user_name)` to GitHub or Google identities (provider ids, usernames/emails, tokens, timestamps). `user_github` may be altered by the script to add `installation_id` and `installation_target_type` if missing (idempotent migrations).
+Link rows from `users(username)` to GitHub or Google identities (provider ids, usernames/emails, tokens, timestamps). `user_github` may be altered by the script to add `installation_id` and `installation_target_type` if missing (idempotent migrations).
 
 ---
 
 ## 4. Sessions
 
-- **`sessions`** — App session rows: UUID `id`, `user_name`, `created_at`, optional `expires_at`, optional `meta` JSONB. Requires `gen_random_uuid()` (e.g. `pgcrypto`). Extra indexes support expiry cleanup and middleware lookups.
+- **`sessions`** — App session rows: UUID `id`, `username`, `created_at`, optional `expires_at`, optional `meta` JSONB. Requires `gen_random_uuid()` (e.g. `pgcrypto`). Extra indexes support expiry cleanup and middleware lookups.
 - **`session`** — `express-session` Postgres store: `sid`, `sess` JSONB, `expire`, plus `username` and `last_activity` as in `db.sql`.
 
 ---
 
 ## 5. Two-factor: `TwoFA`
 
-Per-user 2FA flag and secret, keyed by `user_name`.
+Per-user 2FA flag and secret, keyed by `username`.
 
 ---
 
@@ -68,7 +68,7 @@ Named tokens per user: hash and prefix for lookup, optional expiry, `last_used`,
 - **`scope`:** `read-only` limits to safe methods (GET, HEAD, OPTIONS); `write` allows mutating methods.
 - **`allowed_apps`:** `null` inherits the user’s `allowed_apps` from `users`; a string array restricts to those apps (subset of the user’s apps); `["*"]` means all of the user’s apps (superadmin: system-wide); `[]` effectively disables app access.
 
-SuperAdmin users bypass app checks in the app layer; token `allowed_apps` still matters for non–SuperAdmin users.
+superadmin users bypass app checks in the app layer; token `allowed_apps` still matters for non–superadmin users.
 
 ---
 
@@ -127,3 +127,20 @@ await authRepo.withTransaction(async (txRepo) => {
 Rule of thumb: inside the `withTransaction` callback, only touch the `txRepo` parameter — never `authRepo`, the pool, or anything else that reaches the pool. Queries against the pool are fine again once the callback returns.
 
 (The Postgres backend has the same rule with a different failure mode: a `pool.query()` inside a transaction runs on a different pooled connection, silently outside the transaction.)
+
+---
+
+## Standard Architecture & Dual-Database Support for Host Applications
+
+MBKAuthe exports its universal database primitives so that all applications in the ecosystem share a unified repository and database structure:
+
+- **`PostgresAdapter`**: Database adapter wrapping `pg.Pool` that binds `postgresDialect` and standardizes client acquisition.
+- **`SqliteAdapter` / `SqlitePool`**: Universal SQLite adapter wrapping `better-sqlite3` with FIFO transaction mutex, parameter coercion, and row normalization.
+- **`BaseRepository`**: Foundation repository with transaction lifecycle, `setDb()`, query helpers, and dialect tokens.
+- **`translatePgToSqlite`**: Automatic runtime SQL translator for PostgreSQL syntax (`$1`, `ANY($1)`, casts, `ILIKE`, `NOW()`, `to_char`, `gen_random_uuid`, etc.).
+- **`postgresDialect` / `sqliteDialect`**: SQL tokens for quotes, placeholders, and pagination.
+- **`applySchema`**: Centralized schema runner that applies `.sql` files or raw SQL statements to both SQLite adapters and PostgreSQL pools/adapters.
+- **`registerGracefulShutdown` & `closeAllConnections`**: Centralized process signal hooks (`SIGINT`, `SIGTERM`) that cleanly close and drain connection pools on shutdown.
+
+For the full directory conventions (`src/db/connection.js`, `src/db/index.js`, `src/db/schema/`, `src/repositories/`) and complete code walkthrough, see the **[Dual-Database & Repository Architecture Guide](dual-database-guide.md)**.
+

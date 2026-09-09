@@ -16,8 +16,9 @@ src/
 │   ├── connection.js             # Pool / connection creation, configuration & test
 │   ├── index.js                  # Instantiates & exports defaultAdapter (PostgresAdapter/SqliteAdapter), adapter, pool, dialects
 │   └── schema/
-│       ├── schema.sql            # PostgreSQL DDL
-│       └── schema.sqlite.sql     # SQLite DDL (when supporting SQLite)
+│       ├── postgres.sql          # PostgreSQL DDL
+│       ├── sqlite.sql            # SQLite DDL (when supporting SQLite)
+│       └── init.js               # Schema initialization helpers
 └── repositories/
     ├── <Domain>Repository.js     # Class extending BaseRepository from 'mbkauthe', constructor(adapter = defaultAdapter)
     └── index.js                  # Barrel export of repository classes & singletons
@@ -273,8 +274,8 @@ When running in SQLite mode, `mbkauthe`'s built-in translation engine (`translat
 
 Maintain clean, executable DDL schema definitions in `src/db/schema/`:
 
-- **`src/db/schema/schema.sql`** (PostgreSQL DDL)
-- **`src/db/schema/schema.sqlite.sql`** (SQLite DDL, if supporting SQLite)
+- **`src/db/schema/postgres.sql`** (PostgreSQL DDL)
+- **`src/db/schema/sqlite.sql`** (SQLite DDL, if supporting SQLite)
 
 ### Data Type Mapping
 
@@ -302,7 +303,7 @@ import { defaultAdapter } from "../src/db/index.js";
 import { applySchema } from "mbkauthe";
 
 export async function initTestDb() {
-  await applySchema(defaultAdapter, "./src/db/schema/schema.sqlite.sql", { silent: true });
+  await applySchema(defaultAdapter, "./src/db/schema/sqlite.sql", { silent: true });
 }
 ```
 
@@ -318,7 +319,7 @@ import path from "node:path";
 import { pool } from "./connection.js";
 
 export async function initDatabaseSchema() {
-  const schemaPath = path.resolve("src/db/schema/schema.sql");
+  const schemaPath = path.resolve("src/db/schema/postgres.sql");
   await applySchema(pool, schemaPath, { name: "app-schema" });
 }
 ```

@@ -101,6 +101,8 @@ app.listen(3000);
 - `sessVal` / `validateSession` - require a valid session or API token.
 - `roleChk` / `checkRolePermission` - require a role after session validation.
 - `sessRole` / `validateSessionAndRole` - combine session and role checks.
+- `sessPerm` / `permChk` - dynamic **permission** middleware (`app:service:action`) using a session-cached, catalog-driven permission model. See the [Permissions guide](docs/guides/permissions.md).
+- `definePermissions` / `syncAppPermissions` - declare an app's permission manifest and auto-sync it to the permission catalog.
 - `strictValidateSession` - require cookie session authentication only.
 - `strictValidateSessionAndRole` - strict cookie session plus role check.
 - `authenticate(token)` - protect server-to-server routes with a static bearer token.
@@ -121,7 +123,7 @@ See the **[Dual-Database & Repository Architecture Guide](docs/guides/dual-datab
 
 MBKAuthe provides both sides of the API token lifecycle:
 
-- **Authentication** (built-in): Bearer tokens prefixed with `mbk_` are validated on every request (`sessVal` / `sessRole` accept them), with read-only/write scope enforcement via `validateTokenScope`. See [the API reference](docs/reference/api/authentication.md) and `docs/schema/` for the `ApiTokens` table.
+- **Authentication** (built-in): Bearer tokens prefixed with `mbk_` are validated on every request (`sessVal` / `sessRole` accept them), and each token carries an explicit permission allow-list enforced by `permChk` / `sessPerm`. See [the API reference](docs/reference/api/authentication.md) and `docs/schema/` for the `ApiTokens` table.
 - **Management backend** (mounted by the host app): the CRUD repository, user-facing routes, and admin routes. The page views (`settings/api-tokens.handlebars`, `dashboard/admin/api-tokens.handlebars`) are provided by the host application — only the backend ships here.
 
 Exports:

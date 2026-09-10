@@ -60,15 +60,14 @@ Named tokens per user: hash and prefix for lookup, optional expiry, `last_used`,
 
 ```json
 {
-  "scope": "read-only" | "write",
-  "allowed_apps": null | ["app1", "app2"] | ["*"] | []
+  "permissions": ["portal:dns:view", "portal:procurement:view"]
 }
 ```
 
-- **`scope`:** `read-only` limits to safe methods (GET, HEAD, OPTIONS); `write` allows mutating methods.
-- **`allowed_apps`:** `null` inherits the user’s `allowed_apps` from `users`; a string array restricts to those apps (subset of the user’s apps); `["*"]` means all of the user’s apps (superadmin: system-wide); `[]` effectively disables app access.
+- **`permissions`:** explicit permission allow-list for the token — the single source of truth for both the target app (`app:` prefix) and the operation (`action`). May be omitted on legacy tokens, in which case the token carries no effective permissions. Non-superadmin tokens are capped at the owner's effective permissions.
 
-superadmin users bypass app checks in the app layer; token `allowed_apps` still matters for non–superadmin users.
+superadmin users bypass app checks in the app layer; permission-gated routes for
+non-superadmin tokens are enforced purely through the token's `permissions` list.
 
 ---
 

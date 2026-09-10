@@ -32,20 +32,12 @@
                 <div class="cli-profile-box">
                     <div class="row"><span class="label">Token profile</span><span class="value">{{profile.name}}</span></div>
                     <div class="row">
-                        <span class="label">Permission scope</span>
+                        <span class="label">Permissions</span>
                         <span class="value">
-                            <span class="badge {{#if (eq profile.scope 'write')}}badge-warning{{else}}badge-success{{/if}}">
-                                {{profile.scope}}
-                            </span>
-                        </span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Allowed applications</span>
-                        <span class="value">
-                            {{#if profile.allowed_apps}}
-                                {{#each profile.allowed_apps}}<span class="cli-app-chip">{{this}}</span>{{/each}}
+                            {{#if profile.permissions}}
+                                {{#each profile.permissions}}<span class="cli-app-chip">{{this}}</span>{{/each}}
                             {{else}}
-                                Any
+                                None
                             {{/if}}
                         </span>
                     </div>

@@ -22,17 +22,13 @@ Authorization: Bearer <your_api_token>
 **Behavior:**
 - **Stateless:** Validates against the `ApiTokens` table on every request.
 - **Expiration:** Tokens can have an optional expiration date.
-- **Permissions:** API tokens inherit the permissions of the user who created them, but can also carry token-specific app restrictions. The `Permissions` payload is evaluated before the request is allowed.
-- **Scopes:** Tokens have a scope (`read-only` or `write`) that controls which HTTP methods are allowed:
-  - `read-only`: Only GET, HEAD, and OPTIONS requests (safe, read-only operations)
-  - `write`: All HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
+- **Permissions:** A token carries an explicit permission allow-list (`app:service:action`). The list is attached to the request as the synthetic user's `permissions.allows`, so `permChk` / `sessPerm` guards evaluate against the token's permissions. Non-superadmin tokens are capped at the owner's own permissions; each `permission` already encodes its target app and operation.
 - **Usage Tracking:** The system updates the `last_used` timestamp on every successful request.
-- **Allowed apps:** If a token carries `allowed_apps`, that list overrides the user's own app list for token-based requests. `null` inherits the user's apps, `[]` denies app access, and `["*"]` grants access to all of the user's apps (subject to the user's own app list).
 
 **Errors:**
 - `401 Unauthorized` (Code 1005: `INVALID_AUTH_TOKEN`): Token is malformed or not found.
 - `401 Unauthorized` (Code 1006: `API_TOKEN_EXPIRED`): Token exists but has passed its expiration date.
-- `403 Forbidden` (Code 1007: `TOKEN_SCOPE_INSUFFICIENT`): Token scope doesn't allow this HTTP method.
+- `403 Forbidden`: The token's permission list does not include the permission required by the route.
 
 **Example Usage:**
 

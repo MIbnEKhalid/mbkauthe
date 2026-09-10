@@ -121,15 +121,15 @@ async function createUser(username, { role = 'normaluser', active = 1, allowedAp
 }
 
 let profileCounter = 0;
-async function createProfile({ name, scope = 'read-only', allowedApps = null, expiresInDays = null, active = 1, key = null } = {}) {
+async function createProfile({ name, permissions = [], expiresInDays = null, active = 1, key = null } = {}) {
   profileCounter += 1;
   const profileName = name || `profile-${profileCounter}`;
   const profileKey = key || `key${String(profileCounter).padStart(6, '0')}`; // >= 6 chars
   const { rows } = await dblogin.query(
-    `INSERT INTO mbkcore_api_token_profiles (profile_key, name, description, allowed_apps, scope, expires_in_days, is_active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO mbkcore_api_token_profiles (profile_key, name, description, permissions, expires_in_days, is_active)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, profile_key`,
-    [profileKey, profileName, 'test profile', allowedApps ? JSON.stringify(allowedApps) : null, scope, expiresInDays, active]
+    [profileKey, profileName, 'test profile', JSON.stringify(permissions), expiresInDays, active]
   );
   return { id: rows[0].id, key: rows[0].profile_key };
 }
@@ -205,11 +205,11 @@ describe('POST /api/cli/device', () => {
     expect(res.body.interval).toBe(5);
     expect(res.body.expires_in).toBeGreaterThan(0);
     expect(res.body.profile.name).toBe('cli-default');
-    expect(res.body.profile.scope).toBe('read-only');
+    expect(res.body.profile.permissions).toEqual([]);
   });
 
   test('starts login by profileKey', async () => {
-    const { id, key } = await createProfile({ name: 'key-flow', scope: 'write' });
+    const { id, key } = await createProfile({ name: 'key-flow' });
 
     const res = await request(app)
       .post('/api/cli/device')
@@ -251,8 +251,8 @@ describe('POST /api/cli/device', () => {
 
 describe('CLI device flow (happy path)', () => {
   test('device -> login -> approve -> poll -> verify token', async () => {
-    await createUser('cliuser');
-    const { id: profileId } = await createProfile({ name: 'happy-flow', scope: 'write', allowedApps: ['Portal'], expiresInDays: 7 });
+    await createUser('cliuser', { role: 'superadmin' });
+    const { id: profileId } = await createProfile({ name: 'happy-flow', permissions: ['portal:dns:view'], expiresInDays: 7 });
 
     // 1. CLI requests a login
     const deviceRes = await request(app)
@@ -311,14 +311,13 @@ describe('CLI device flow (happy path)', () => {
     expect(againRes.body.status).toBe('completed');
     expect(againRes.body.token).toBeUndefined();
 
-    // 8. The issued token verifies with the profile's scope + allowed apps
+    // 8. The issued token verifies with the profile's permissions
     const verifyRes = await request(app)
       .post('/api/tokens/verify')
       .set('Authorization', `Bearer ${issuedToken}`);
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.username).toBe('cliuser');
-    expect(verifyRes.body.scope).toBe('write');
-    expect(verifyRes.body.allowed_apps).toEqual(['Portal']);
+    expect(verifyRes.body.permissions).toEqual(['portal:dns:view']);
   });
 
   test('deny flow returns denied to the CLI', async () => {

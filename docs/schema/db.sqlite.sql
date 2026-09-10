@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     image TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',
     bio TEXT DEFAULT 'I am ....',
     social_accounts TEXT DEFAULT '{}',
-    positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'
+    positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}',
+    permission_templates TEXT DEFAULT '[]',
+    perm_version INTEGER DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users (is_active);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_email ON mbkcore_users (email);
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_api_tokens (
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     token_hash TEXT NOT NULL UNIQUE,
     prefix TEXT NOT NULL,
-    permissions TEXT DEFAULT '{"scope": "read-only", "allowed_apps": null}' NOT NULL,
+    permissions TEXT DEFAULT '{"permissions": []}' NOT NULL,
     last_used TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     expires_at TEXT,
@@ -62,15 +64,13 @@ CREATE TABLE IF NOT EXISTS mbkcore_api_token_profiles (
     profile_key TEXT,
     name TEXT NOT NULL,
     description TEXT,
-    allowed_apps TEXT,
-    scope TEXT DEFAULT 'read-only' NOT NULL,
+    permissions TEXT,
     expires_in_days INTEGER,
     is_active INTEGER DEFAULT 1 NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT mbkcore_api_token_profiles_name_key UNIQUE (name),
     CONSTRAINT mbkcore_api_token_profiles_profile_key_key UNIQUE (profile_key),
-    CONSTRAINT chk_mbkcore_api_token_profiles_scope CHECK (scope IN ('read-only', 'write')),
     CONSTRAINT chk_mbkcore_api_token_profiles_expires CHECK (expires_in_days IS NULL OR expires_in_days > 0)
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_api_token_profiles_is_active ON mbkcore_api_token_profiles (is_active);
@@ -183,6 +183,51 @@ CREATE TABLE IF NOT EXISTS mbkcore_user_google (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Table: mbkcore_permission_catalog
+CREATE TABLE IF NOT EXISTS mbkcore_permission_catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_key VARCHAR(50) NOT NULL,
+    service_key VARCHAR(50) NOT NULL,
+    action_key VARCHAR(50) NOT NULL,
+    label TEXT,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_permission_catalog UNIQUE (app_key, service_key, action_key)
+);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app ON mbkcore_permission_catalog (app_key);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_active ON mbkcore_permission_catalog (app_key, is_active);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_service ON mbkcore_permission_catalog (app_key, service_key);
+
+-- Built-in permission shared by every application; app sync never manages it.
+INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, is_active)
+VALUES ('global', 'basic', 'access', 'Basic global access', 1)
+ON CONFLICT (app_key, service_key, action_key)
+DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMESTAMP;
+
+-- Table: mbkcore_permission_templates
+CREATE TABLE IF NOT EXISTS mbkcore_permission_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    permissions TEXT DEFAULT '[]' NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT mbkcore_permission_templates_name_key UNIQUE (name)
+);
+
+-- Table: mbkcore_user_permission_overrides
+CREATE TABLE IF NOT EXISTS mbkcore_user_permission_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
+    permission VARCHAR(150) NOT NULL,
+    effect VARCHAR(5) NOT NULL,
+    granted_by VARCHAR(50),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_user_perm_override UNIQUE (username, permission),
+    CONSTRAINT chk_user_perm_override_effect CHECK (effect IN ('allow', 'deny'))
+);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_username ON mbkcore_user_permission_overrides (username);
 
 -- Seed user (hash-only)
 INSERT INTO mbkcore_users (username, password_hash, role, is_active, have_mail_account, full_name)

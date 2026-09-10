@@ -11,12 +11,23 @@ This document provides the authoritative DDL database schema definitions for bot
 | Table Name | Purpose | Dialect |
 | :--- | :--- | :--- |
 | `mbkcore_users` | Authoritative user identity, password hashes, roles, and allowed application scopes | PostgreSQL & SQLite |
-| `mbkcore_api_tokens` | Long-lived API bearer tokens with SHA-256 hashed storage and permission scopes | PostgreSQL & SQLite |
+| `mbkcore_api_tokens` | Long-lived API bearer tokens with SHA-256 hashed storage and per-token permission lists | PostgreSQL & SQLite |
 | `mbkcore_api_token_profiles` | Predefined templates for scoped token provisioning | PostgreSQL & SQLite |
 | `mbkcore_cli_device_authorizations` | RFC 8628 CLI device login state, user codes, and authorization handshakes | PostgreSQL & SQLite |
 | `mbkauthe_sessions` / `sessions` | Encrypted multi-session table with automated eviction | PostgreSQL & SQLite |
 | `mbkauthe_totp` / `TwoFA` | TOTP 2FA secret seeds, recovery keys, and activation status | PostgreSQL & SQLite |
 | `mbkauthe_trusted_devices` | Device trust timestamps for remember-device functionality | PostgreSQL & SQLite |
+| `mbkcore_permission_catalog` | Auto-populated catalog of valid `app:service:action` permissions | PostgreSQL & SQLite |
+| `mbkcore_permission_templates` | Named reusable permission bundles (roles/templates) assigned to users | PostgreSQL & SQLite |
+| `mbkcore_user_permission_overrides` | Per-user allow/deny permission exceptions | PostgreSQL & SQLite |
+
+> The `mbkcore_users` table also carries `permission_templates jsonb` and
+> `perm_version integer` columns used by the dynamic permission model. See the
+> [Permissions guide](../guides/permissions.md). The canonical DDL lives in
+> `db.sql` / `db.sqlite.sql` and is applied via `npm run create-tables` / the
+> consuming application's schema init. Host applications must not create these
+> tables at runtime — they are expected to already exist (schema is synced
+> up-front).
 
 ---
 
@@ -47,6 +58,8 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     bio text DEFAULT 'I am ....'::text,
     social_accounts text DEFAULT '{}'::text,
     positions jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb,
+    permission_templates jsonb DEFAULT '[]'::jsonb,
+    perm_version integer DEFAULT 1,
     CONSTRAINT mbkcore_users_pkey PRIMARY KEY (id),
     CONSTRAINT mbkcore_users_username_key UNIQUE (username),
     CONSTRAINT mbkcore_users_user_id_key UNIQUE (user_id),
@@ -68,19 +81,17 @@ CREATE TABLE IF NOT EXISTS mbkcore_api_tokens (
     name character varying(255) NOT NULL,
     token_hash character varying(128) NOT NULL,
     prefix character varying(32) NOT NULL,
-    permissions jsonb DEFAULT '{"scope": "read-only", "allowed_apps": null}'::jsonb NOT NULL,
+    permissions jsonb DEFAULT '{"permissions": []}'::jsonb NOT NULL,
     last_used timestamp with time zone,
     created_at timestamp with time zone DEFAULT now(),
     expires_at timestamp with time zone,
     CONSTRAINT mbkcore_api_tokens_pkey PRIMARY KEY (id),
     CONSTRAINT mbkcore_api_tokens_token_hash_key UNIQUE (token_hash),
-    CONSTRAINT chk_mbkcore_api_tokens_permissions_scope CHECK (((permissions ->> 'scope'::text) = ANY (ARRAY['read-only'::text, 'write'::text]))),
     CONSTRAINT chk_mbkcore_api_tokens_name_not_empty CHECK ((length(TRIM(BOTH FROM name)) > 0)),
     CONSTRAINT chk_mbkcore_api_tokens_expires_future CHECK (((expires_at IS NULL) OR (expires_at > created_at)))
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_expires ON mbkcore_api_tokens USING btree (expires_at) WHERE (expires_at IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_permissions_gin ON mbkcore_api_tokens USING gin (permissions);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_permissions_scope ON mbkcore_api_tokens USING btree (((permissions ->> 'scope'::text)));
 CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_username_created ON mbkcore_api_tokens USING btree (username, created_at DESC);
 ```
 
@@ -127,7 +138,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_api_tokens (
     name TEXT NOT NULL,
     token_hash TEXT NOT NULL UNIQUE,
     prefix TEXT NOT NULL,
-    permissions TEXT NOT NULL DEFAULT '{"scope": "read-only", "allowed_apps": null}',
+    permissions TEXT NOT NULL DEFAULT '{"permissions": []}',
     last_used TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     expires_at TEXT

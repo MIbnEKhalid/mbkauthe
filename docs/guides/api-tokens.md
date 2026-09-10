@@ -20,21 +20,51 @@ mbk_usr_live_8f4b92c10a3d4e7f8b9a0c1d2e3f4a5b6c7d8e9f0
 
 ---
 
-## 2. Token Scopes & Permissions
+## 2. Token Permissions
 
-Permissions are stored as JSONB in the database with strict schema validation:
+A token's entire access surface is its permission list, stored as JSONB:
 
 ```json
 {
-  "scope": "read-only",
-  "allowed_apps": ["portal", "mbkauthe"]
+  "permissions": ["portal:dns:view", "portal:procurement:view"]
 }
 ```
 
-- **`scope`**:
-  - `"read-only"`: Permits only safe HTTP methods (`GET`, `HEAD`, `OPTIONS`).
-  - `"write"`: Permits mutating HTTP methods (`POST`, `PUT`, `PATCH`, `DELETE`).
-- **`allowed_apps`**: Limits token authorization to specific ecosystem services.
+- **`permissions`**: The token's explicit permission allow-list (`app:service:action`).
+  Each `app:service:action` string already encodes the application (`app`) and the
+  operation (`action`), so there is no separate scope or allowed-apps list.
+  A token created through `POST /api/token` must carry **at least one** permission,
+  and each requested permission must exist in the active permission catalog.
+
+### Permission capping (a token never exceeds its owner)
+
+Non-superadmin users can only grant a token permissions **they themselves hold**.
+The token's effective permissions are therefore capped at the owner's effective
+permissions — requesting a permission the user does not hold is rejected with a
+`403`. SuperAdmins bypass permission checks entirely, so their tokens keep full
+access at the permission layer regardless of the stored list.
+
+During request authentication the token's `permissions` list becomes the synthetic
+user's `permissions.allows`, so `permChk` / `sessPerm` guards evaluate against the
+token's permissions, not the owner's full permission set.
+
+> **Legacy tokens** created before this feature (no `permissions` array) keep their
+> historical behaviour: they carry no effective permissions, so permission-gated
+> routes remain closed to them. Re-create the token to grant permissions.
+
+### Creating a permission-scoped token
+
+```json
+POST /api/token
+{
+  "name": "CI deploy bot",
+  "expires_days": 90,
+  "permissions": ["portal:dns:view", "portal:dns:update"]
+}
+```
+
+The catalog labels available for selection are exposed to the `/user/api-tokens`
+page, and `POST /api/tokens/verify` returns the token's effective `permissions`.
 
 ---
 

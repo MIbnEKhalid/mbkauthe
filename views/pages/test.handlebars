@@ -27,6 +27,8 @@
                 <div class="session-details" aria-live="polite">
                     <div><span class="text-highlight">Full Name:</span> {{full_name}}</div>
                     <div><span class="text-highlight">Allowed Apps:</span> {{allowed_apps}}</div>
+                    <div><span class="text-highlight">Allowed Permissions:</span> {{permissions.allows}}</div>
+                    <div><span class="text-highlight">Denied Permissions:</span> {{permissions.denies}}</div>
                     <div><span class="text-highlight">Session Expires:</span> <span id="session-expiry-display">{{#if session_expiry}}{{session_expiry}}{{else}}N/A{{/if}}</span></div>
                     {{#if session_expiry}}<div id="session-countdown"><span class="text-highlight">Time Remaining:</span> <span id="countdown-value">calculating…</span></div>{{/if}}
                 </div>

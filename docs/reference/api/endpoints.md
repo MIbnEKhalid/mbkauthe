@@ -306,11 +306,14 @@ Create a new API token (user-facing). Requires an authenticated session.
 ```json
 {
   "name": "My CI Token",
-  "scope": "read-only",
   "expiresDays": 30,
-  "allowed_apps": ["Portal", "mbkauthe"]
+  "permissions": ["portal:dns:view"]
 }
 ```
+
+> `permissions` is **required** and must contain at least one active catalog
+> permission. Non-superadmin callers may only grant permissions they hold
+> themselves (capped); otherwise the request is rejected with `403`.
 
 **Success Response (201 Created):**
 ```json
@@ -340,7 +343,7 @@ Verify an API token's validity. Public.
   "success": true,
   "tokenValid": true,
   "username": "jane",
-  "permissions": { "scope": "read-only", "allowed_apps": ["Portal"] },
+  "permissions": ["portal:dns:view"],
   "expiresAt": "2026-09-01T00:00:00.000Z"
 }
 ```

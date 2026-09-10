@@ -121,6 +121,10 @@ app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
 - Returns 403 if user doesn't have `requiredRole` (unless role is "Any")
 - Calls `next()` if authorized
 
+403 responses state which role is required. JSON responses include
+`requiredRole` (or `notAllowedRole` when the blocked role is the reason), and
+the rendered error page shows the same detail in its message.
+
 ---
 
 ### `validateSessionAndRole(requiredRole, notAllowed)`/`sessRole`
@@ -147,6 +151,47 @@ app.get('/moderator', sessVal, roleChk('superadmin'), (req, res) => {
   res.send('Moderator panel');
 });
 ```
+
+---
+
+### `sessPerm(requiredPermission)` and `permChk(requiredPermission)`
+
+Dynamic, fine-grained permission middleware for the `app:service:action` model.
+See the [Permissions guide](../../guides/permissions.md).
+
+- `sessPerm(permission)` — validates the session **and** checks the permission
+  (equivalent of `sessRole` but for a permission string).
+- `permChk(permission)` — composable guard to chain after session validation
+  (equivalent of `roleChk` but for a permission string).
+
+**Parameters:**
+- `requiredPermission` (string, optional) - A permission string such as
+  `Permissions.posts.delete` (`app:service:action`; segments may be `*`).
+  The `service.action` shorthand resolves to the global namespace (`basic.access`
+  becomes `global:basic:access`). When omitted, global basic access is required.
+
+**Usage:**
+```javascript
+import { sessPerm, permChk, sessVal } from 'mbkauthe';
+import { Permissions } from './permissions.js';
+
+// Validate session AND check permission in one middleware
+app.delete('/api/posts/:id', sessPerm(Permissions.posts.delete), deletePost);
+
+// Equivalent split form
+app.delete('/api/posts/:id', sessVal, permChk(Permissions.posts.delete), deletePost);
+```
+
+**Behavior:**
+- SuperAdmin always passes (system-level bypass).
+- Unauthenticated requests receive HTTP 401.
+- Requests without the required permission receive HTTP 403 using the existing
+  JSON-vs-HTML error response behavior.
+- 403 responses state which permission is required: JSON includes
+  `requiredPermission` (`global:basic:access` for `basic.access`) and the
+  rendered error page shows the required permission in its message.
+- No database query is performed on this path — the decision uses the
+  session-cached `req.session.user.permissions`.
 
 ---
 

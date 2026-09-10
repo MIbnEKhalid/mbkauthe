@@ -47,17 +47,33 @@ app.use(express.json());
 app.use(apiTokensRouter);
 
 describe('POST /api/tokens/verify', () => {
-  test('returns valid with username/scope/allowed_apps for a real token', async () => {
+  test('returns valid with username and permissions for a real token', async () => {
     await insertUser('verify-ok');
     const raw = generatePrefixedToken();
-    await repo.insert('verify-ok', 'V', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ scope: 'read-only', allowed_apps: ['Portal'] }), null);
+    await repo.insert('verify-ok', 'V', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ permissions: ['portal:dns:view'] }), null);
 
     const res = await request(app).post('/api/tokens/verify').set('Authorization', `Bearer ${raw}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.username).toBe('verify-ok');
-    expect(res.body.scope).toBe('read-only');
-    expect(res.body.allowed_apps).toEqual(['Portal']);
+    expect(res.body.permissions).toEqual(['portal:dns:view']);
+  });
+
+  test('returns the token permission list (empty for legacy tokens)', async () => {
+    await insertUser('verify-perms');
+    const raw = generatePrefixedToken();
+    await repo.insert(
+      'verify-perms',
+      'P',
+      hashApiToken(raw),
+      raw.substring(0, 8),
+      JSON.stringify({ permissions: ['portal:dns:view'] }),
+      null
+    );
+
+    const res = await request(app).post('/api/tokens/verify').set('Authorization', `Bearer ${raw}`);
+    expect(res.status).toBe(200);
+    expect(res.body.permissions).toEqual(['portal:dns:view']);
   });
 
   test('rejects a request with no token', async () => {
@@ -75,7 +91,7 @@ describe('POST /api/tokens/verify', () => {
   test('rejects an expired token', async () => {
     await insertUser('verify-expired');
     const raw = generatePrefixedToken();
-    await repo.insert('verify-expired', 'E', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ scope: 'read-only', allowed_apps: null }), null);
+    await repo.insert('verify-expired', 'E', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ permissions: [] }), null);
     // Schema requires expires_at > created_at, so backdate both into the past.
     await dblogin.query(`UPDATE mbkcore_api_tokens SET created_at = '2019-01-01 00:00:00', expires_at = '2020-01-01 00:00:00' WHERE token_hash = ?`, [hashApiToken(raw)]);
 
@@ -87,7 +103,7 @@ describe('POST /api/tokens/verify', () => {
   test('updates LastUsed after a successful verification', async () => {
     await insertUser('verify-touch');
     const raw = generatePrefixedToken();
-    await repo.insert('verify-touch', 'V2', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ scope: 'read-only', allowed_apps: null }), null);
+    await repo.insert('verify-touch', 'V2', hashApiToken(raw), raw.substring(0, 8), JSON.stringify({ permissions: [] }), null);
 
     await request(app).post('/api/tokens/verify').set('Authorization', `Bearer ${raw}`);
     const rows = await repo.findByTokenHash(hashApiToken(raw));

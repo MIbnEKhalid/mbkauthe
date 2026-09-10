@@ -203,7 +203,7 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
       values: ['hash-1']
     })).rows[0];
 
-    expect(row.permissions).toEqual({ scope: 'read-only', allowed_apps: null });
+    expect(row.permissions).toEqual({ permissions: [] });
     expect(Array.isArray(row.user_allowed_apps)).toBe(true);
   });
 

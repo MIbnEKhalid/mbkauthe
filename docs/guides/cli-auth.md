@@ -117,8 +117,7 @@ Response `201`:
     "id": 3,
     "key": "1362403658a3",
     "name": "cli-default",
-    "scope": "read-only",
-    "allowed_apps": ["Portal", "mbkauthe"],
+    "permissions": ["portal:dns:view"],
     "expires_in_days": 30
   }
 }
@@ -145,8 +144,8 @@ Session-authenticated (rate-limited 30/min/IP). Called by the approval page.
 On approval MBKAuthe:
 
 1. Reads the **active** API Token Profile for `profile_id` (MBKCore-owned).
-2. Creates an API token from that template — scope, allowed applications, and
-   expiration all come from the profile.
+2. Creates an API token from that template — its permission list and expiration
+   come from the profile (capped at the approving user's own permissions).
 3. Stages the raw token and marks the session `approved`.
 
 Response `200`:

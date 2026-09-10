@@ -14,6 +14,7 @@
       "items": [
         { "slug": "authentication", "title": "Authentication & Sessions", "description": "Session validation, reload helpers, cookie encryption, JSON vs HTML error modes." },
         { "slug": "rbac", "title": "RBAC & Authorization", "description": "Role checking middleware, role hierarchies, and application-level scoping." },
+        { "slug": "permissions", "title": "Dynamic Permissions", "description": "Catalog-driven app:service:action permissions, definePermissions, syncAppPermissions, sessPerm." },
         { "slug": "oauth", "title": "Social OAuth (GitHub & Google)", "description": "GitHub App and Google OAuth2 login workflows and shared credentials." },
         { "slug": "2fa", "title": "Two-Factor Authentication (2FA)", "description": "TOTP verification with speakeasy, QR codes, and trusted devices." }
       ]
@@ -21,7 +22,7 @@
     {
       "title": "Tokens & Developer Tooling",
       "items": [
-        { "slug": "api-tokens", "title": "API Tokens & Scopes", "description": "Bearer token management, SHA-256 storage, and read/write permission scopes." },
+        { "slug": "api-tokens", "title": "API Tokens & Permissions", "description": "Bearer token management, SHA-256 storage, and per-token permission scopes." },
         { "slug": "cli-auth", "title": "RFC 8628 CLI Device Login", "description": "Browser-based CLI authentication flow and reference client implementation." },
         { "slug": "deployment", "title": "Production Deployment", "description": "Deployment checklist, domain cookies, HTTPS, and Vercel hosting." }
       ]
@@ -31,7 +32,7 @@
       "items": [
         { "slug": "api-reference", "title": "API Overview", "description": "Complete REST API endpoints catalog, schemas, and rate limits." },
         { "slug": "endpoints", "title": "REST Endpoints Catalog", "description": "In-depth specification of all public, session, and administrative HTTP endpoints." },
-        { "slug": "middleware", "title": "Middleware Reference", "description": "Documentation for sessVal, roleChk, sessRole, reloadSessionUser, and strict helpers." },
+        { "slug": "middleware", "title": "Middleware Reference", "description": "Documentation for sessVal, roleChk, sessRole, sessPerm, permChk, reloadSessionUser, and strict helpers." },
         { "slug": "operations", "title": "Operational & Rate Limits", "description": "HTTP status codes, security best practices, and rate-limiting thresholds." },
         { "slug": "error-codes", "title": "Error Codes Directory", "description": "Comprehensive error codes reference with causes and troubleshooting guidelines." },
         { "slug": "examples", "title": "Code Examples & Recipes", "description": "Copyable Express apps, repository templates, and integration snippets." }

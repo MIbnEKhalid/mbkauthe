@@ -122,7 +122,6 @@ if (isDevMode) {
 
 export * from "./lib/middleware/auth.js";
 export * from "./lib/middleware/index.js";
-export { validateTokenScope } from "./lib/middleware/scopeValidator.js";
 export * from "#response.js";
 export { dblogin, dbType, dialect } from "#pool.js";
 export { getLatestVersion } from "./lib/routes/misc.js";
@@ -134,6 +133,7 @@ export * from "./lib/db/AuthRepository.js";
 export { ApiTokenRepository, apiTokenRepository } from "./lib/db/ApiTokenRepository.js";
 export { CliAuthSessionRepository, cliAuthSessionRepository } from "./lib/db/CliAuthSessionRepository.js";
 export { BaseRepository } from "./lib/db/BaseRepository.js";
+export { PermissionRepository, permissionRepository } from "./lib/db/PermissionRepository.js";
 export { SqliteAdapter, SqlitePool, Mutex, SqliteClient } from "./lib/db/sqlitePool.js";
 export { PostgresAdapter } from "./lib/db/PostgresAdapter.js";
 export { translatePgToSqlite } from "./lib/db/sqlSqliteTranslate.js";
@@ -141,6 +141,9 @@ export { postgresDialect } from "./lib/db/dialects/postgres.js";
 export { sqliteDialect } from "./lib/db/dialects/sqlite.js";
 export { applySchema } from "./lib/db/applySchema.js";
 export { registerGracefulShutdown, closeAllConnections } from "./lib/db/gracefulShutdown.js";
+export { definePermissions, defineGlobalPermissions, GlobalPermissions, GLOBAL_APP_KEY, hasPermission, collectPermissions, buildEffectivePermissions, permissionMatches, normalizePermissions, resolvePermission, resolveAppKey, intersectPermissions } from "./lib/permissions.js";
+export { syncAppPermissions } from "./lib/permissionRegistry.js";
+export { attachSessionPermissions } from "./lib/permissionSession.js";
 export { default as apiTokensRouter } from "./lib/routes/apiTokens.js";
 export { default as adminApiTokensRouter } from "./lib/routes/adminApiTokens.js";
 export { default as cliAuthRouter } from "./lib/routes/cliAuth.js";

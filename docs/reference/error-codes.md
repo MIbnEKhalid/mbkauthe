@@ -176,13 +176,15 @@ The provided API token is invalid.
 #### `1006 - API_TOKEN_EXPIRED`
 The provided API token has expired.
 
-#### `1007 - TOKEN_SCOPE_INSUFFICIENT`
-Token scope doesn't allow the requested operation.
+#### `1007 - TOKEN_SCOPE_INSUFFICIENT` *(deprecated)*
+Retained for backward compatibility. API tokens no longer carry a read/write
+scope; permission-gated routes now deny access with a plain `403` when the
+token's permission list does not include the required permission.
 ```javascript
 {
     errorCode: 1007,
     message: "This API token doesn't have permission for this operation.",
-    hint: "Use a token with 'write' scope or create a new one with appropriate permissions"
+    hint: "Create a token that includes the required permission"
 }
 ```
 

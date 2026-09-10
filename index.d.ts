@@ -34,7 +34,7 @@ declare global {
         role: 'superadmin' | 'normaluser' | 'guest' | string;
         session_id?: string;
         allowed_apps?: string[];
-        token_scope?: 'read-only' | 'write' | null;
+        permissions?: SessionPermissions | string[];
       };
       pre_auth_user?: {
         user_id?: string | number;
@@ -124,7 +124,7 @@ export interface SessionUser {
   role: UserRole;
   session_id?: string;
   allowed_apps?: string[];
-  token_scope?: TokenScope | null;
+  permissions?: SessionPermissions | string[];
 }
 
 export interface PreAuthUser {
@@ -191,11 +191,9 @@ export interface GoogleUser {
 }
 
 // API Token Types
-export type TokenScope = 'read-only' | 'write';
-
 export interface TokenPermissions {
-  scope: TokenScope;
-  allowed_apps: string[] | null;
+  /** Explicit permission allow-list granted to the token (`app:service:action`). */
+  permissions: string[];
 }
 
 export interface ApiToken {
@@ -215,9 +213,9 @@ export interface ApiTokenRow {
   id: number;
   name: string;
   prefix: string;
-  scope: TokenScope;
-  allowed_apps: string[] | null;
   permissions?: TokenPermissions;
+  /** Flattened token permission allow-list. */
+  token_permissions?: string[];
   last_used?: Date;
   created_at?: Date;
   expires_at?: Date;
@@ -248,8 +246,7 @@ export interface ApiTokenProfile {
   profile_key?: string | null;
   name: string;
   description?: string | null;
-  allowed_apps?: string[] | null;
-  scope: TokenScope;
+  permissions?: string[];
   expires_in_days?: number | null;
   active?: boolean;
   created_at?: Date;
@@ -360,6 +357,158 @@ export class CliAuthSessionRepository {
 
 export const cliAuthSessionRepository: CliAuthSessionRepository;
 
+// --------------------------------------------------------------------------
+// Dynamic Permission System
+// --------------------------------------------------------------------------
+
+/** Session-cached effective permissions (`req.session.user.permissions`). */
+export interface SessionPermissions {
+  /** Effective allowed permissions (union of templates + allow overrides, minus denies). */
+  allows: string[];
+  /** Explicit per-user deny overrides (deny always wins). */
+  denies: string[];
+}
+
+/** A single permission string: `app:service:action` (segments may be `*`). */
+export type PermissionString = string;
+
+export interface CatalogPermissionEntry {
+  id: number;
+  app_key: string;
+  service_key: string;
+  action_key: string;
+  label?: string;
+  is_active: boolean;
+  updated_at?: any;
+  permission: string;
+}
+
+export interface PermissionTemplate {
+  id: number;
+  name: string;
+  permissions: string[];
+  created_at?: any;
+  updated_at?: any;
+}
+
+export interface PermissionOverride {
+  permission: string;
+  effect: 'allow' | 'deny';
+  granted_by?: string | null;
+  created_at?: any;
+}
+
+/**
+ * Define an application's permission manifest. Each action resolves to
+ * `appKey:service:action`. App key resolution: `appKey` option >
+ * `mbkautheVar.APP_NAME` > `fallbackAppKey`.
+ */
+export function definePermissions(
+  manifest: Record<string, Record<string, string>>,
+  options?: { appKey?: string; fallbackAppKey?: string }
+): Record<string, Record<string, string>> & {
+  __manifest: Record<string, Record<string, string>>;
+  __appKey: string;
+  __permissions: string[];
+};
+
+/** Define permissions shared by every application under the `global` app key. */
+export function defineGlobalPermissions(
+  manifest: Record<string, Record<string, string>>
+): Record<string, Record<string, string>> & {
+  __manifest: Record<string, Record<string, string>>;
+  __appKey: 'global';
+  __permissions: string[];
+};
+
+/** Reserved app key used by global permissions. */
+export const GLOBAL_APP_KEY: 'global';
+
+/** Built-in catalog permissions shared by every application. */
+export const GlobalPermissions: {
+  basic: { access: 'global:basic:access' };
+};
+
+/** Resolve `service.action` shorthand to `global:service:action`. */
+export function resolvePermission(value: any): string;
+
+/** Resolve + normalize the permission app key (see definePermissions). */
+export function resolveAppKey(appKey?: string | null, fallbackAppKey?: string | null): string;
+
+/** In-memory (pure, no DB) authorization decision. */
+export function hasPermission(
+  user: { role?: string; permissions?: SessionPermissions | string[] } | null | undefined,
+  required: string
+): boolean;
+
+export function permissionMatches(stored: string, required: string): boolean;
+
+export function normalizePermissions(permissions: any): { allows: string[]; denies: string[] };
+
+export function buildEffectivePermissions(input: {
+  templates?: Array<string | string[]>;
+  allows?: string[];
+  denies?: string[];
+}): { allows: string[]; denies: string[] };
+
+/**
+ * Cap a requested permission set to the permissions held by the owner
+ * (used to scope API tokens; a token can never exceed its owner).
+ */
+export function intersectPermissions(
+  held: SessionPermissions | string[] | string | null | undefined,
+  requested: string[] | string
+): { allows: string[]; denies: string[] };export function collectPermissions(
+  permissions: any,
+  appKeyOverride?: string | null
+): Array<{
+  appKey: string;
+  serviceKey: string;
+  actionKey: string;
+  label: string;
+  permission: string;
+}>;
+
+/** Sync an app manifest into `mbkcore_permission_catalog` (idempotent). */
+export function syncAppPermissions(
+  Permissions: any,
+  options?: { appKey?: string; fallbackAppKey?: string; repository?: any }
+): Promise<{ appKey: string; synced: number; deactivated: number }>;
+
+/** Compute + cache a user's effective permissions on the session user object. */
+export function attachSessionPermissions(
+  sessionUser: { permissions?: any } | null | undefined,
+  username: string
+): Promise<{ allows: string[]; denies: string[] }>;
+
+export class PermissionRepository extends BaseRepository {
+  constructor(options?: { db?: any; dialect?: typeof dialect });
+  upsertCatalogPermission(input: { appKey: string; serviceKey: string; actionKey: string; label?: string | null }): Promise<any>;
+  deactivateAllCatalogPermissionsForApp(appKey: string): Promise<any>;
+  syncCatalogForApp(appKey: string, declared?: Array<{ serviceKey: string; actionKey: string; label?: string }>): Promise<void>;
+  listCatalog(): Promise<CatalogPermissionEntry[]>;
+  listActiveCatalog(): Promise<CatalogPermissionEntry[]>;
+  listCatalogByApp(appKey: string): Promise<CatalogPermissionEntry[]>;
+  lookupCatalogPermission(permission: string): Promise<{ permission: string; is_active: boolean } | null>;
+  isCatalogPermissionActive(permission: string): Promise<boolean>;
+  listTemplates(): Promise<PermissionTemplate[]>;
+  getTemplateByName(name: string): Promise<PermissionTemplate | null>;
+  createTemplate(name: string, permissions?: string[]): Promise<any>;
+  updateTemplatePermissions(name: string, permissions?: string[]): Promise<any>;
+  deleteTemplate(name: string): Promise<any>;
+  listOverridesForUser(username: string): Promise<PermissionOverride[]>;
+  setOverride(username: string, permission: string, effect: 'allow' | 'deny', grantedBy?: string | null): Promise<any>;
+  removeOverride(username: string, permission: string): Promise<any>;
+  clearOverridesForUser(username: string): Promise<any>;
+  getUserPermissionTemplates(username: string): Promise<{ templates: string[]; perm_version: number }>;
+  setUserPermissionTemplates(username: string, templateNames?: string[]): Promise<any>;
+  bumpPermissionVersion(username: string): Promise<any>;
+  computeEffectiveForUser(username: string): Promise<{ templates: string[]; allows: string[]; denies: string[]; perm_version: number }>;
+  getTemplatePermissionsByName(names?: string[]): Promise<Array<{ name: string; permissions: string[] }>>;
+}
+
+export const permissionRepository: PermissionRepository;
+
 // API Response Types
 export interface LoginResponse {
   success: boolean;
@@ -433,6 +582,16 @@ export function validateSessionAndRole(
   strictTokenValidation?: boolean
 ): AuthMiddleware;
 
+// Permission middleware. `service.action` resolves to the global namespace;
+// omitting the argument uses global basic access.
+export function checkPermission(requiredPermission?: string): AuthMiddleware;
+export function validateSessionAndPermission(
+  requiredPermission?: string,
+  strictTokenValidation?: boolean
+): AuthMiddleware;
+export const permChk: typeof checkPermission;
+export const sessPerm: typeof validateSessionAndPermission;
+
 export const sessVal: typeof validateSession;
 export const sessRole: typeof validateSessionAndRole;
 export const roleChk: typeof checkRolePermission;
@@ -447,8 +606,6 @@ export function strictValidateSessionAndRole(
 export const strictSessRole: typeof strictValidateSessionAndRole;
 
 export function authenticate(token: string): AuthMiddleware;
-
-export function validateTokenScope(requiredScope?: TokenScope): AuthMiddleware;
 
 // Reload session user values from DB and refresh cookies.
 // Returns true when session is refreshed and valid, false if session invalidated.

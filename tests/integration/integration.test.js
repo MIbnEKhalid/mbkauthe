@@ -465,12 +465,12 @@ describe('Session validation edge cases', () => {
 // 3. API token authentication
 // =====================================================================
 describe('API token authentication', () => {
-  async function createApiToken(username, { scope = 'read-only', allowed_apps = null, name = 'test-token' } = {}) {
+  async function createApiToken(username, { permissions = [], name = 'test-token' } = {}) {
     const token = `mbk_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
     await dblogin.query(
       `INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix, permissions)
        VALUES ($1, $2, $3, $4, $5)`,
-      [username, name, hashApiToken(token), 'mbk_', JSON.stringify({ scope, allowed_apps })]
+      [username, name, hashApiToken(token), 'mbk_', JSON.stringify({ permissions })]
     );
     return token;
   }
@@ -499,19 +499,9 @@ describe('API token authentication', () => {
     expect(res.text).toContain('token.reader');
   });
 
-  test('read-only token is rejected on POST with TOKEN_SCOPE_INSUFFICIENT', async () => {
-    await createUser('token.readonly');
-    const token = await createApiToken('token.readonly');
-
-    const res = await bearerPost('/mbkauthe/test', token).send({});
-    expect(res.status).toBe(403);
-    expect(res.body).toHaveProperty('errorCode', ErrorCodes.TOKEN_SCOPE_INSUFFICIENT);
-    expect(res.body.tokenScope).toBe('read-only');
-  });
-
-  test('write-scope token is allowed on POST', async () => {
-    await createUser('token.writer');
-    const token = await createApiToken('token.writer', { scope: 'write' });
+  test('token authenticates POST requests (no method-scope gate)', async () => {
+    await createUser('token.poster');
+    const token = await createApiToken('token.poster', { permissions: ['mbkauthe:test:write'] });
 
     const res = await bearerPost('/mbkauthe/test', token).send({});
     expect(res.status).toBe(200);
@@ -554,26 +544,13 @@ describe('API token authentication', () => {
     expect(res.body).toHaveProperty('errorCode', ErrorCodes.ACCOUNT_INACTIVE);
   });
 
-  test('wildcard token works only when the user has the app', async () => {
-    await createUser('token.wild.ok');
-    const okToken = await createApiToken('token.wild.ok', { allowed_apps: ['*'] });
-    const okRes = await bearerGet('/mbkauthe/test', okToken);
-    expect(okRes.status).toBe(200);
-
-    await createUser('token.wild.noapp', { allowedApps: ['SomeOtherApp'] });
-    const badToken = await createApiToken('token.wild.noapp', { allowed_apps: ['*'] });
-    const badRes = await bearerGet('/mbkauthe/test', badToken);
-    expect(badRes.status).toBe(401);
-    expect(badRes.body).toHaveProperty('errorCode', ErrorCodes.APP_NOT_AUTHORIZED);
-  });
-
-  test('token allowed_apps overrides user apps and blocks unlisted apps', async () => {
-    await createUser('token.scoped');
-    const token = await createApiToken('token.scoped', { allowed_apps: ['some-other-app'] });
+  test('a token with an explicit permission list authenticates normally', async () => {
+    await createUser('token.perms');
+    const token = await createApiToken('token.perms', { permissions: ['mbkauthe:test:read'] });
 
     const res = await bearerGet('/mbkauthe/test', token);
-    expect(res.status).toBe(401);
-    expect(res.body).toHaveProperty('errorCode', ErrorCodes.APP_NOT_AUTHORIZED);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('token.perms');
   });
 
   test('strictValidateSession rejects any bearer authentication', async () => {

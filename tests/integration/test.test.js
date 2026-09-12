@@ -680,6 +680,29 @@ describe('mbkauthe Routes', () => {
       }
     });
 
+    test('POST /mbkauthe/api/logout-account rejects invalid session ids', async () => {
+      const response = await request(app)
+        .post('/mbkauthe/api/logout-account')
+        .send({ session_id: 'not-a-uuid' });
+
+      expect([400, 429]).toContain(response.status);
+      expect(response.headers['content-type']).toContain('application/json');
+      if (response.status === 400) {
+        expect(response.body).toHaveProperty('errorCode');
+      }
+    });
+
+    test('POST /mbkauthe/api/logout-account rejects sessions not remembered on device', async () => {
+      const response = await request(app)
+        .post('/mbkauthe/api/logout-account')
+        .send({ session_id: '00000000-0000-4000-8000-000000000000' });
+
+      expect([403, 429]).toContain(response.status);
+      if (response.status === 403) {
+        expect(response.body).toHaveProperty('errorCode');
+      }
+    });
+
     test('POST /mbkauthe/api/logout-all handles no-session callers safely', async () => {
       const response = await request(app)
         .post('/mbkauthe/api/logout-all')

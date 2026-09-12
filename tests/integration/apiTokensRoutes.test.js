@@ -22,7 +22,7 @@ process.env.mbkautheVar = JSON.stringify({
 
 const { dblogin } = await import('../../lib/pool.js');
 const { sqliteDialect } = await import('../../lib/db/dialects/sqlite.js');
-const { ApiTokenRepository } = await import('../../lib/db/ApiTokenRepository.js');
+const { ApiTokenRepository } = await import('../../lib/repositories/ApiTokenRepository.js');
 const { hashApiToken, generatePrefixedToken } = await import('../../lib/config/security.js');
 const { default: apiTokensRouter } = await import('../../lib/routes/apiTokens.js');
 

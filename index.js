@@ -74,7 +74,6 @@ if (isDevMode) {
   app.get("/dev/401", (req, res) => renderDevError(res, req, 401, "Unauthorized", "Simulated 401 Error", "/mbkauthe/login", "This is a simulated 401 error page for testing purposes."));
   app.get("/dev/400", (req, res) => renderDevError(res, req, 400, "Bad Request", "Simulated 400 Error", "/mbkauthe/login", "This is a simulated 400 error page for testing purposes."));
 
-
   // Dev preview routes for Device Approval states
   app.get("/dev/device-approval", (req, res) => res.redirect("/dev/device-approval/pending"));
   app.get("/dev/device-approval/pending", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, {
@@ -98,8 +97,6 @@ if (isDevMode) {
   app.get("/dev/device-approval/expired", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "expired", pagename: "Request Expired", page: "/home" }));
   app.get("/dev/device-approval/notfound", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "notfound", error: "This login request could not be found or has already been processed.", pagename: "Request Not Found", page: "/home" }));
   app.get("/dev/device-approval/unknown", (req, res) => renderPage(req, res, "cli/device-approval.handlebars", false, { status: "unknown", pagename: "Unknown Request", page: "/home" }));
-
-
 
   if (mbkautheVar.DB_TYPE === "sqlite") {
     app.use('/admindb', sessVal, createRouter({
@@ -129,11 +126,11 @@ export * from "./lib/routes/auth.js";
 export * from "./lib/utils/errors.js";
 export * from "./lib/config/cookies.js";
 export * from "./lib/config/security.js";
-export * from "./lib/db/AuthRepository.js";
-export { ApiTokenRepository, apiTokenRepository } from "./lib/db/ApiTokenRepository.js";
-export { CliAuthSessionRepository, cliAuthSessionRepository } from "./lib/db/CliAuthSessionRepository.js";
-export { BaseRepository } from "./lib/db/BaseRepository.js";
-export { PermissionRepository, permissionRepository } from "./lib/db/PermissionRepository.js";
+export * from "./lib/repositories/AuthRepository.js";
+export { ApiTokenRepository, apiTokenRepository } from "./lib/repositories/ApiTokenRepository.js";
+export { CliAuthSessionRepository, cliAuthSessionRepository } from "./lib/repositories/CliAuthSessionRepository.js";
+export { BaseRepository } from "./lib/repositories/BaseRepository.js";
+export { PermissionRepository, permissionRepository } from "./lib/repositories/PermissionRepository.js";
 export { SqliteAdapter, SqlitePool, Mutex, SqliteClient } from "./lib/db/sqlitePool.js";
 export { PostgresAdapter } from "./lib/db/PostgresAdapter.js";
 export { translatePgToSqlite } from "./lib/db/sqlSqliteTranslate.js";
@@ -141,9 +138,10 @@ export { postgresDialect } from "./lib/db/dialects/postgres.js";
 export { sqliteDialect } from "./lib/db/dialects/sqlite.js";
 export { applySchema } from "./lib/db/applySchema.js";
 export { registerGracefulShutdown, closeAllConnections } from "./lib/db/gracefulShutdown.js";
-export { definePermissions, defineGlobalPermissions, GlobalPermissions, GLOBAL_APP_KEY, hasPermission, collectPermissions, buildEffectivePermissions, permissionMatches, normalizePermissions, resolvePermission, resolveAppKey, intersectPermissions } from "./lib/permissions.js";
+export { definePermissions, defineGlobalPermissions, GlobalPermissions, GLOBAL_APP_KEY, hasPermission, collectPermissions, collectRoles, buildEffectivePermissions, permissionMatches, normalizePermissions, resolvePermission, resolveAppKey, intersectPermissions, RoleRegistry, defaultRoleRegistry } from "./lib/permissions.js";
 export { syncAppPermissions } from "./lib/permissionRegistry.js";
 export { attachSessionPermissions } from "./lib/permissionSession.js";
+export { commonHandlebarsHelpers, handlebarsHelpers } from "./lib/utils/handlebarsHelpers.js";
 export { default as apiTokensRouter } from "./lib/routes/apiTokens.js";
 export { default as adminApiTokensRouter } from "./lib/routes/adminApiTokens.js";
 export { default as cliAuthRouter } from "./lib/routes/cliAuth.js";

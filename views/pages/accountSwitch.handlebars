@@ -86,7 +86,16 @@
         function sanitizeRelativeRedirect(value) {
             if (typeof value !== 'string') return null;
             const trimmed = value.trim();
-            return (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('://') && !trimmed.includes('\\')) ? trimmed : null;
+            if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('://') && !trimmed.includes('\\')) {
+                return trimmed;
+            }
+            try {
+                const parsed = new URL(trimmed, window.location.origin);
+                if (parsed.origin === window.location.origin) {
+                    return parsed.pathname + parsed.search + parsed.hash;
+                }
+            } catch {}
+            return null;
         }
 
         const redirectTarget = sanitizeRelativeRedirect(new URLSearchParams(window.location.search).get('redirect')) || '{{customURL}}';
@@ -129,12 +138,15 @@
                     const fullName = acct.full_name || acct.username || '?';
                     const isCurrent = acct.is_current !== undefined ? acct.is_current : (currentId && sid === currentId);
                     const initial = fullName.charAt(0).toUpperCase();
+                    const role = (acct.role || 'user').toLowerCase();
 
                     const item = document.createElement('div');
-                    item.className = 'account-item';
+                    item.className = `account-item ${isCurrent ? 'is-current' : ''}`;
                     item.role = 'button';
                     item.tabIndex = 0;
+                    item.setAttribute('aria-label', `Account ${fullName}, ${acct.username}${isCurrent ? ' (Current)' : ''}`);
 
+                    // Avatar
                     const avatar = document.createElement('div');
                     avatar.className = 'avatar';
 
@@ -154,23 +166,82 @@
                     }
                     avatar.appendChild(initials);
 
+                    // Info Container
                     const info = document.createElement('div');
                     info.className = 'account-info';
-                    info.innerHTML = `<div class="account-name">${fullName}</div><div class="account-email">${acct.username}</div>`;
 
-                    item.appendChild(avatar);
-                    item.appendChild(info);
+                    // Header Row
+                    const headerRow = document.createElement('div');
+                    headerRow.className = 'account-header-row';
+
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'account-name';
+                    nameEl.textContent = fullName;
+                    headerRow.appendChild(nameEl);
+
+                    // Badges inside header/info
+                    const badges = document.createElement('div');
+                    badges.className = 'account-badges';
+
+                    if (role === 'superadmin' || role === 'admin') {
+                        const roleBadge = document.createElement('span');
+                        roleBadge.className = `role-badge badge-${role}`;
+                        roleBadge.textContent = role === 'superadmin' ? 'Superadmin' : 'Admin';
+                        badges.appendChild(roleBadge);
+                    }
+
                     if (isCurrent) {
                         const badge = document.createElement('div');
                         badge.className = 'current-badge';
-                        badge.textContent = 'Current';
-                        item.appendChild(badge);
+                        badge.textContent = 'Active';
+                        badges.appendChild(badge);
                     }
+                    headerRow.appendChild(badges);
 
-                    const onSelect = () => { if (!isCurrent) switchSession(sid); };
+                    // Meta Row
+                    const metaRow = document.createElement('div');
+                    metaRow.className = 'account-meta-row';
+
+                    const emailEl = document.createElement('div');
+                    emailEl.className = 'account-email';
+                    emailEl.textContent = acct.username;
+                    metaRow.appendChild(emailEl);
+
+                    info.appendChild(headerRow);
+                    info.appendChild(metaRow);
+
+                    // Actions Container (Single account removal)
+                    const actions = document.createElement('div');
+                    actions.className = 'account-actions';
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'btn-remove-account';
+                    removeBtn.type = 'button';
+                    removeBtn.title = `Sign out ${acct.username}`;
+                    removeBtn.setAttribute('aria-label', `Sign out ${acct.username}`);
+                    removeBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
+
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeSingleAccount(sid, acct.username);
+                    });
+
+                    actions.appendChild(removeBtn);
+
+                    item.appendChild(avatar);
+                    item.appendChild(info);
+                    item.appendChild(actions);
+
+                    const onSelect = () => {
+                        if (!isCurrent) switchSession(sid);
+                    };
+
                     item.addEventListener('click', onSelect);
                     item.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); }
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onSelect();
+                        }
                     });
 
                     list.appendChild(item);
@@ -178,6 +249,30 @@
             } catch (err) {
                 console.error('[mbkauthe] Failed to load accounts:', err);
                 list.innerHTML = '<div class="empty-state">Failed to load accounts.</div>';
+            }
+        }
+
+        async function removeSingleAccount(sessionId, username) {
+            if (!confirm(`Are you sure you want to sign out ${username || 'this account'} on this device?`)) return;
+
+            try {
+                const res = await fetch('/mbkauthe/api/logout-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (data.is_current_logged_out) {
+                        showMessage('Current account signed out. Reloading...', 'Account Sign out');
+                    }
+                    loadAccounts();
+                } else {
+                    showMessage(data.message || 'Could not sign out account', 'Account Sign out');
+                }
+            } catch {
+                showMessage('Could not sign out account right now. Please try again.', 'Account Sign out');
             }
         }
 

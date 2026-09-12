@@ -12,13 +12,33 @@
 
 PRAGMA foreign_keys = ON;
 
+-- Table: mbkcore_roles
+CREATE TABLE IF NOT EXISTS mbkcore_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    label TEXT,
+    description TEXT,
+    is_system INTEGER DEFAULT 0 NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT mbkcore_roles_name_key UNIQUE (name)
+);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_roles_name ON mbkcore_roles (name);
+
+-- Seed standard roles (4 roles)
+INSERT OR IGNORE INTO mbkcore_roles (name, label, description, is_system) VALUES
+('superadmin', 'Super Administrator', 'Full system access across all applications (bypasses permission checks)', 1),
+('admin', 'Administrator', 'Administrative access excluding destructive root actions', 1),
+('author', 'Author', 'Content creation and authoring access', 1),
+('normaluser', 'Standard User', 'Standard basic user access', 1);
+
 -- Table: mbkcore_users
 CREATE TABLE IF NOT EXISTS mbkcore_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(50) UNIQUE,
     password TEXT DEFAULT '12345670',
     is_active INTEGER DEFAULT 0,
-    role TEXT DEFAULT 'normaluser',
+    role TEXT DEFAULT 'normaluser' REFERENCES mbkcore_roles(name) ON DELETE RESTRICT ON UPDATE CASCADE,
     have_mail_account INTEGER DEFAULT 0,
     allowed_apps TEXT DEFAULT '["Portal", "mbkauthe"]',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -32,7 +52,6 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     bio TEXT DEFAULT 'I am ....',
     social_accounts TEXT DEFAULT '{}',
     positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}',
-    permission_templates TEXT DEFAULT '[]',
     perm_version INTEGER DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users (is_active);
@@ -206,15 +225,15 @@ VALUES ('global', 'basic', 'access', 'Basic global access', 1)
 ON CONFLICT (app_key, service_key, action_key)
 DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMESTAMP;
 
--- Table: mbkcore_permission_templates
-CREATE TABLE IF NOT EXISTS mbkcore_permission_templates (
+-- Table: mbkcore_role_permissions
+CREATE TABLE IF NOT EXISTS mbkcore_role_permissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(50) NOT NULL,
-    permissions TEXT DEFAULT '[]' NOT NULL,
+    role_name VARCHAR(50) NOT NULL REFERENCES mbkcore_roles(name) ON DELETE CASCADE ON UPDATE CASCADE,
+    permission VARCHAR(150) NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT mbkcore_permission_templates_name_key UNIQUE (name)
+    CONSTRAINT uq_role_permission UNIQUE (role_name, permission)
 );
+CREATE INDEX IF NOT EXISTS idx_mbkcore_role_permissions_role ON mbkcore_role_permissions (role_name);
 
 -- Table: mbkcore_user_permission_overrides
 CREATE TABLE IF NOT EXISTS mbkcore_user_permission_overrides (
@@ -233,3 +252,4 @@ CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_username ON mbk
 INSERT INTO mbkcore_users (username, password_hash, role, is_active, have_mail_account, full_name)
 VALUES ('support', 'b8b10c1c9006d8c30ab81c412463c65ff6dae3293d9bfbaf5fd8e275081d0947f000a828004e2fbd3a8f6ef5a35ae3eddd4c57b00ecab376b12e607a16a57459', 'superadmin', 1, 0, 'Support User')
 ON CONFLICT(username) DO NOTHING;
+

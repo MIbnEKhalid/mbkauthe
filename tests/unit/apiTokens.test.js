@@ -20,7 +20,7 @@ process.env.mbkautheVar = JSON.stringify({
 
 const { SqlitePool } = await import('../../lib/db/sqlitePool.js');
 const { sqliteDialect } = await import('../../lib/db/dialects/sqlite.js');
-const { ApiTokenRepository } = await import('../../lib/db/ApiTokenRepository.js');
+const { ApiTokenRepository } = await import('../../lib/repositories/ApiTokenRepository.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');

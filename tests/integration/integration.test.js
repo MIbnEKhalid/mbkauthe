@@ -157,13 +157,22 @@ async function createUser(username, {
   allowedApps = ['Portal', 'mbkauthe'],
   fullName = null,
   twoFASecret = null,
-  twoFAStatus = 0
+  twoFAStatus = 0,
+  permissions = ['global:basic:access']
 } = {}) {
   await dblogin.query(
     `INSERT INTO mbkcore_users (username, password_hash, role, is_active, allowed_apps, full_name)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [username, hashPassword(PASSWORD, username), role, active, JSON.stringify(allowedApps), fullName || `Full ${username}`]
   );
+  if (permissions && permissions.length > 0) {
+    for (const perm of permissions) {
+      await dblogin.query(
+        `INSERT INTO mbkcore_user_permission_overrides (username, permission, effect) VALUES ($1, $2, 'allow')`,
+        [username, perm]
+      );
+    }
+  }
   if (twoFASecret) {
     await dblogin.query(
       `INSERT INTO mbkcore_two_factor (username, is_enabled, two_fa_secret) VALUES ($1, $2, $3)`,
@@ -465,7 +474,7 @@ describe('Session validation edge cases', () => {
 // 3. API token authentication
 // =====================================================================
 describe('API token authentication', () => {
-  async function createApiToken(username, { permissions = [], name = 'test-token' } = {}) {
+  async function createApiToken(username, { permissions = ['global:basic:access'], name = 'test-token' } = {}) {
     const token = `mbk_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
     await dblogin.query(
       `INSERT INTO mbkcore_api_tokens (username, name, token_hash, prefix, permissions)
@@ -501,7 +510,7 @@ describe('API token authentication', () => {
 
   test('token authenticates POST requests (no method-scope gate)', async () => {
     await createUser('token.poster');
-    const token = await createApiToken('token.poster', { permissions: ['mbkauthe:test:write'] });
+    const token = await createApiToken('token.poster', { permissions: ['mbkauthe:test:write', 'global:basic:access'] });
 
     const res = await bearerPost('/mbkauthe/test', token).send({});
     expect(res.status).toBe(200);
@@ -546,7 +555,7 @@ describe('API token authentication', () => {
 
   test('a token with an explicit permission list authenticates normally', async () => {
     await createUser('token.perms');
-    const token = await createApiToken('token.perms', { permissions: ['mbkauthe:test:read'] });
+    const token = await createApiToken('token.perms', { permissions: ['mbkauthe:test:read', 'global:basic:access'] });
 
     const res = await bearerGet('/mbkauthe/test', token);
     expect(res.status).toBe(200);
@@ -819,6 +828,34 @@ describe('Multi-account session management', () => {
       .send({ session_id: '00000000-0000-4000-8000-000000000000' });
     expect(res.status).toBe(403);
     expect(res.body).toHaveProperty('errorCode', ErrorCodes.SESSION_NOT_FOUND);
+  });
+
+  test('logout-account removes only the specified remembered session', async () => {
+    await createUser('multi.single.one');
+    await createUser('multi.single.two');
+    const ua = 'Mozilla/5.0 (logout-single-device)';
+    const { jar } = await login('multi.single.one', { ua });
+    await login('multi.single.two', { jar, ua });
+
+    const sidOne = await getAppSessionId('multi.single.one');
+    const sidTwo = await getAppSessionId('multi.single.two');
+
+    expect(await countAppSessions('multi.single.one')).toBe(1);
+    expect(await countAppSessions('multi.single.two')).toBe(1);
+
+    const res = await jarPost('/mbkauthe/api/logout-account', jar, { ua })
+      .send({ session_id: sidOne });
+    jar.store(res.headers['set-cookie']);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true });
+
+    expect(await countAppSessions('multi.single.one')).toBe(0);
+    expect(await countAppSessions('multi.single.two')).toBe(1);
+
+    const listRes = await jarGet('/mbkauthe/api/account-sessions', jar, { ua, accept: 'application/json' });
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.accounts).toHaveLength(1);
+    expect(listRes.body.accounts[0].username).toBe('multi.single.two');
   });
 
   test('logout-all removes every remembered session for the device', async () => {

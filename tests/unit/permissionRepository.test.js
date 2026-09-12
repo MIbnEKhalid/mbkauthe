@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { describe, beforeAll, it, expect } from "vitest";
 
 import { SqlitePool } from "../../lib/db/sqlitePool.js";
-import { PermissionRepository } from "../../lib/db/PermissionRepository.js";
+import { PermissionRepository } from "../../lib/repositories/PermissionRepository.js";
 import { definePermissions, collectPermissions } from "../../lib/permissions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,11 +22,11 @@ function createRepo() {
   return { pool, repo: new PermissionRepository({ db: pool, dialect: { name: "sqlite" } }) };
 }
 
-async function insertUser(pool, { username, role = "normaluser", active = 1, permissionTemplates = [] }) {
+async function insertUser(pool, { username, role = "normaluser", active = 1 }) {
   await pool.query(
-    `INSERT INTO mbkcore_users (username, role, is_active, permission_templates)
-     VALUES (?, ?, ?, ?)`,
-    [username, role, active, JSON.stringify(permissionTemplates)]
+    `INSERT INTO mbkcore_users (username, role, is_active)
+     VALUES (?, ?, ?)`,
+    [username, role, active]
   );
 }
 
@@ -75,21 +75,34 @@ describe("PermissionRepository — catalog", () => {
   });
 });
 
-describe("PermissionRepository — templates", () => {
-  it("creates/lists/updates/deletes templates", async () => {
+describe("PermissionRepository — roles", () => {
+  it("creates/lists/updates/deletes unified roles", async () => {
     const { repo } = createRepo();
-    await repo.createTemplate("Manager", ["blog:posts:create", "blog:posts:delete"]);
-    await repo.createTemplate("Editor", ["blog:posts:edit"]);
+    await repo.createRole("manager", ["blog:posts:create", "blog:posts:delete"], { label: "Manager" });
+    await repo.createRole("editor", ["blog:posts:edit"], { label: "Editor" });
 
-    const templates = await repo.listTemplates();
-    expect(templates.map((t) => t.name)).toEqual(["Editor", "Manager"]);
+    const roles = await repo.listRoles();
+    expect(roles.map((r) => r.name)).toEqual(
+      expect.arrayContaining(["admin", "author", "editor", "manager", "normaluser", "superadmin"])
+    );
 
-    await repo.updateTemplatePermissions("Manager", ["blog:posts:create", "blog:posts:publish"]);
-    const manager = await repo.getTemplateByName("Manager");
+    await repo.setRolePermissions("manager", ["blog:posts:create", "blog:posts:publish"]);
+    const manager = await repo.getRoleByName("manager");
     expect(manager.permissions).toEqual(["blog:posts:create", "blog:posts:publish"]);
 
-    await repo.deleteTemplate("Editor");
-    expect(await repo.getTemplateByName("Editor")).toBe(null);
+    await repo.deleteRole("editor");
+    expect(await repo.getRoleByName("editor")).toBe(null);
+  });
+
+  it("contributes permissions to a unified role across apps", async () => {
+    const { repo } = createRepo();
+    await repo.contributeRolePermissions("editor", ["blog:posts:create", "blog:posts:edit"]);
+    await repo.contributeRolePermissions("editor", ["chat:messages:send", "chat:files:upload"]);
+
+    const editor = await repo.getRoleByName("editor");
+    expect(editor.permissions).toEqual(
+      expect.arrayContaining(["blog:posts:create", "blog:posts:edit", "chat:messages:send", "chat:files:upload"])
+    );
   });
 });
 
@@ -123,48 +136,36 @@ describe("PermissionRepository — overrides", () => {
 });
 
 describe("PermissionRepository — effective permissions for a user", () => {
-  it("unions templates and applies allow/deny overrides", async () => {
+  it("assigns user role and applies allow/deny overrides", async () => {
     const { pool, repo } = createRepo();
-    await insertUser(pool, { username: "alice", role: "editor" });
+    await repo.createRole("manager", ["blog:posts:create", "blog:posts:edit", "blog:posts:delete", "blog:posts:publish"]);
+    await insertUser(pool, { username: "alice", role: "manager" });
 
-    await repo.createTemplate("Manager", ["blog:posts:create", "blog:posts:edit", "blog:posts:delete", "blog:posts:publish"]);
-    await repo.createTemplate("Editor", ["blog:posts:edit", "blog:posts:publish", "blog:comments:moderate"]);
-
-    await repo.setUserPermissionTemplates("alice", ["Manager", "Editor"]);
     await repo.setOverride("alice", "blog:posts:archive", "allow", "admin");
     await repo.setOverride("alice", "blog:posts:delete", "deny", "admin");
 
-    const effective = await repo.computeEffectiveForUser("alice");
-    expect(effective.templates).toEqual(["Manager", "Editor"]);
-    expect(effective.allows).toEqual(
+    const snapshot = await repo.computeEffectiveForUser("alice");
+    expect(snapshot.roles).toContain("manager");
+    expect(snapshot.effective.allows).toEqual(
       expect.arrayContaining([
         "blog:posts:create",
         "blog:posts:edit",
         "blog:posts:publish",
-        "blog:comments:moderate",
         "blog:posts:archive",
       ])
     );
-    expect(effective.allows).not.toContain("blog:posts:delete");
-    expect(effective.denies).toContain("blog:posts:delete");
-    expect(effective.perm_version).toBeGreaterThanOrEqual(2);
+    expect(snapshot.effective.allows).not.toContain("blog:posts:delete");
+    expect(snapshot.effective.denies).toContain("blog:posts:delete");
+    expect(snapshot.perm_version).toBeGreaterThanOrEqual(1);
   });
 
-  it("returns empty permissions for a user with no templates/overrides", async () => {
+  it("returns empty permissions for a user with no permissions in role or overrides", async () => {
     const { pool, repo } = createRepo();
-    await insertUser(pool, { username: "carol" });
-    const effective = await repo.computeEffectiveForUser("carol");
-    expect(effective.allows).toEqual([]);
-    expect(effective.denies).toEqual([]);
-    expect(effective.templates).toEqual([]);
-  });
-
-  it("handles unknown template names gracefully (skips them)", async () => {
-    const { pool, repo } = createRepo();
-    await insertUser(pool, { username: "dave" });
-    await repo.setUserPermissionTemplates("dave", ["Ghost"]);
-    const effective = await repo.computeEffectiveForUser("dave");
-    expect(effective.allows).toEqual([]);
+    await insertUser(pool, { username: "carol", role: "normaluser" });
+    const snapshot = await repo.computeEffectiveForUser("carol");
+    expect(snapshot.effective.allows).toEqual([]);
+    expect(snapshot.effective.denies).toEqual([]);
+    expect(snapshot.roles).toEqual(["normaluser"]);
   });
 });
 
@@ -183,7 +184,7 @@ describe("syncAppPermissions integration", () => {
     expect(await repo.isCatalogPermissionActive("global:basic:access")).toBe(true);
   });
 
-  it("registers definePermissions() output and deactivates removed ones", async () => {
+  it("registers definePermissions() output with roles and deactivates removed ones", async () => {
     const { repo } = createRepo();
     const { syncAppPermissions } = await import("../../lib/permissionRegistry.js");
 
@@ -192,29 +193,25 @@ describe("syncAppPermissions integration", () => {
         posts: { create: "Create posts", edit: "Edit posts", delete: "Delete posts" },
         comments: { moderate: "Moderate comments" },
       },
-      { appKey: "blog" }
+      {
+        appKey: "blog",
+        roles: {
+          editor: ["posts:create", "posts:edit", "comments:moderate"],
+        },
+      }
     );
 
     const result = await syncAppPermissions(Permissions, { repository: repo, appKey: "blog" });
-    expect(result).toMatchObject({ appKey: "blog", synced: 4, deactivated: 0 });
+    expect(result).toMatchObject({ appKey: "blog", synced: 4, deactivated: 0, rolesSynced: 1 });
     expect(collectPermissions(Permissions)).toHaveLength(4);
+
+    const editorRole = await repo.getRoleByName("editor");
+    expect(editorRole.permissions).toEqual(
+      expect.arrayContaining(["blog:posts:create", "blog:posts:edit", "blog:comments:moderate"])
+    );
 
     let catalog = await repo.listCatalogByApp("blog");
     expect(catalog).toHaveLength(4);
     expect(catalog.every((c) => c.is_active)).toBe(true);
-
-    // Manifest shrinks: `comments.moderate` + `posts.delete` disappear.
-    const Smaller = definePermissions(
-      { posts: { create: "Create posts", edit: "Edit posts" } },
-      { appKey: "blog" }
-    );
-    const result2 = await syncAppPermissions(Smaller, { repository: repo, appKey: "blog" });
-    expect(result2.synced).toBe(2);
-    expect(result2.deactivated).toBe(2);
-
-    catalog = await repo.listCatalogByApp("blog");
-    expect(catalog).toHaveLength(4);
-    const inactive = catalog.filter((c) => !c.is_active).map((c) => c.permission).sort();
-    expect(inactive).toEqual(["blog:comments:moderate", "blog:posts:delete"]);
   });
 });

@@ -1531,10 +1531,10 @@ body.blur-active {
 .account-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   margin: 0 auto 1.25rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
 }
 
 .account-item {
@@ -1542,39 +1542,66 @@ body.blur-active {
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  background: #ffffff;
+  background: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg, 12px);
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   width: 100%;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .account-item:hover {
-  background: var(--bg-surface-secondary);
-  border-color: var(--primary-color-ml);
-  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);
-  transform: translateY(-1px);
+  background: var(--bg-surface-secondary, #f8fafc);
+  border-color: var(--primary-color-ml, #0f766e);
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.12);
+  transform: translateY(-2px);
+}
+
+.account-item.is-current {
+  border-color: var(--primary-color-ml, #0f766e);
+  background: linear-gradient(to right, rgba(15, 118, 110, 0.04), transparent);
+}
+
+.account-item:focus-visible {
+  outline: 2px solid var(--primary-color-ml, #0f766e);
+  outline-offset: 2px;
 }
 
 .account-item .avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  background: var(--primary-color-ml);
+  background: var(--primary-color-ml, #0f766e);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 17px;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
   position: relative;
   overflow: hidden;
+  border: 2px solid #fff;
+}
+
+.account-item .avatar .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-item .avatar .initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color-ml, #0f766e), #0d9488);
 }
 
 .account-info {
@@ -1582,23 +1609,73 @@ body.blur-active {
   min-width: 0;
 }
 
+.account-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
 .account-name {
   font-weight: 600;
-  color: var(--dark-color-ml);
+  color: var(--dark-color-ml, #0f172a);
   font-size: 0.95rem;
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.account-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .account-email {
-  color: var(--text-muted);
+  color: var(--text-muted, #64748b);
   font-size: 0.82rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono, monospace);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.account-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.role-badge.badge-superadmin {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.role-badge.badge-admin {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+.role-badge.badge-user {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .current-badge {
@@ -1606,17 +1683,62 @@ body.blur-active {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--primary-dark-color-ml);
-  background: var(--primary-light-color-ml);
-  padding: 3px 9px;
+  color: var(--primary-dark-color-ml, #042f2e);
+  background: var(--primary-light-color-ml, #ccfbf1);
+  padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(15, 118, 110, 0.3);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.current-badge::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--primary-color-ml, #0f766e);
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.btn-remove-account {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.btn-remove-account:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--danger, #dc2626);
+  transform: scale(1.1);
+}
+
+.btn-remove-account:focus-visible {
+  outline: 2px solid var(--danger, #dc2626);
+  outline-offset: 1px;
 }
 
 .switch-footer {
   margin-top: auto;
-  padding-top: 1rem;
+  padding-top: 1.25rem;
   text-align: center;
   width: 100%;
   display: flex;
@@ -1625,15 +1747,17 @@ body.blur-active {
 
 .btn-logout {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   color: var(--danger);
   border-color: rgba(220, 38, 38, 0.3);
+  transition: all 0.2s ease;
 }
 
 .btn-logout:hover {
   background: rgba(220, 38, 38, 0.1);
   border-color: var(--danger);
   color: var(--danger);
+  transform: translateY(-1px);
 }
 
 .loading-spinner {
@@ -1645,8 +1769,8 @@ body.blur-active {
 .spinner {
   width: 28px;
   height: 28px;
-  border: 2.5px solid var(--muted-border);
-  border-top-color: var(--primary);
+  border: 2.5px solid var(--muted-border, #e2e8f0);
+  border-top-color: var(--primary-color-ml, #0f766e);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

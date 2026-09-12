@@ -18,15 +18,15 @@ This document provides the authoritative DDL database schema definitions for bot
 | `mbkauthe_totp` / `TwoFA` | TOTP 2FA secret seeds, recovery keys, and activation status | PostgreSQL & SQLite |
 | `mbkauthe_trusted_devices` | Device trust timestamps for remember-device functionality | PostgreSQL & SQLite |
 | `mbkcore_permission_catalog` | Auto-populated catalog of valid `app:service:action` permissions | PostgreSQL & SQLite |
-| `mbkcore_permission_templates` | Named reusable permission bundles (roles/templates) assigned to users | PostgreSQL & SQLite |
+| `mbkcore_roles` | Named global unified roles (superadmin, admin, author, normaluser) | PostgreSQL & SQLite |
+| `mbkcore_role_permissions` | Permissions granted to each role across applications | PostgreSQL & SQLite |
 | `mbkcore_user_permission_overrides` | Per-user allow/deny permission exceptions | PostgreSQL & SQLite |
 
-> The `mbkcore_users` table also carries `permission_templates jsonb` and
-> `perm_version integer` columns used by the dynamic permission model. See the
-> [Permissions guide](../guides/permissions.md). The canonical DDL lives in
-> `db.sql` / `db.sqlite.sql` and is applied via `npm run create-tables` / the
-> consuming application's schema init. Host applications must not create these
-> tables at runtime — they are expected to already exist (schema is synced
+> The `mbkcore_users` table also carries `perm_version integer` column used by
+> the dynamic permission model. See the [Permissions guide](../guides/permissions.md).
+> The canonical DDL lives in `db.sql` / `db.sqlite.sql` and is applied via
+> `npm run create-tables` / the consuming application's schema init. Host applications
+> must not create these tables at runtime — they are expected to already exist (schema is synced
 > up-front).
 
 ---

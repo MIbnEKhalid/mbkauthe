@@ -6,7 +6,7 @@ import { SqlitePool } from '../../lib/db/sqlitePool.js';
 import { translatePgToSqlite } from '../../lib/db/sqlSqliteTranslate.js';
 import { SqliteSessionStore } from '../../lib/session/SqliteSessionStore.js';
 import { sqliteDialect } from '../../lib/db/dialects/sqlite.js';
-import { AuthRepository } from '../../lib/db/AuthRepository.js';
+import { AuthRepository } from '../../lib/repositories/AuthRepository.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');

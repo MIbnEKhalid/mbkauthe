@@ -858,7 +858,9 @@ export const cachedClearCookieOptions: ReturnType<typeof getClearCookieOptions>;
 export const packageJson: { version: string; [key: string]: any };
 export const appVersion: string;
 export const DEVICE_TRUST_DURATION_DAYS: number;
-export const DEVICE_TRUST_DURATION_MS: number;
+// Handlebars Helpers
+export const commonHandlebarsHelpers: Record<string, (...args: any[]) => any>;
+export const handlebarsHelpers: Record<string, (...args: any[]) => any>;
 
 // Routers
 export const authRouter: Router;

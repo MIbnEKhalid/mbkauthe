@@ -138,6 +138,7 @@ export { postgresDialect } from "./lib/db/dialects/postgres.js";
 export { sqliteDialect } from "./lib/db/dialects/sqlite.js";
 export { applySchema } from "./lib/db/applySchema.js";
 export { registerGracefulShutdown, closeAllConnections } from "./lib/db/gracefulShutdown.js";
+export { isRetryableDbError, withQueryRetry, wrapPoolWithRetry } from "./lib/db/retry.js";
 export { definePermissions, defineGlobalPermissions, GlobalPermissions, GLOBAL_APP_KEY, hasPermission, collectPermissions, collectRoles, buildEffectivePermissions, permissionMatches, normalizePermissions, resolvePermission, resolveAppKey, intersectPermissions, RoleRegistry, defaultRoleRegistry } from "./lib/permissions.js";
 export { syncAppPermissions } from "./lib/permissionRegistry.js";
 export { attachSessionPermissions } from "./lib/permissionSession.js";

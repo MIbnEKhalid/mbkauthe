@@ -832,6 +832,10 @@ export function registerGracefulShutdown(
 
 export function closeAllConnections(): Promise<void>;
 
+export function isRetryableDbError(err: any): boolean;
+export function withQueryRetry<T>(queryFn: () => Promise<T>, options?: { maxRetries?: number; initialDelayMs?: number; maxDelayMs?: number; factor?: number; context?: string }): Promise<T>;
+export function wrapPoolWithRetry<T = any>(pool: T, options?: { name?: string; maxRetries?: number }): T;
+
 export class BaseRepository {
   db: any;
   dialect: any;

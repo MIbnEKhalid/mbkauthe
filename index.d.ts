@@ -282,6 +282,7 @@ export class AuthRepository {
   countActiveSessionsForUser(username: string): Promise<number>;
   getOldestSessionIds(username: string, limit: number): Promise<string[]>;
   insertAppSession(username: string, expires_at: Date | string | null, meta?: any): Promise<any>;
+  createAppSessionWithPruning(input: { username: string; expiresAt: Date | string | null; meta?: any; maxSessions?: number }): Promise<any>;
   updateLastLoginReturnProfile(username: string): Promise<any>;
   getUserProfileByUsername(username: string, query_name?: string): Promise<any>;
   insertTrustedDevice(input: { username: string; device_token_hash: string; device_name?: string; user_agent?: string; ip_address?: string; expires_at: Date }): Promise<any>;
@@ -503,7 +504,7 @@ export class PermissionRepository extends BaseRepository {
   getUserPermissionTemplates(username: string): Promise<{ templates: string[]; perm_version: number }>;
   setUserPermissionTemplates(username: string, templateNames?: string[]): Promise<any>;
   bumpPermissionVersion(username: string): Promise<any>;
-  computeEffectiveForUser(username: string): Promise<{ templates: string[]; allows: string[]; denies: string[]; perm_version: number }>;
+  computeEffectiveForUser(username: string, knownRole?: string | null): Promise<{ roles: string[]; overrides: { allows: string[]; denies: string[] }; effective: { allows: string[]; denies: string[] }; perm_version: number }>;
   getTemplatePermissionsByName(names?: string[]): Promise<Array<{ name: string; permissions: string[] }>>;
 }
 

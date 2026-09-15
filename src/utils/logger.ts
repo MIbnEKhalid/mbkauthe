@@ -10,4 +10,3 @@ if (debugPattern) {
 
 export const createLogger = (namespace: string = "") => createDebug(`mbkauthe${namespace ? `:${namespace}` : ""}`);
 export const logDebug = createLogger();
-

@@ -2,10 +2,11 @@ import express from "express";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { sessRole } from "../middleware/authMiddleware.js";
-import { renderPage } from "../../ui/response/formatters.js";
-import { hashApiToken, generatePrefixedToken, generateRandomHex } from "../../config/security.js";
+import { renderPage } from "../response/formatters.js";
+import { TokenEngine } from "../../core/tokens/TokenEngine.js";
 import { cliAuthSessionRepository } from "../../db/repositories/CliAuthSessionRepository.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
+import { apiTokenService } from "../../services/ApiTokenService.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
 import { intersectPermissions } from "../../core/permissions/roleRegistry.js";
 import { mbkautheVar } from "../../config/env.js";
@@ -84,13 +85,13 @@ router.post("/api/cli/device", deviceRequestLimit, async (req, res) => {
       });
     }
 
-    const device_code = generateRandomHex(24);
+    const device_code = TokenEngine.generateEntropy(24);
     const user_code = generateUserCode();
     const expires_at = new Date(Date.now() + DEVICE_CODE_TTL_MS);
 
     await cliAuthSessionRepository.create({
-      device_code_hash: hashApiToken(device_code)!,
-      user_code_hash: hashApiToken(user_code)!,
+      device_code_hash: TokenEngine.hashToken(device_code)!,
+      user_code_hash: TokenEngine.hashToken(user_code)!,
       client_name: client_name.trim(),
       profile_id: profile.id,
       expires_at,
@@ -125,7 +126,7 @@ router.get("/mbkauthe/cli/device/:user_code", sessRole("any"), async (req, res) 
       return renderCliError(res, req, "This login request could not be found. The code may be invalid or already used.");
     }
 
-    const session = await cliAuthSessionRepository.findByUserCodeHash(hashApiToken(user_code)!);
+    const session = await cliAuthSessionRepository.findByUserCodeHash(TokenEngine.hashToken(user_code)!);
     if (!session) {
       return renderCliError(res, req, "This login request could not be found. It may have expired or already been used.");
     }
@@ -167,7 +168,7 @@ router.post("/api/cli/device/approve", deviceApproveLimit, sessRole("any"), asyn
       return res.status(400).json({ success: false, message: "user_code is required" });
     }
 
-    const session = await cliAuthSessionRepository.findByUserCodeHash(hashApiToken(user_code.trim().toUpperCase())!);
+    const session = await cliAuthSessionRepository.findByUserCodeHash(TokenEngine.hashToken(user_code.trim().toUpperCase())!);
     if (!session) return res.status(404).json({ success: false, message: "Login request not found" });
 
     if (session.status !== "pending") {
@@ -210,8 +211,8 @@ router.post("/api/cli/device/approve", deviceApproveLimit, sessRole("any"), asyn
       }
     }
 
-    const raw_token = generatePrefixedToken();
-    const token_hash = hashApiToken(raw_token)!;
+    const raw_token = TokenEngine.createApiToken();
+    const token_hash = TokenEngine.hashToken(raw_token)!;
     const prefix = raw_token.substring(0, 8);
 
     const profilePermissions = Array.isArray(profile.permissions) ? profile.permissions : [];
@@ -262,7 +263,7 @@ router.post("/api/cli/device/token", devicePollLimit, async (req, res) => {
       return res.status(400).json({ success: false, message: "device_code is required" });
     }
 
-    const session = await cliAuthSessionRepository.findByDeviceCodeHash(hashApiToken(device_code)!);
+    const session = await cliAuthSessionRepository.findByDeviceCodeHash(TokenEngine.hashToken(device_code)!);
     if (!session) {
       return res.status(404).json({ success: false, status: "invalid", message: "Invalid device code" });
     }

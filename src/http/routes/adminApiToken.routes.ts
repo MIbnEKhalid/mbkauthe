@@ -1,13 +1,14 @@
 import express from "express";
-import { renderPage } from "../../ui/response/formatters.js";
+import { renderPage } from "../response/formatters.js";
 import { sessRole } from "../middleware/authMiddleware.js";
+import { apiTokenService } from "../../services/ApiTokenService.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 
 const router = express.Router();
 
 router.get("/dashboard/admin/api-tokens", sessRole("superadmin"), async (req, res) => {
   try {
-    const tokens = await apiTokenRepository.listAll();
+    const tokens = await apiTokenService.listAllTokens();
     renderPage(req, res, "dashboard/admin/api-tokens.handlebars", true, {
       page: "Admin API Tokens",
       tokens,
@@ -26,7 +27,7 @@ router.get("/dashboard/admin/api-tokens", sessRole("superadmin"), async (req, re
 
 router.get("/api/admin/api-tokens/stats", sessRole("superadmin"), async (req, res) => {
   try {
-    const stats = await apiTokenRepository.stats();
+    const stats = await apiTokenService.getTokenStats();
     res.json({ success: true, stats });
   } catch (error: any) {
     console.error("Error fetching token statistics:", error);
@@ -74,8 +75,8 @@ router.delete("/api/admin/api-tokens/:id", sessRole("superadmin"), async (req, r
     const token_info = await apiTokenRepository.findInfoById(token_id);
     if (!token_info) return res.status(404).json({ success: false, message: "Token not found" });
 
-    const result = await apiTokenRepository.deleteById(token_id);
-    if (result.rowCount === 0) return res.status(404).json({ success: false, message: "Token not found" });
+    const success = await apiTokenService.adminDeleteToken(token_id);
+    if (!success) return res.status(404).json({ success: false, message: "Token not found" });
 
     console.log(`[Admin] Token revoked by ${(req as any).session.user.username}: ${token_info.name} (User: ${token_info.username})`);
     res.json({ success: true, message: "Token revoked successfully" });
@@ -89,13 +90,13 @@ router.delete("/api/admin/api-tokens/user/:username", sessRole("superadmin"), as
   try {
     const rawUsername = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
     const username = String(rawUsername);
-    const result = await apiTokenRepository.deleteAllByUsername(username);
+    const count = await apiTokenService.revokeAllUserTokens(username);
 
-    console.log(`[Admin] All tokens revoked for user ${username} by ${(req as any).session.user.username} (${result.rowCount} tokens)`);
+    console.log(`[Admin] All tokens revoked for user ${username} by ${(req as any).session.user.username} (${count} tokens)`);
     res.json({
       success: true,
-      message: `Successfully revoked ${result.rowCount} token(s)`,
-      count: result.rowCount,
+      message: `Successfully revoked ${count} token(s)`,
+      count,
     });
   } catch (error: any) {
     console.error("Error revoking user tokens:", error);

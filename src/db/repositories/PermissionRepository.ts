@@ -36,12 +36,6 @@ export interface RoleCreateOptions {
 export class PermissionRepository extends BaseRepository {
   constructor(options: BaseRepositoryOptions = {}) {
     super({ db: options.db || dblogin, dialect: options.dialect || dialect });
-    this.ensureGlobalPermission().catch((err: Error) => {
-      const msg = err?.message || "";
-      if (!/no such table|relation .* does not exist|does not exist/i.test(msg)) {
-        console.error("[mbkauthe] Failed to ensure built-in global permission:", err);
-      }
-    });
   }
 
   get dialectName(): string {

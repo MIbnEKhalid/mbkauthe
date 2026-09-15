@@ -3,7 +3,7 @@ import { mbkautheVar, packageJson } from "../../config/index.js";
 import { getErrorByCode } from "../../core/errors/catalog.js";
 
 export function getUserContext(req?: Request | null) {
-  const user = (req as any)?.session?.user || {};
+  const user = (req as any)?.session?.user || (req as any)?.auth?.user || {};
   return {
     userLoggedIn: Boolean(user.username),
     user_id: user.user_id || "mbk_notfound",

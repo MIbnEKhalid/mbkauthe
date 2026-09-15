@@ -17,6 +17,10 @@ export const sqliteDialect: IDialect = {
     return !hasLimit && !hasOffset ? "" : ` ${hasLimit ? `LIMIT ${limit}` : "LIMIT -1"}${hasOffset ? ` OFFSET ${offset}` : ""}`;
   },
   lockTable: undefined,
+  inArrayClause: (column: string, _paramIndex: number, length: number = 1) => {
+    const placeholders = Array.from({ length }, () => "?").join(", ");
+    return `${column} IN (${placeholders || "NULL"})`;
+  },
 };
 
 export default sqliteDialect;

@@ -5,13 +5,14 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { mbkautheVar, packageJson, appVersion } from "../../config/index.js";
-import { renderError, renderPage } from "../../ui/response/formatters.js";
+import { renderError, renderPage } from "../response/formatters.js";
 import { authenticate, sessPerm, sessRole } from "../middleware/authMiddleware.js";
 import { ErrorCodes, ErrorMessages, createErrorResponse } from "../../core/errors/catalog.js";
-import { clearSessionCookies, decryptSessionId, cachedCookieOptions, getCookieDomain } from "../../config/cookies.js";
+import { decryptSessionId, cachedCookieOptions, getCookieDomain } from "../../config/cookies.js";
+import { clearSessionCookies } from "../session/accountCookies.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
-import { isSafeFetchUrl } from "../../ui/utils/urlSafety.js";
-import { createLogger } from "../../ui/utils/logger.js";
+import { isSafeFetchUrl } from "../utils/urlSafety.js";
+import { createLogger } from "../../utils/logger.js";
 
 dotenv.config();
 

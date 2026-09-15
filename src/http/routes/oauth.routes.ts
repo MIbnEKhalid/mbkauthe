@@ -5,10 +5,10 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import csurf from "csurf";
 import rateLimit from "express-rate-limit";
 import { mbkautheVar } from "../../config/index.js";
-import { renderError } from "../../ui/response/formatters.js";
+import { renderError } from "../response/formatters.js";
 import { checkTrustedDevice, completeLoginProcess } from "./auth.routes.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
-import { createLogger } from "../../ui/utils/logger.js";
+import { createLogger } from "../../utils/logger.js";
 
 const router = express.Router();
 const logOAuth = createLogger("oauth");
@@ -30,45 +30,12 @@ const GoogleOAuthLimit = createOAuthLimit("Google");
 const githubClientId = mbkautheVar.GITHUB_APP_CLIENT_ID || mbkautheVar.GITHUB_CLIENT_ID;
 const githubClientSecret = mbkautheVar.GITHUB_APP_CLIENT_SECRET || mbkautheVar.GITHUB_CLIENT_SECRET;
 
+import { oAuthService } from "../../services/OAuthService.js";
+
 const createOAuthStrategy = async (provider: string, profile: any, done: (err: any, user?: any) => void) => {
   try {
     logOAuth(`${provider} OAuth callback for user: ${profile.emails?.[0]?.value || profile.id}`);
-    const user = await authRepository.getOAuthUserByProviderId(provider, profile.id);
-
-    if (!user) {
-      const error: any = new Error(`${provider} account not linked to any user`);
-      error.code = `${provider.toUpperCase()}_NOT_LINKED`;
-      return done(error);
-    }
-
-    const { is_active, role, allowed_apps, user_id, username, is_enabled } = user;
-    if (!is_active) {
-      const error: any = new Error("Account is inactive");
-      error.code = "ACCOUNT_INACTIVE";
-      return done(error);
-    }
-
-    if (role !== "superadmin") {
-      if (!allowed_apps || !allowed_apps.some((app: any) => app?.toLowerCase() === mbkautheVar.APP_NAME)) {
-        const error: any = new Error(`Not authorized to use ${mbkautheVar.APP_NAME}`);
-        error.code = "NOT_AUTHORIZED";
-        return done(error);
-      }
-    }
-
-    const userData = {
-      user_id,
-      username,
-      role,
-      allowed_apps,
-      is_enabled,
-      full_name: user.full_name,
-      image: user.image,
-      ...(provider === "GitHub"
-        ? { github_id: user.github_id, github_username: user.github_username, installation_id: user.installation_id || null, installation_target_type: user.installation_target_type || null }
-        : { google_id: user.google_id, google_email: user.google_email }),
-    };
-
+    const userData = await oAuthService.validateOAuthProfile(provider, profile.id);
     return done(null, userData);
   } catch (err: any) {
     console.error(`[mbkauthe] ${provider} login error:`, err);

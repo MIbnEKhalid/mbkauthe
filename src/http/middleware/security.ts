@@ -2,8 +2,8 @@ import type { Request, Response, NextFunction } from "express";
 import { runWithRequestContext } from "../../db/pool.js";
 import { cachedCookieOptions, cachedClearCookieOptions, decryptSessionId, encryptSessionId, getCookieSecure, isAllowedOriginHostname } from "../../config/cookies.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
-import { isUserAuthorizedForApp } from "../../ui/utils/appAccess.js";
-import { attachSessionPermissions } from "../../core/permissions/session.js";
+import { isUserAuthorizedForApp } from "../utils/appAccess.js";
+import { attachSessionPermissions } from "../session/sessionPermissions.js";
 
 const hasAuthorizationHeader = (req: Request) => Boolean(req.headers?.authorization?.trim());
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

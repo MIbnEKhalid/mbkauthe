@@ -36,8 +36,20 @@
       "default": "./dist/http/middleware/index.js"
     },
     "./utils": {
-      "types": "./dist/ui/response/index.d.ts",
-      "default": "./dist/ui/response/index.js"
+      "types": "./dist/http/response/index.d.ts",
+      "default": "./dist/http/response/index.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts",
+      "default": "./dist/services/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./response": {
+      "types": "./dist/http/response/index.d.ts",
+      "default": "./dist/http/response/index.js"
     },
     "./package.json": "./package.json"
   },

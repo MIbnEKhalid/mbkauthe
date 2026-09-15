@@ -5,5 +5,6 @@
 export * from "./matcher.js";
 export * from "./roleRegistry.js";
 export * from "./manifest.js";
-export * from "./registry.js";
-export * from "./session.js";
+export { syncAppPermissions, SyncAppPermissionsOptions, SyncResult } from "../../services/PermissionSyncService.js";
+export { attachSessionPermissions, hasNoSessionPermissions } from "../../http/session/sessionPermissions.js";
+

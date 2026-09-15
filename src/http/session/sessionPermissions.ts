@@ -1,20 +1,12 @@
 /**
- * MBKAuthe — Session permission & role caching helper.
- *
- * Attaches assigned roles and allow/deny overrides to the session user object
- * (`req.session.user.roles`, `req.session.user.overrides`, `req.session.user.permissions`).
- * This runs ONLY at login / explicit session reload — never during the normal
- * request authorization path (`hasPermission`/`permChk`/`sessPerm` are pure
- * in-memory and perform no database access).
- *
- * MBKAuthe
+ * MBKAuthe — Session permission & role hydration helper.
+ * Attaches assigned roles and allow/deny overrides to the express session user object.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
- * Source: https://github.com/MIbnEKhalid/mbkauthe
  */
 
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
-import type { EffectivePermissionsResult, SessionUser } from "../types/index.js";
+import type { EffectivePermissionsResult, SessionUser } from "../../core/types/index.js";
 
 const MISSING_OBJECT_RE = /no such table|no such column|relation .* does not exist|column .* does not exist|does not exist|no such database/i;
 

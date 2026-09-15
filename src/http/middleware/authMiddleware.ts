@@ -1,26 +1,33 @@
 import type { Request, Response, NextFunction } from "express";
 import { mbkautheVar } from "../../config/env.js";
 import { hashApiToken } from "../../config/security.js";
-import { renderError } from "../../ui/response/formatters.js";
-import { isJsonRequest } from "../../ui/response/contentNegotiation.js";
-import { clearSessionCookies, cachedCookieOptions, encryptSessionId } from "../../config/cookies.js";
+import { renderError } from "../response/formatters.js";
+import { isJsonRequest } from "../response/contentNegotiation.js";
+import { clearSessionCookies, upsertAccountListCookie } from "../session/accountCookies.js";
+import { cachedCookieOptions, encryptSessionId } from "../../config/cookies.js";
 import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
-import { extractAuthorizationToken, timingSafeTokenMatch } from "../../ui/utils/timingSafeToken.js";
+import { extractAuthorizationToken, timingSafeTokenMatch } from "../../core/tokens/index.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
 import { defaultRoleRegistry, GlobalPermissions, hasPermission, resolvePermission } from "../../core/permissions/index.js";
-import { attachSessionPermissions } from "../../core/permissions/session.js";
-import { createLogger } from "../../ui/utils/logger.js";
+import { attachSessionPermissions } from "../session/sessionPermissions.js";
+import { createLogger } from "../../utils/logger.js";
+import { AuthUser } from "../../core/types/user.types.js";
 
 const IS_DEV = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV === "development";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (val: unknown): val is string => typeof val === "string" && UUID_RE.test(val);
 const MAX_API_TOKEN_LENGTH = 4096;
 const API_TOKEN_LAST_USED_INTERVAL_MS = 15 * 60 * 1000;
-const API_TOKEN_SESSION_RESTORE = Symbol("mbkauthe.apiTokenSessionRestore");
 const apiTokenLastUsedCache = new Map<string | number, number>();
 const logAuth = createLogger("auth");
 const DEFAULT_PERMISSION = GlobalPermissions.basic.access;
+
+export interface AuthContext {
+  type: "session" | "api-token";
+  user: AuthUser;
+  permissions?: any;
+}
 
 function describeRequirement(values: unknown, label: string): string {
   const items = (Array.isArray(values) ? values : [values])
@@ -97,7 +104,7 @@ async function validateTokenAuthentication(req: Request) {
   };
 }
 
-function attachApiTokenUser(req: Request, res: Response, tokenUser: any) {
+function attachApiTokenUser(req: Request, _res: Response, tokenUser: any) {
   const hasExplicitPermissions = Array.isArray(tokenUser.token_permissions) && tokenUser.token_permissions.length > 0;
   const effectiveRole = hasExplicitPermissions ? null : tokenUser.role;
 
@@ -121,37 +128,13 @@ function attachApiTokenUser(req: Request, res: Response, tokenUser: any) {
     permissions: hasExplicitPermissions ? user.overrides : null,
   };
 
-  if ((req as any).session) {
-    const originalDescriptor = Object.getOwnPropertyDescriptor((req as any).session, "user");
-    Object.defineProperty((req as any).session, "user", {
-      value: user,
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
-
-    if (res && !(req as any).session[API_TOKEN_SESSION_RESTORE]) {
-      (req as any).session[API_TOKEN_SESSION_RESTORE] = true;
-      const originalEnd = res.end;
-      let restored = false;
-
-      res.end = function apiTokenSessionEnd(this: any, ...args: any[]) {
-        if (!restored) {
-          restored = true;
-          if (originalDescriptor) {
-            Object.defineProperty((req as any).session, "user", originalDescriptor);
-          } else {
-            delete (req as any).session.user;
-          }
-          delete (req as any).session[API_TOKEN_SESSION_RESTORE];
-        }
-        return (originalEnd as any).apply(this, args);
-      } as any;
-    }
-  }
-
   (req as any).user = user;
   (req as any).userRole = tokenUser.role;
+
+  if ((req as any).session && !(req as any).session.user) {
+    (req as any).session.user = user;
+  }
+
   return user;
 }
 
@@ -232,6 +215,13 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     }
 
     (req as any).userRole = sessionRow.role;
+    (req as any).user = (req as any).session.user;
+    (req as any).auth = {
+      type: "session",
+      user: (req as any).session.user,
+      permissions: (req as any).session.user?.permissions || null,
+    };
+
     if (defaultRoleRegistry.roles.size === 0) {
       await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
     }
@@ -325,7 +315,7 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
 
 export const checkRolePermission = (requiredRoles: string | string[], notAllowed?: string | null) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const authUser = (req as any).auth?.user || (req as any).session?.user;
+    const authUser = (req as any).auth?.user || (req as any).session?.user || (req as any).user;
     if (!authUser?.username) {
       logAuth(`User not authenticated`);
       if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
@@ -377,7 +367,7 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
 
 export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const authUser = (req as any).auth?.user || (req as any).session?.user;
+    const authUser = (req as any).auth?.user || (req as any).session?.user || (req as any).user;
     if (!authUser?.username) {
       logAuth(`User not authenticated`);
       if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));

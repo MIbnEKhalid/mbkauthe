@@ -19,6 +19,7 @@ export const postgresDialect: IDialect = {
     return parts.length ? ` ${parts.join(" ")}` : "";
   },
   lockTable: (tableSql: string, mode: string = "ROW EXCLUSIVE") => `LOCK TABLE ${tableSql} IN ${mode} MODE`,
+  inArrayClause: (column: string, paramIndex: number) => `${column} = ANY($${paramIndex})`,
 };
 
 export default postgresDialect;

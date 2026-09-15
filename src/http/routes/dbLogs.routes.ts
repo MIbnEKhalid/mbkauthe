@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { renderError } from "../../ui/response/formatters.js";
+import { renderError } from "../response/formatters.js";
 import { dblogin } from "../../db/pool.js";
 import { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog } from "../../db/dbQueryLogger.js";
 import { mbkautheVar } from "../../config/env.js";

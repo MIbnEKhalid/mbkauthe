@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MBKAuthConfig } from "./types.js";
-import { setPasswordPepper } from "./security.js";
+import { setPasswordPepper } from "../core/security/password.js";
 
 dotenv.config();
 
@@ -213,7 +213,7 @@ function createConfigProxy(target: any): MBKAuthConfig {
   });
 }
 
-export function resolveRawConfig(): MBKAuthConfig {
+function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<string, any>; errors: string[] } {
   const errors: string[] = [];
   const mbkautheVarSource = { ...(parseJsonEnv("mbkautheVar") || {}), ...getPrefixedEnvVars("mbkautheVar") };
   const mbkauthSharedSource = { ...(parseJsonEnv("mbkauthShared") || {}), ...getPrefixedEnvVars("mbkauthShared") };
@@ -263,8 +263,7 @@ export function resolveRawConfig(): MBKAuthConfig {
   Object.keys(mbkautheVarSource).forEach(resolveCustomKey);
   Object.keys(mbkauthSharedSource).forEach(resolveCustomKey);
 
-  // Check required keys in non-test environment
-  if (process.env.NODE_ENV !== "test") {
+  if (strict || process.env.NODE_ENV !== "test") {
     for (const key of REQUIRED_KEYS) {
       if (isBlank(resolved[key])) {
         errors.push(`Missing required configuration: ${key.toUpperCase()}`);
@@ -273,77 +272,23 @@ export function resolveRawConfig(): MBKAuthConfig {
   }
 
   normalizeAndValidateConfig(resolved, errors);
+  return { resolved, errors };
+}
 
+export function resolveRawConfig(): MBKAuthConfig {
+  const { resolved, errors } = extractAndResolveConfig({ strict: false });
   if (errors.length > 0 && process.env.NODE_ENV !== "test") {
     throw new Error(`[mbkauthe] Configuration Errors:\n  - ${errors.join("\n  - ")}`);
   }
-
   setPasswordPepper(resolved.SESSION_SECRET_KEY || resolved.session_secret_key || "");
   return createConfigProxy(resolved);
 }
 
 export function validateConfiguration(): MBKAuthConfig {
-  const errors: string[] = [];
-  const mbkautheVarSource = { ...(parseJsonEnv("mbkautheVar") || {}), ...getPrefixedEnvVars("mbkautheVar") };
-  const mbkauthSharedSource = { ...(parseJsonEnv("mbkauthShared") || {}), ...getPrefixedEnvVars("mbkauthShared") };
-  const resolved: Record<string, any> = {};
-
-  for (const { lower, upper } of CANONICAL_KEYS) {
-    const simpleVal = getSimpleEnvValue(lower);
-    if (hasValue(simpleVal)) {
-      setBoth(resolved, lower, upper, simpleVal);
-      continue;
-    }
-    const varVal = findValue(mbkautheVarSource, lower);
-    if (hasValue(varVal)) {
-      setBoth(resolved, lower, upper, varVal);
-      continue;
-    }
-    const sharedVal = findValue(mbkauthSharedSource, lower);
-    if (hasValue(sharedVal)) {
-      setBoth(resolved, lower, upper, sharedVal);
-      continue;
-    }
-    const defVal = findValue(DEFAULT_CONFIG, lower);
-    if (defVal !== undefined) {
-      setBoth(resolved, lower, upper, defVal);
-    }
-  }
-
-  const knownNorms = new Set(CANONICAL_KEYS.map((k) => normalizeKey(k.lower)));
-  const resolveCustomKey = (k: string) => {
-    if (knownNorms.has(normalizeKey(k))) return;
-    const simpleVal = getSimpleEnvValue(k);
-    if (hasValue(simpleVal)) {
-      setBoth(resolved, k.toLowerCase(), k.toUpperCase(), simpleVal);
-      return;
-    }
-    const varVal = findValue(mbkautheVarSource, k);
-    if (hasValue(varVal)) {
-      setBoth(resolved, k.toLowerCase(), k.toUpperCase(), varVal);
-      return;
-    }
-    const sharedVal = findValue(mbkauthSharedSource, k);
-    if (hasValue(sharedVal)) {
-      setBoth(resolved, k.toLowerCase(), k.toUpperCase(), sharedVal);
-    }
-  };
-
-  Object.keys(mbkautheVarSource).forEach(resolveCustomKey);
-  Object.keys(mbkauthSharedSource).forEach(resolveCustomKey);
-
-  for (const key of REQUIRED_KEYS) {
-    if (isBlank(resolved[key])) {
-      errors.push(`Missing required configuration: ${key.toUpperCase()}`);
-    }
-  }
-
-  normalizeAndValidateConfig(resolved, errors);
-
+  const { resolved, errors } = extractAndResolveConfig({ strict: true });
   if (errors.length > 0) {
     throw new Error(`[mbkauthe] Configuration Validation Failed:\n  - ${errors.join("\n  - ")}`);
   }
-
   setPasswordPepper(resolved.SESSION_SECRET_KEY || resolved.session_secret_key || "");
   return createConfigProxy(resolved);
 }

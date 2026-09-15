@@ -1,30 +1,13 @@
 /**
- * MBKAuthe — Automatic permission catalog and unified role synchronization.
- *
- * Host applications call `syncAppPermissions(Permissions)` once at startup
- * (where `Permissions` is the result of `definePermissions()`). It:
- *   1. Extracts every declared permission from the manifest.
- *   2. Upserts them into `mbkcore_permission_catalog` (is_active = true).
- *   3. Marks previously registered permissions of the same app that are no
- *      longer declared as is_active = false (never hard-deletes).
- *   4. Contributes application-declared default role permissions into unified
- *      roles in `mbkcore_roles` & `mbkcore_role_permissions`.
- *   5. Hydrates the in-memory RoleRegistry.
- *   6. Is idempotent and safe to run repeatedly.
- *
- * This is an administrative/startup operation — NEVER a request-path
- * authorization operation.
- *
- * MBKAuthe
+ * MBKAuthe — Permission catalog and role database synchronization service.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
- * Source: https://github.com/MIbnEKhalid/mbkauthe
  */
 
-import { permissionRepository, PermissionRepository } from "../../db/repositories/PermissionRepository.js";
-import { defaultRoleRegistry, GLOBAL_APP_KEY } from "./roleRegistry.js";
-import { collectPermissions, collectRoles, resolveAppKey } from "./manifest.js";
-import type { PermissionManifest } from "../types/permission.types.js";
+import { permissionRepository, PermissionRepository } from "../db/repositories/PermissionRepository.js";
+import { defaultRoleRegistry, GLOBAL_APP_KEY } from "../core/permissions/roleRegistry.js";
+import { collectPermissions, collectRoles, resolveAppKey } from "../core/permissions/manifest.js";
+import type { PermissionManifest } from "../core/types/permission.types.js";
 
 export interface SyncAppPermissionsOptions {
   repository?: PermissionRepository;

@@ -6,6 +6,9 @@
  */
 
 export * from "./BaseRepository.js";
+export * from "./UserRepository.js";
+export * from "./SessionRepository.js";
+export * from "./DeviceTrustRepository.js";
 export * from "./AuthRepository.js";
 export * from "./PermissionRepository.js";
 export * from "./ApiTokenRepository.js";

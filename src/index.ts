@@ -16,6 +16,7 @@ export {
   setPasswordPepper,
   getPasswordPepper,
 } from "./config/security.js";
+export * from "./core/security/index.js";
 export {
   encryptSessionId,
   decryptSessionId,
@@ -24,16 +25,18 @@ export {
   getCookieDomain,
   getCookieSecure,
   resolveCookieDomain,
-  clearSessionCookies,
   generateDeviceToken,
   hashDeviceToken,
   getDeviceTokenCookieOptions,
+  isAllowedOriginHostname,
+} from "./config/cookies.js";
+export {
+  clearSessionCookies,
   upsertAccountListCookie,
   readAccountListFromCookie,
   removeAccountFromCookie,
   clearAccountListCookie,
-  isAllowedOriginHostname,
-} from "./config/cookies.js";
+} from "./http/session/accountCookies.js";
 
 // 2. Database Adapters, Dialects, Pools, and Schema
 export { IDatabaseAdapter, QueryResult } from "./db/adapters/IDatabaseAdapter.js";
@@ -51,12 +54,74 @@ export { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog, attachDevQu
 
 // 3. Database Repositories
 export { BaseRepository, BaseRepositoryOptions } from "./db/repositories/BaseRepository.js";
+export { UserRepository, userRepository } from "./db/repositories/UserRepository.js";
+export { SessionRepository, sessionRepository } from "./db/repositories/SessionRepository.js";
+export { DeviceTrustRepository, deviceTrustRepository } from "./db/repositories/DeviceTrustRepository.js";
 export { AuthRepository, authRepository } from "./db/repositories/AuthRepository.js";
 export { PermissionRepository, permissionRepository } from "./db/repositories/PermissionRepository.js";
 export { ApiTokenRepository, apiTokenRepository } from "./db/repositories/ApiTokenRepository.js";
 export { CliAuthSessionRepository, cliAuthSessionRepository } from "./db/repositories/CliAuthSessionRepository.js";
 
-// 4. Permissions, Roles & Manifest
+// 4. Domain Events & Token Engine
+export {
+  authEvents,
+  AuthEventEmitter,
+  emitAuthEvent,
+  AuthLoginSuccessEvent,
+  AuthLoginFailedEvent,
+  AuthLogoutEvent,
+  AuthTokenCreatedEvent,
+  AuthTokenRevokedEvent,
+  AuthAccountSwitchedEvent,
+  AuthCliApprovedEvent,
+  AuthCliDeniedEvent,
+  AuthEventMap,
+  AuthEventName,
+  AuthEventListener,
+} from "./core/events/index.js";
+export {
+  TokenEngine,
+  TOKEN_PREFIXES,
+  TokenType,
+  ParsedToken,
+} from "./core/tokens/index.js";
+export {
+  validateLoginDto,
+  validateTotpDto,
+  validateCreateApiTokenDto,
+  validateCliDeviceCodeDto,
+  LoginDto,
+  VerifyTotpDto,
+  CreateApiTokenDto,
+  CliDeviceCodeDto,
+} from "./core/validation/index.js";
+
+// 5. Service Layer
+export {
+  AuthService,
+  authService,
+  LoginOptions,
+  LoginResult,
+  ApiTokenService,
+  apiTokenService,
+  CreateTokenResult,
+  CliAuthService,
+  cliAuthService,
+  InitiateCliAuthParams,
+  CliAuthInitiateResult,
+  PollCliAuthResult,
+  OAuthService,
+  oAuthService,
+  OAuthUserData,
+  syncAppPermissions,
+  SyncAppPermissionsOptions,
+  SyncResult,
+} from "./services/index.js";
+
+// 6. Diagnostics & Observability
+export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";
+
+// 7. Permissions, Roles & Manifest
 export {
   normalizePermission,
   resolvePermission,
@@ -87,19 +152,18 @@ export {
   ALL_PERMISSIONS_KEY,
   ROLES_KEY,
 } from "./core/permissions/manifest.js";
-export { syncAppPermissions } from "./core/permissions/registry.js";
-export { attachSessionPermissions, hasNoSessionPermissions } from "./core/permissions/session.js";
+export { attachSessionPermissions, hasNoSessionPermissions } from "./http/session/sessionPermissions.js";
 
-// 5. Types
+// 8. Types
 export * from "./core/types/index.js";
 
-// 6. Errors
+// 9. Errors
 export { ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError } from "./core/errors/catalog.js";
 export { MbkAuthError } from "./core/errors/MbkAuthError.js";
 
-// 7. UI, Handlebars & Response Helpers
+// 10. HTTP Response, UI & Helpers
 export { commonHandlebarsHelpers, handlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
-export { isJsonRequest } from "./ui/response/contentNegotiation.js";
+export { isJsonRequest } from "./http/response/contentNegotiation.js";
 export {
   sendSuccess,
   sendError,
@@ -107,15 +171,15 @@ export {
   renderError,
   getUserContext,
   sanitizeErrorDetails,
-} from "./ui/response/formatters.js";
-export { createErrorHandler, createNotFoundHandler, proxycall } from "./ui/response/handlers.js";
-export { isSafeFetchUrl } from "./ui/utils/urlSafety.js";
-export { isSafeRelativeRedirect, sanitizeRelativeRedirect } from "./ui/utils/redirect.js";
-export { isUserAuthorizedForApp } from "./ui/utils/appAccess.js";
-export { createLogger, logDebug } from "./ui/utils/logger.js";
-export { extractAuthorizationToken, timingSafeTokenMatch } from "./ui/utils/timingSafeToken.js";
+} from "./http/response/formatters.js";
+export { createErrorHandler, createNotFoundHandler, proxycall } from "./http/response/handlers.js";
+export { isSafeFetchUrl } from "./http/utils/urlSafety.js";
+export { isSafeRelativeRedirect, sanitizeRelativeRedirect } from "./http/utils/redirect.js";
+export { isUserAuthorizedForApp } from "./http/utils/appAccess.js";
+export { createLogger, logDebug } from "./utils/logger.js";
+export { extractAuthorizationToken, timingSafeTokenMatch } from "./core/tokens/index.js";
 
-// 8. HTTP & Express Middleware
+// 11. HTTP & Express Middleware
 export { SqliteSessionStore } from "./http/session/SqliteSessionStore.js";
 export { sessionConfig, getSessionStore } from "./http/session/sessionConfig.js";
 export {
@@ -143,9 +207,10 @@ export {
   strictSessRole,
   permChk,
   sessPerm,
+  AuthContext,
 } from "./http/middleware/authMiddleware.js";
 
-// 9. Express Routers
+// 12. Express Routers & App Factory
 export { apiTokensRouter } from "./http/routes/apiToken.routes.js";
 export { adminApiTokensRouter } from "./http/routes/adminApiToken.routes.js";
 export { cliAuthRouter } from "./http/routes/cliAuth.routes.js";
@@ -153,12 +218,13 @@ export { authRouter } from "./http/routes/auth.routes.js";
 export { oauthRouter } from "./http/routes/oauth.routes.js";
 export { miscRouter, checkVersion } from "./http/routes/misc.routes.js";
 export { dbLogsRouter } from "./http/routes/dbLogs.routes.js";
+export { createMbkautheApp, mbkautheApp } from "./http/app.js";
 
-// 10. Legacy mbkauthShared compatibility object
+// 13. Legacy mbkauthShared compatibility object
 import { commonHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
-import { isJsonRequest } from "./ui/response/contentNegotiation.js";
-import { sendSuccess, sendError, renderPage, renderError, sanitizeErrorDetails } from "./ui/response/formatters.js";
-import { createErrorHandler, createNotFoundHandler } from "./ui/response/handlers.js";
+import { isJsonRequest } from "./http/response/contentNegotiation.js";
+import { sendSuccess, sendError, renderPage, renderError, sanitizeErrorDetails } from "./http/response/formatters.js";
+import { createErrorHandler, createNotFoundHandler } from "./http/response/handlers.js";
 
 export const mbkauthShared = {
   commonHandlebarsHelpers,
@@ -172,6 +238,6 @@ export const mbkauthShared = {
   sanitizeErrorDetails,
 };
 
-// 11. Default export: Main Express application router
-import mbkautheApp from "./http/app.js";
-export default mbkautheApp;
+// 14. Default export: Main Express application router
+import defaultApp from "./http/app.js";
+export default defaultApp;

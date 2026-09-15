@@ -1,11 +1,13 @@
 import express from "express";
-import { renderError, renderPage } from "../../ui/response/formatters.js";
+import { renderError, renderPage } from "../response/formatters.js";
 import { sessRole, sessPerm } from "../middleware/authMiddleware.js";
 import { hashApiToken, generatePrefixedToken } from "../../config/security.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
+import { apiTokenService } from "../../services/ApiTokenService.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
 import { normalizePermission } from "../../core/permissions/matcher.js";
 import { hasPermission } from "../../core/permissions/roleRegistry.js";
+import { TokenEngine } from "../../core/tokens/TokenEngine.js";
 
 const router = express.Router();
 
@@ -43,7 +45,7 @@ function groupPermissions(rows: any[]) {
 router.get("/user/api-tokens", sessRole("any"), async (req, res) => {
   try {
     const { username } = (req as any).session.user;
-    const tokens = await apiTokenRepository.listForUser(username);
+    const tokens = await apiTokenService.listUserTokens(username);
 
     let permissionGroups: any[] = [];
     try {
@@ -109,18 +111,12 @@ router.post("/api/token", sessPerm("basic.access"), async (req, res) => {
       if (token_count >= 10) return res.status(403).json({ success: false, message: "Token limit reached (max 10)." });
     }
 
-    const raw_token = generatePrefixedToken();
-    const token_hash = hashApiToken(raw_token)!;
-    const prefix = raw_token.substring(0, 8);
-
-    let expires_at: Date | null = null;
-    if (expires_days && parseInt(expires_days, 10) > 0) {
-      expires_at = new Date();
-      expires_at.setDate(expires_at.getDate() + parseInt(expires_days, 10));
-    }
-
-    const permissions = JSON.stringify({ permissions: requested });
-    const meta = await apiTokenRepository.insert(username, name.trim(), token_hash, prefix, permissions, expires_at);
+    const expiresInDays = expires_days && parseInt(expires_days, 10) > 0 ? parseInt(expires_days, 10) : null;
+    const { token: raw_token, tokenRecord: meta } = await apiTokenService.createToken(username, {
+      name: name.trim(),
+      scopes: requested,
+      expiresInDays,
+    });
 
     res.json({ success: true, token: raw_token, meta, message: "Token created. Copy it now - you won't see it again!" });
   } catch (err: any) {
@@ -135,10 +131,16 @@ router.delete("/api/tokens/:id", sessRole("any"), async (req, res) => {
     const token_id = parseInt(String(rawId), 10);
     if (Number.isNaN(token_id)) return res.status(400).json({ success: false, message: "Invalid token ID" });
 
-    const result = await apiTokenRepository.deleteByIdAndUsername(token_id, (req as any).session.user.username);
-    if (result.rowCount === 0) return res.status(404).json({ success: false, message: "Token not found or not owned." });
+    const username = (req as any).session.user.username;
+    const info = await apiTokenRepository.findInfoById(token_id);
+    if (!info || info.username !== username) {
+      return res.status(404).json({ success: false, message: "Token not found or not owned." });
+    }
 
-    res.json({ success: true, message: `Token "${result.rows[0].name}" deleted.` });
+    const success = await apiTokenService.revokeToken(token_id, username);
+    if (!success) return res.status(404).json({ success: false, message: "Token not found or not owned." });
+
+    res.json({ success: true, message: `Token "${info.name}" deleted.` });
   } catch (err) {
     console.error("Error deleting API token:", err);
     res.status(500).json({ success: false, message: "Failed to delete token" });
@@ -152,7 +154,8 @@ router.post("/api/tokens/verify", async (req, res) => {
       return res.status(401).json({ success: false, message: "No token provided" });
     }
 
-    const token_hash = hashApiToken(authHeader.split(" ")[1])!;
+    const rawToken = authHeader.split(" ")[1];
+    const token_hash = TokenEngine.hashToken(rawToken)!;
     const rows = await apiTokenRepository.findByTokenHash(token_hash);
     if (rows.length === 0) return res.status(401).json({ success: false, message: "Invalid token" });
 

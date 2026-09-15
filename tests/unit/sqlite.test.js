@@ -417,34 +417,37 @@ describe('AuthRepository against the SQLite schema', () => {
     expect(row.last_login).toBeInstanceOf(Date);
   });
 
-  test('touchTrustedDevice (sqlite branch) touches and joins user data in two steps', async () => {
-    await repo.insertTrustedDevice({
+  test('PasskeyRepository (sqlite branch) creates and joins user data', async () => {
+    const created = await repo.passkeys.createPasskey({
       username: 'normal',
-      device_token_hash: 'device-hash',
-      device_name: 'laptop',
-      user_agent: 'vitest',
-      ip_address: '::1',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      credential_id: 'cred-123',
+      public_key: 'pubkey-abc',
+      counter: 0,
+      device_type: 'single_device',
+      backed_up: false,
+      name: 'MacBook TouchID',
     });
+    expect(created.id).toBeTruthy();
+    expect(created.credential_id).toBe('cred-123');
 
-    const row = await repo.touchTrustedDevice('device-hash', 'normal');
-    expect(row.username).toBe('normal');
-    expect(row.expires_at).toBeInstanceOf(Date);
-    expect(row.is_active).toBeTruthy();
-    expect(Array.isArray(row.allowed_apps)).toBe(true);
-  });
+    const found = await repo.passkeys.findByCredentialId('cred-123');
+    expect(found).not.toBeNull();
+    expect(found.username).toBe('normal');
+    expect(found.user).toBeTruthy();
+    expect(found.user.username).toBe('normal');
+    expect(found.user.is_active).toBeTruthy();
+    expect(Array.isArray(found.user.allowed_apps)).toBe(true);
 
-  test('touchTrustedDevice returns null for expired or unknown devices', async () => {
-    await repo.insertTrustedDevice({
-      username: 'normal',
-      device_token_hash: 'stale-hash',
-      device_name: null,
-      user_agent: null,
-      ip_address: null,
-      expires_at: new Date(Date.now() - 1000)
-    });
-    expect(await repo.touchTrustedDevice('stale-hash', 'normal')).toBeNull();
-    expect(await repo.touchTrustedDevice('missing-hash', 'normal')).toBeNull();
+    await repo.passkeys.updateCounterAndLastUsed('cred-123', 5);
+    const updated = await repo.passkeys.findByCredentialId('cred-123');
+    expect(Number(updated.counter)).toBe(5);
+
+    const renamed = await repo.passkeys.renamePasskey(created.id, 'normal', 'New Key Name');
+    expect(renamed).toBe(true);
+
+    const deleted = await repo.passkeys.deleteByIdAndUsername(created.id, 'normal');
+    expect(deleted).toBe(true);
+    expect(await repo.passkeys.findByCredentialId('cred-123')).toBeNull();
   });
 
   test('getApiTokenByHash returns parsed Permissions and user apps', async () => {

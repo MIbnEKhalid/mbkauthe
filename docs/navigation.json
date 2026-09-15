@@ -16,7 +16,8 @@
         { "slug": "rbac", "title": "Role-Based Access Control (RBAC)", "description": "Role hierarchies, RoleRegistry, default roles (superadmin, admin, normaluser, guest), and role checking middleware." },
         { "slug": "permissions", "title": "Dynamic Permission Catalogs", "description": "Manifest-driven app:service:action permissions, definePermissions, syncAppPermissions, AuthorizationService, and sessPerm." },
         { "slug": "oauth", "title": "Provider-Neutral OAuth & OIDC", "description": "Multi-provider social login (Google, GitHub, Microsoft, Discord, Apple, Custom OIDC), account linking, and token encryption." },
-        { "slug": "2fa", "title": "Two-Factor Authentication (TOTP)", "description": "RFC 6238 Time-based One-Time Passwords with speakeasy, QR codes, and device trust tokens." }
+        { "slug": "passkeys", "title": "WebAuthn & Passkeys", "description": "FIDO2 WebAuthn passkey registration, biometric passwordless authentication, and resident key management." },
+        { "slug": "2fa", "title": "Two-Factor Authentication (TOTP)", "description": "RFC 6238 Time-based One-Time Passwords with speakeasy, QR codes, and multi-factor verification." }
       ]
     },
     {

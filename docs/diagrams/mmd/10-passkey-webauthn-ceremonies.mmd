@@ -1,0 +1,64 @@
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant ClientJS as Client WebAuthn JS
+    participant Express as MBKAuthe Router (/mbkauthe/api/passkey)
+    participant PasskeySvc as PasskeyService (@simplewebauthn)
+    participant PasskeyRepo as PasskeyRepository
+    participant SessionRepo as SessionRepository
+    participant DB as PostgreSQL / SQLite DB
+
+    %% ------------------------------------------------------------------
+    %% 1. PASSKEY REGISTRATION CEREMONY
+    %% ------------------------------------------------------------------
+    rect rgb(238, 246, 255)
+        note over User, DB: 1. Passkey Registration Ceremony (Authenticated User)
+        User->>ClientJS: Clicks "Register Passkey" (or accepts post-login prompt)
+        ClientJS->>Express: POST /mbkauthe/api/passkey/register-options (Session Cookie)
+        Express->>PasskeySvc: generateRegistrationOptions(userId, username, existingPasskeys)
+        PasskeySvc->>PasskeyRepo: findByUserId(userId)
+        PasskeyRepo->>DB: SELECT * FROM mbkcore_passkeys WHERE user_id = $1
+        DB-->>PasskeyRepo: Passkey records
+        PasskeySvc-->>Express: RegistrationOptions (challenge, rp, user, excludeCredentials)
+        Express-->>ClientJS: 200 OK { options } (challenge stored in req.session.passkeyChallenge)
+        
+        ClientJS->>User: Prompts Biometric / Security Key (Touch ID / Face ID / Windows Hello)
+        User-->>ClientJS: Confirms Biometric Gesture
+        ClientJS->>ClientJS: navigator.credentials.create({ publicKey: options })
+        ClientJS->>Express: POST /mbkauthe/api/passkey/register-verify { registrationResponse, name }
+        Express->>PasskeySvc: verifyRegistrationResponse(response, expectedChallenge, expectedOrigin, expectedRPID)
+        PasskeySvc-->>Express: VerificationResult (verified: true, registrationInfo)
+        Express->>PasskeyRepo: create({ userId, credentialId, publicKey, counter, deviceType, backedUp, transports, name })
+        PasskeyRepo->>DB: INSERT INTO mbkcore_passkeys (...)
+        DB-->>PasskeyRepo: Created record
+        Express-->>ClientJS: 200 OK { success: true, passkey: { id, name, created_at } }
+        ClientJS-->>User: Visual Success Toast: "Passkey registered successfully!"
+    end
+
+    %% ------------------------------------------------------------------
+    %% 2. PASSKEY AUTHENTICATION CEREMONY (PASSWORDLESS LOGIN)
+    %% ------------------------------------------------------------------
+    rect rgb(240, 253, 244)
+        note over User, DB: 2. Passkey Authentication Ceremony (Passwordless Login)
+        User->>ClientJS: Clicks "Sign in with Passkey"
+        ClientJS->>Express: POST /mbkauthe/api/passkey/login-options { username? }
+        Express->>PasskeySvc: generateAuthenticationOptions(userPasskeys?)
+        PasskeySvc-->>Express: AuthenticationOptions (challenge, rpId, timeout, allowCredentials?)
+        Express-->>ClientJS: 200 OK { options } (challenge stored in req.session.passkeyChallenge)
+
+        ClientJS->>User: Browser Resident Key / Biometric Authenticator Picker
+        User-->>ClientJS: Selects Account & Completes Biometric Verification
+        ClientJS->>ClientJS: navigator.credentials.get({ publicKey: options })
+        ClientJS->>Express: POST /mbkauthe/api/passkey/login-verify { authenticationResponse }
+        Express->>PasskeyRepo: findByCredentialId(credentialId)
+        PasskeyRepo->>DB: SELECT * FROM mbkcore_passkeys WHERE credential_id = $1
+        DB-->>PasskeyRepo: Passkey record (public_key, counter, user_id)
+        Express->>PasskeySvc: verifyAuthenticationResponse(response, expectedChallenge, expectedOrigin, expectedRPID, credential)
+        PasskeySvc-->>Express: VerificationResult (verified: true, newCounter)
+        Express->>PasskeyRepo: updateCounter(passkeyId, newCounter)
+        PasskeyRepo->>DB: UPDATE mbkcore_passkeys SET counter = $1, last_used_at = NOW()
+        Express->>SessionRepo: createSession({ userId, sessionId, ip, userAgent })
+        SessionRepo->>DB: INSERT INTO sessions (...)
+        Express-->>ClientJS: 200 OK { success: true, user, redirect_url } (Encrypted Session Cookie set)
+        ClientJS-->>User: Instant Redirect to Dashboard (/dashboard)
+    end

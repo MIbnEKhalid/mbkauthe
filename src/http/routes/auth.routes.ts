@@ -7,10 +7,12 @@ import { verifyPassword } from "../../core/security/password.js";
 import { cachedCookieOptions, encryptSessionId, getCookieDomain } from "../../config/cookies.js";
 import { clearSessionCookies, readAccountListFromCookie, removeAccountFromCookie, clearAccountListCookie, upsertAccountListCookie } from "../session/accountCookies.js";
 import { ErrorCodes, createErrorResponse, logError } from "../../core/errors/catalog.js";
+import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { authService } from "../../services/AuthService.js";
+import { passkeyService } from "../../services/PasskeyService.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
-import { completeLoginProcess, checkTrustedDevice, clearProfilePicCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
+import { completeLoginProcess, clearProfilePicCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
 import { createLogger } from "../../utils/logger.js";
 import { isOAuthProviderConfigured, getEnabledOAuthProvidersUI } from "../../oauth/providers/loader.js";
 
@@ -18,7 +20,7 @@ const router = express.Router();
 const logAuth = createLogger("auth");
 const csrfProtection = csurf({ cookie: true });
 
-export { completeLoginProcess, checkTrustedDevice };
+export { completeLoginProcess };
 
 const LoginLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -41,6 +43,177 @@ const TwoFALimit = rateLimit({
   message: { success: false, message: "Too many 2FA attempts, please try again later" } as any,
   validate: { trustProxy: false, xForwardedForHeader: false },
 });
+
+// ============================================
+// Passkey Public / Authentication Endpoints
+// ============================================
+
+router.post("/api/passkey/login-options", LoginLimit, async (req, res) => {
+  try {
+    const { username } = req.body || {};
+    const trimmedUsername = typeof username === "string" && username.trim() ? username.trim() : undefined;
+    const reqHostname = req.hostname || (req.headers.host ? req.headers.host.split(":")[0] : undefined);
+    const options = await passkeyService.generateAuthenticationOptions(trimmedUsername, reqHostname);
+    (req as any).session.current_webauthn_challenge = options.challenge;
+    return res.json({ success: true, options });
+  } catch (err: any) {
+    logAuth("Error generating passkey login options: %O", err);
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR, { message: "Failed to generate passkey login options" }));
+  }
+});
+
+router.post("/api/passkey/login-verify", LoginLimit, async (req, res) => {
+  const { response, redirect } = req.body || {};
+  const expectedChallenge = (req as any).session?.current_webauthn_challenge;
+
+  if (!response || !response.id) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD, { message: "Passkey response is required" }));
+  }
+
+  if (!expectedChallenge) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.SESSION_EXPIRED, { message: "WebAuthn challenge expired or not found. Please try again." }));
+  }
+
+  try {
+    const origin = (req.headers.origin as string) || (req.headers.host ? `${req.protocol}://${req.headers.host}` : undefined);
+    const reqHostname = req.hostname || (req.headers.host ? req.headers.host.split(":")[0] : undefined);
+    const result = await passkeyService.verifyAuthentication(response, expectedChallenge, origin, {
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      appKey: mbkautheVar.APP_NAME,
+      reqHostname,
+    });
+
+    delete (req as any).session.current_webauthn_challenge;
+
+    const requested_redirect = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
+    const user = result.user;
+    const user_for_session = {
+      user_id: user.user_id || undefined,
+      username: user.username,
+      role: user.role,
+      allowed_apps: user.allowed_apps,
+      full_name: user.full_name,
+      image: user.image,
+    };
+
+    return completeLoginProcess(req, res, user_for_session, requested_redirect, "passkey");
+  } catch (err: any) {
+    logAuth("Error during passkey authentication verification: %O", err);
+    if (err instanceof MbkAuthError) {
+      return res.status(err.statusCode).json(createErrorResponse(err.statusCode, err.errorCode, { message: err.message }));
+    }
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR, { message: "Passkey verification failed" }));
+  }
+});
+
+// ============================================
+// Passkey Authenticated / Registration Endpoints
+// ============================================
+
+router.post("/api/passkey/register-options", async (req, res) => {
+  const user = (req as any).session?.user;
+  if (!user || !user.username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  try {
+    const reqHostname = req.hostname || (req.headers.host ? req.headers.host.split(":")[0] : undefined);
+    const options = await passkeyService.generateRegistrationOptions(user.username, user.full_name, reqHostname);
+    (req as any).session.current_webauthn_challenge = options.challenge;
+    return res.json({ success: true, options });
+  } catch (err: any) {
+    logAuth("Error generating passkey registration options: %O", err);
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR, { message: "Failed to generate passkey registration options" }));
+  }
+});
+
+router.post("/api/passkey/register-verify", async (req, res) => {
+  const user = (req as any).session?.user;
+  if (!user || !user.username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  const { response, name } = req.body || {};
+  const expectedChallenge = (req as any).session?.current_webauthn_challenge;
+
+  if (!response || !response.id) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD, { message: "Passkey registration response is required" }));
+  }
+
+  if (!expectedChallenge) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.SESSION_EXPIRED, { message: "Registration challenge expired or missing" }));
+  }
+
+  try {
+    const origin = (req.headers.origin as string) || (req.headers.host ? `${req.protocol}://${req.headers.host}` : undefined);
+    const reqHostname = req.hostname || (req.headers.host ? req.headers.host.split(":")[0] : undefined);
+    const result = await passkeyService.verifyRegistration(user.username, response, expectedChallenge, name, origin, reqHostname);
+    delete (req as any).session.current_webauthn_challenge;
+    return res.json({ success: true, message: "Passkey registered successfully", passkeyId: result.passkeyId });
+  } catch (err: any) {
+    logAuth("Error during passkey registration verification: %O", err);
+    if (err instanceof MbkAuthError) {
+      return res.status(err.statusCode).json(createErrorResponse(err.statusCode, err.errorCode, { message: err.message }));
+    }
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR, { message: err?.message || "Failed to verify passkey registration" }));
+  }
+});
+
+router.get("/api/passkey/list", async (req, res) => {
+  const user = (req as any).session?.user;
+  if (!user || !user.username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  try {
+    const passkeys = await passkeyService.listUserPasskeys(user.username);
+    return res.json({ success: true, passkeys });
+  } catch (err: any) {
+    logAuth("Error listing user passkeys: %O", err);
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
+  }
+});
+
+router.patch("/api/passkey/:id", async (req, res) => {
+  const user = (req as any).session?.user;
+  if (!user || !user.username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  const { name } = req.body || {};
+  try {
+    const updated = await passkeyService.renamePasskey(req.params.id, user.username, name);
+    if (!updated) return res.status(404).json(createErrorResponse(404, ErrorCodes.RESOURCE_NOT_FOUND, { message: "Passkey not found" }));
+    return res.json({ success: true, message: "Passkey renamed successfully" });
+  } catch (err: any) {
+    logAuth("Error renaming passkey: %O", err);
+    if (err instanceof MbkAuthError) {
+      return res.status(err.statusCode).json(createErrorResponse(err.statusCode, err.errorCode, { message: err.message }));
+    }
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
+  }
+});
+
+router.delete("/api/passkey/:id", async (req, res) => {
+  const user = (req as any).session?.user;
+  if (!user || !user.username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  try {
+    const deleted = await passkeyService.deletePasskey(req.params.id, user.username);
+    if (!deleted) return res.status(404).json(createErrorResponse(404, ErrorCodes.RESOURCE_NOT_FOUND, { message: "Passkey not found" }));
+    return res.json({ success: true, message: "Passkey deleted successfully" });
+  } catch (err: any) {
+    logAuth("Error deleting passkey: %O", err);
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
+  }
+});
+
+// ============================================
+// Password Login & 2FA
+// ============================================
 
 router.post("/api/login", LoginLimit, async (req, res) => {
   logAuth(`Login request received`);
@@ -98,19 +271,13 @@ router.post("/api/login", LoginLimit, async (req, res) => {
     const requested_redirect = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
     const user_for_session = { user_id: user_id || undefined, username: auth_username, role, allowed_apps, full_name, image };
 
-    const trustedDeviceUser = await checkTrustedDevice(req, trimmedUsername);
-    if (trustedDeviceUser && is_2fa_enabled) {
-      logAuth(`Trusted device login for user: ${trimmedUsername}, skipping 2FA only`);
-      return completeLoginProcess(req, res, user_for_session, requested_redirect, false, "password");
-    }
-
     if (is_2fa_enabled) {
       (req as any).session.pre_auth_user = { ...user_for_session, redirect_url: requested_redirect };
       logAuth(`2FA required for user: ${trimmedUsername}`);
       return res.json({ success: true, two_factor_required: true, redirect_url: requested_redirect });
     }
 
-    return completeLoginProcess(req, res, user_for_session, requested_redirect, false, "password");
+    return completeLoginProcess(req, res, user_for_session, requested_redirect, "password");
   } catch (err) {
     console.error(`[mbkauthe] Error during login process:`, err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -131,7 +298,6 @@ router.get("/2fa", csrfProtection, (req, res) => {
     csrfToken: (req as any).csrfToken ? (req as any).csrfToken() : "",
     appName: mbkautheVar.APP_NAME,
     version: packageJson.version,
-    DEVICE_TRUST_DURATION_DAYS: mbkautheVar.DEVICE_TRUST_DURATION_DAYS,
   });
 });
 
@@ -140,7 +306,7 @@ router.post("/api/verify-2fa", TwoFALimit, csrfProtection, async (req, res) => {
     return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Please log in first" }));
   }
 
-  const { token, trust_device } = req.body || {};
+  const { token } = req.body || {};
   const { username, role, user_id, allowed_apps, full_name, image } = (req as any).session.pre_auth_user;
 
   if (!token || typeof token !== "string") {
@@ -178,7 +344,7 @@ router.post("/api/verify-2fa", TwoFALimit, csrfProtection, async (req, res) => {
     const method_to_use = (req as any).session.pre_auth_user.login_method || "password";
 
     delete (req as any).session.pre_auth_user;
-    await completeLoginProcess(req, res, { user_id, username, role, allowed_apps, full_name, image }, redirect_url, trust_device === true || trust_device === "true", method_to_use);
+    await completeLoginProcess(req, res, { user_id, username, role, allowed_apps, full_name, image }, redirect_url, method_to_use);
   } catch (err) {
     console.error(`[mbkauthe] Error during 2FA verification:`, err);
     res.status(500).json({ success: false, message: "Internal Server Error" });

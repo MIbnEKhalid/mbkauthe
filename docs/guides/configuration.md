@@ -29,7 +29,6 @@ MBKAuthe loads configuration values in the following order of precedence (highes
 | `SQLITE_PATH` | `string` | `"./mbkauthe.sqlite"` | Filesystem path for SQLite database file when `DB_TYPE=sqlite`. |
 | `MBKAUTH_TWO_FA_ENABLE` | `boolean` | `"false"` | Enables TOTP Two-Factor Authentication across the login flow. |
 | `COOKIE_EXPIRE_TIME` | `number` | `2` | Session cookie lifespan in hours. |
-| `DEVICE_TRUST_DURATION_DAYS` | `number` | `7` | Duration in days to remember a trusted 2FA device. |
 | `LOGIN_REDIRECT_URL` | `string` | `"/dashboard"` | Relative path to redirect users after successful login. Must start with `/`. |
 | `MAX_SESSIONS_PER_USER` | `number` | `5` | Maximum active concurrent sessions allowed per user before oldest session eviction. |
 | `CLI_AUTH_ENABLED` | `boolean` | `"false"` | Enables the RFC 8628 CLI Device Login endpoints. |
@@ -126,7 +125,6 @@ SESSION_SECRET_KEY=9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9
 DB_TYPE=postgres
 LOGIN_DB=postgres://mbkauth_user:SuperSecretPassword123@db.prod.internal:5432/mbkauth_prod?sslmode=require
 COOKIE_EXPIRE_TIME=24
-DEVICE_TRUST_DURATION_DAYS=30
 LOGIN_REDIRECT_URL=/app/overview
 MAX_SESSIONS_PER_USER=10
 MBKAUTH_TWO_FA_ENABLE=true

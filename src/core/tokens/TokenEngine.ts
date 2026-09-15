@@ -1,11 +1,10 @@
 import crypto from "node:crypto";
 
-export type TokenType = "pat" | "cli" | "device" | "session" | "custom";
+export type TokenType = "pat" | "cli" | "session" | "custom";
 
 export const TOKEN_PREFIXES: Record<TokenType, string> = {
   pat: "mbk_pat_",
   cli: "mbk_cli_",
-  device: "mbk_dev_",
   session: "mbk_sess_",
   custom: "mbk_",
 };
@@ -41,17 +40,10 @@ export class TokenEngine {
   }
 
   /**
-   * Creates a CLI auth session / device token
+   * Creates a CLI auth session / token
    */
   static createCliToken(bytes = 32): string {
     return this.createToken("cli", undefined, bytes);
-  }
-
-  /**
-   * Creates a device trust token
-   */
-  static createDeviceToken(bytes = 32): string {
-    return this.createToken("device", undefined, bytes);
   }
 
   /**

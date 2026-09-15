@@ -1,0 +1,192 @@
+<div class="showMessageOverlay" id="passkeyPromptOverlay" aria-hidden="true" hidden>
+    <div class="messageModal passkeyPromptModal" role="dialog" aria-modal="true" aria-labelledby="passkeyPromptTitle" style="max-width: 440px;">
+        <div class="messageHeader">
+            <div class="messageIcon" style="background: rgba(15, 118, 110, 0.12); color: var(--primary, #0f766e);">
+                <i class="fas fa-fingerprint"></i>
+            </div>
+            <h2 id="passkeyPromptTitle">Save Passkey?</h2>
+        </div>
+        <div class="messageBody">
+            <p style="margin-bottom: 0.6rem; font-size: 0.95rem; line-height: 1.5; color: var(--slate-700, #334155);">
+                Would you like to register a passkey for <strong>@<span id="passkeyPromptUsername"></span></strong> on this device?
+            </p>
+            <p style="font-size: 0.85rem; color: var(--slate-500, #64748b); line-height: 1.45; margin-bottom: 0;">
+                You will be able to sign in instantly next time with Touch ID, Face ID, Windows Hello, or your security key without typing a password.
+            </p>
+            <div id="passkeyPromptStatus" style="display: none; margin-top: 0.85rem; font-size: 0.88rem; text-align: center;"></div>
+        </div>
+        <div class="messageFooter" style="display: flex; flex-direction: column; gap: 0.65rem; align-items: stretch;">
+            <div style="display: flex; gap: 0.65rem; width: 100%;">
+                <button type="button" class="btn-message-action" id="passkeyPromptCancelBtn" style="background: var(--slate-200, #e2e8f0); color: var(--slate-700, #334155); flex: 1; min-width: 0;">
+                    No
+                </button>
+                <button type="button" class="btn-message-action" id="passkeyPromptConfirmBtn" style="background: var(--primary, #0f766e); color: #ffffff; flex: 1.4; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                    <i class="fas fa-fingerprint"></i>
+                    <span>Okay</span>
+                </button>
+            </div>
+            <button type="button" id="passkeyPromptDontShowBtn" style="background: transparent; border: none; color: var(--slate-500, #64748b); font-size: 0.8rem; cursor: pointer; text-decoration: underline; padding: 0.3rem 0; margin-top: 0.1rem; transition: color 0.15s ease;">
+                Don't show again
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function passkeyBufferToBase64URL(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function passkeyBase64URLToBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const padLen = (4 - (base64.length % 4)) % 4;
+        const padded = base64 + '='.repeat(padLen);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    async function promptPasskeyOrRedirect(username, redirectUrl) {
+        const isPasskeySupported = window.PublicKeyCredential &&
+            typeof window.PublicKeyCredential === 'function' &&
+            window.isSecureContext;
+
+        const dismissedKey = 'mbk_passkey_prompt_dismissed_' + (username || 'user');
+        const isDismissed = localStorage.getItem(dismissedKey) === 'true';
+
+        const navigateToDestination = () => {
+            window.location.href = redirectUrl || '{{customURL}}';
+        };
+
+        if (!isPasskeySupported || isDismissed) {
+            navigateToDestination();
+            return;
+        }
+
+        const overlay = document.getElementById('passkeyPromptOverlay');
+        const userSpan = document.getElementById('passkeyPromptUsername');
+        const confirmBtn = document.getElementById('passkeyPromptConfirmBtn');
+        const cancelBtn = document.getElementById('passkeyPromptCancelBtn');
+        const dontShowBtn = document.getElementById('passkeyPromptDontShowBtn');
+        const statusDiv = document.getElementById('passkeyPromptStatus');
+
+        if (!overlay || !confirmBtn) {
+            navigateToDestination();
+            return;
+        }
+
+        if (userSpan) userSpan.textContent = username || 'your account';
+        overlay.removeAttribute('hidden');
+        overlay.classList.add('active');
+        document.body.classList.add('blur-active');
+
+        cancelBtn.onclick = () => {
+            overlay.classList.remove('active');
+            overlay.setAttribute('hidden', '');
+            document.body.classList.remove('blur-active');
+            navigateToDestination();
+        };
+
+        dontShowBtn.onclick = () => {
+            try { localStorage.setItem(dismissedKey, 'true'); } catch (_) {}
+            overlay.classList.remove('active');
+            overlay.setAttribute('hidden', '');
+            document.body.classList.remove('blur-active');
+            navigateToDestination();
+        };
+
+        confirmBtn.onclick = async () => {
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            dontShowBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
+
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.color = 'var(--primary, #0f766e)';
+                statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Follow your browser/device prompt...';
+            }
+
+            try {
+                // 1. Fetch registration options
+                const optionsRes = await fetch('/mbkauthe/api/passkey/register-options', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const optData = await optionsRes.json();
+                if (!optData.success || !optData.options) {
+                    throw new Error(optData.message || 'Failed to initialize passkey');
+                }
+
+                const options = optData.options;
+                options.challenge = passkeyBase64URLToBuffer(options.challenge);
+                options.user.id = passkeyBase64URLToBuffer(options.user.id);
+                if (options.excludeCredentials) {
+                    options.excludeCredentials = options.excludeCredentials.map(c => ({
+                        ...c,
+                        id: passkeyBase64URLToBuffer(c.id)
+                    }));
+                }
+
+                // 2. Trigger browser WebAuthn prompt
+                const credential = await navigator.credentials.create({ publicKey: options });
+                if (!credential) throw new Error('Passkey registration cancelled');
+
+                const credResponse = {
+                    id: credential.id,
+                    rawId: passkeyBufferToBase64URL(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        attestationObject: passkeyBufferToBase64URL(credential.response.attestationObject),
+                        clientDataJSON: passkeyBufferToBase64URL(credential.response.clientDataJSON),
+                        transports: credential.response.getTransports ? credential.response.getTransports() : []
+                    }
+                };
+
+                let defaultDeviceName = 'Passkey';
+                if (/Macintosh|Mac OS/i.test(navigator.userAgent)) defaultDeviceName = 'Mac Touch ID / Passkey';
+                else if (/Windows/i.test(navigator.userAgent)) defaultDeviceName = 'Windows Hello';
+                else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) defaultDeviceName = 'Apple Passkey';
+                else if (/Android/i.test(navigator.userAgent)) defaultDeviceName = 'Android Passkey';
+
+                // 3. Verify on server
+                const verifyRes = await fetch('/mbkauthe/api/passkey/register-verify', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        response: credResponse,
+                        name: defaultDeviceName
+                    })
+                });
+                const verData = await verifyRes.json();
+                if (!verData.success) {
+                    throw new Error(verData.message || 'Verification failed');
+                }
+
+                if (statusDiv) {
+                    statusDiv.style.color = 'var(--success, #059669)';
+                    statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Passkey saved successfully! Redirecting...';
+                }
+                setTimeout(navigateToDestination, 800);
+            } catch (err) {
+                console.warn('[Passkey Prompt]', err);
+                if (statusDiv) {
+                    statusDiv.style.color = 'var(--slate-500, #64748b)';
+                    statusDiv.innerHTML = 'Passkey skipped. Redirecting...';
+                }
+                setTimeout(navigateToDestination, 600);
+            }
+        };
+    }
+</script>

@@ -32,7 +32,6 @@ const {
   isSafeFetchUrl,
   hashPassword,
   verifyPassword,
-  hashDeviceToken,
 } = await import('../../dist/index.js');
 
 const viewsPath = path.join(__dirname, '../../views');
@@ -739,11 +738,6 @@ describe('mbkauthe Routes', () => {
       expect(stored).toMatch(/^[0-9a-f]{128}$/);
       expect(await verifyPassword(password, username, stored)).toBe(true);
       expect(await verifyPassword('wrong-password', username, stored)).toBe(false);
-    });
-
-    test('hashDeviceToken returns a keyed hex digest', () => {
-      const token = 'a'.repeat(64);
-      expect(hashDeviceToken(token)).toMatch(/^[0-9a-f]{64}$/);
     });
 
     test('security headers are set on API responses', async () => {

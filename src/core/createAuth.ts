@@ -14,7 +14,7 @@ import { OAuthAccountRepository } from "../db/repositories/OAuthAccountRepositor
 import { UserRepository } from "../db/repositories/UserRepository.js";
 import { AuthRepository } from "../db/repositories/AuthRepository.js";
 import { SessionRepository } from "../db/repositories/SessionRepository.js";
-import { DeviceTrustRepository } from "../db/repositories/DeviceTrustRepository.js";
+import { PasskeyRepository } from "../db/repositories/PasskeyRepository.js";
 import { ApiTokenRepository } from "../db/repositories/ApiTokenRepository.js";
 import { PermissionRepository } from "../db/repositories/PermissionRepository.js";
 import { CliAuthSessionRepository } from "../db/repositories/CliAuthSessionRepository.js";
@@ -39,7 +39,7 @@ export interface AuthRepositoriesConfig {
   auth?: AuthRepository;
   oauthAccount?: OAuthAccountRepository;
   session?: SessionRepository;
-  deviceTrust?: DeviceTrustRepository;
+  passkeys?: PasskeyRepository;
   apiToken?: ApiTokenRepository;
   permission?: PermissionRepository;
   cliAuth?: CliAuthSessionRepository;
@@ -59,7 +59,7 @@ export class MbkAuthInstance {
     auth: AuthRepository;
     oauthAccount: OAuthAccountRepository;
     session: SessionRepository;
-    deviceTrust: DeviceTrustRepository;
+    passkeys: PasskeyRepository;
     apiToken: ApiTokenRepository;
     permission: PermissionRepository;
     cliAuth: CliAuthSessionRepository;
@@ -75,7 +75,7 @@ export class MbkAuthInstance {
     const authRepo = repos.auth || new AuthRepository();
     const oauthAccountRepo = repos.oauthAccount || new OAuthAccountRepository();
     const sessionRepo = repos.session || new SessionRepository();
-    const deviceTrustRepo = repos.deviceTrust || new DeviceTrustRepository();
+    const passkeyRepo = repos.passkeys || new PasskeyRepository();
     const apiTokenRepo = repos.apiToken || new ApiTokenRepository();
     const permissionRepo = repos.permission || new PermissionRepository();
     const cliAuthRepo = repos.cliAuth || new CliAuthSessionRepository();
@@ -85,7 +85,7 @@ export class MbkAuthInstance {
       auth: authRepo,
       oauthAccount: oauthAccountRepo,
       session: sessionRepo,
-      deviceTrust: deviceTrustRepo,
+      passkeys: passkeyRepo,
       apiToken: apiTokenRepo,
       permission: permissionRepo,
       cliAuth: cliAuthRepo,

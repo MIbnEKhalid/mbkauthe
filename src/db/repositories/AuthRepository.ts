@@ -2,7 +2,7 @@ import { BaseRepository } from "./BaseRepository.js";
 import { AuthUser } from "../../core/types/user.types.js";
 import { UserRepository, userRepository, normalizeUserRow } from "./UserRepository.js";
 import { SessionRepository, sessionRepository } from "./SessionRepository.js";
-import { DeviceTrustRepository, deviceTrustRepository } from "./DeviceTrustRepository.js";
+import { PasskeyRepository, passkeyRepository } from "./PasskeyRepository.js";
 import { ApiTokenRepository, apiTokenRepository } from "./ApiTokenRepository.js";
 import { dblogin, dialect as defaultDialect } from "../pool.js";
 
@@ -11,14 +11,14 @@ export { normalizeUserRow };
 export class AuthRepository extends BaseRepository {
   public users: UserRepository;
   public sessions: SessionRepository;
-  public deviceTrust: DeviceTrustRepository;
+  public passkeys: PasskeyRepository;
   public apiTokens: ApiTokenRepository;
 
   constructor(options: any = {}) {
     super({ db: options.db || dblogin, dialect: options.dialect || defaultDialect });
     this.users = new UserRepository(options);
     this.sessions = new SessionRepository(options);
-    this.deviceTrust = new DeviceTrustRepository(options);
+    this.passkeys = new PasskeyRepository(options);
     this.apiTokens = new ApiTokenRepository(options);
   }
 
@@ -42,8 +42,8 @@ export class AuthRepository extends BaseRepository {
     return this.sessions.getSessionsWithUsersByIds(session_ids, query_name);
   }
 
-  async touchTrustedDevice(device_token_hash: string, username: string): Promise<AuthUser | null> {
-    return this.deviceTrust.touchTrustedDevice(device_token_hash, username);
+  async findPasskeyByCredentialId(credentialId: string) {
+    return this.passkeys.findByCredentialId(credentialId);
   }
 
   async cleanupAndCountUserSessions(username: string, query_name?: string): Promise<number> {
@@ -94,9 +94,6 @@ export class AuthRepository extends BaseRepository {
     });
   }
 
-  async insertTrustedDevice(params: any) {
-    return this.deviceTrust.insertTrustedDevice(params);
-  }
 
   async getUserWithTwoFA(username: string, query_name: string = "login-get-user"): Promise<AuthUser | null> {
     const query = `

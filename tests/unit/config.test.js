@@ -25,9 +25,9 @@ describe('Config Resolution and Validation', () => {
     });
 
     it('finds stripped-underscore matching key', () => {
-      const obj = { mainsecrettoken: 'my-secret', devicetrustdurationdays: 14 };
+      const obj = { mainsecrettoken: 'my-secret', cookieexpiretime: 14 };
       expect(findValue(obj, 'MAIN_SECRET_TOKEN')).toBe('my-secret');
-      expect(findValue(obj, 'DEVICE_TRUST_DURATION_DAYS')).toBe(14);
+      expect(findValue(obj, 'COOKIE_EXPIRE_TIME')).toBe(14);
     });
 
     it('returns undefined if key is missing or source is null', () => {
@@ -122,7 +122,6 @@ describe('Config Resolution and Validation', () => {
       delete process.env.mbkauthShared;
 
       const config = validateConfiguration();
-      expect(config.DEVICE_TRUST_DURATION_DAYS).toBe(7);
       expect(config.COOKIE_EXPIRE_TIME).toBe(2);
       expect(config.LOGIN_REDIRECT_URL).toBe('/dashboard');
       expect(config.DB_TYPE).toBe('sqlite');

@@ -25,9 +25,6 @@ export {
   getCookieDomain,
   getCookieSecure,
   resolveCookieDomain,
-  generateDeviceToken,
-  hashDeviceToken,
-  getDeviceTokenCookieOptions,
   isAllowedOriginHostname,
 } from "./config/cookies.js";
 export {
@@ -56,7 +53,7 @@ export { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog, attachDevQu
 export { BaseRepository, type BaseRepositoryOptions } from "./db/repositories/BaseRepository.js";
 export { UserRepository, userRepository } from "./db/repositories/UserRepository.js";
 export { SessionRepository, sessionRepository } from "./db/repositories/SessionRepository.js";
-export { DeviceTrustRepository, deviceTrustRepository } from "./db/repositories/DeviceTrustRepository.js";
+export { PasskeyRepository, passkeyRepository, type PasskeyRow, type CreatePasskeyParams } from "./db/repositories/PasskeyRepository.js";
 export { AuthRepository, authRepository } from "./db/repositories/AuthRepository.js";
 export { PermissionRepository, permissionRepository } from "./db/repositories/PermissionRepository.js";
 export { ApiTokenRepository, apiTokenRepository } from "./db/repositories/ApiTokenRepository.js";
@@ -104,6 +101,9 @@ export {
   authService,
   type LoginOptions,
   type LoginResult,
+  PasskeyService,
+  passkeyService,
+  type PasskeyServiceOptions,
   ApiTokenService,
   apiTokenService,
   type CreateTokenResult,

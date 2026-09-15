@@ -19,7 +19,6 @@ router.get("/2fa", (req, res) =>
   renderPage(req, res, "pages/2fa.handlebars", false, {
     pagename: "Two-Factor Authentication",
     page: "/home",
-    DEVICE_TRUST_DURATION_DAYS: mbkautheVar.DEVICE_TRUST_DURATION_DAYS || 7,
   })
 );
 

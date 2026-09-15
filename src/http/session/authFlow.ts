@@ -1,6 +1,6 @@
 import express from "express";
 import { mbkautheVar } from "../../config/index.js";
-import { cachedCookieOptions, cachedClearCookieOptions, generateDeviceToken, getDeviceTokenCookieOptions, DEVICE_TRUST_DURATION_MS, hashDeviceToken, encryptSessionId } from "../../config/cookies.js";
+import { cachedCookieOptions, cachedClearCookieOptions, encryptSessionId } from "../../config/cookies.js";
 import { upsertAccountListCookie } from "./accountCookies.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { attachSessionPermissions } from "./sessionPermissions.js";
@@ -37,41 +37,11 @@ export async function invalidateDbSession(session_id: string) {
   }
 }
 
-export async function checkTrustedDevice(req: express.Request, username: string) {
-  const device_token = (req as any).cookies?.device_token;
-  if (!device_token || typeof device_token !== "string") return null;
-
-  try {
-    const deviceUser = await authRepository.touchTrustedDevice(hashDeviceToken(device_token)!, username);
-    if (!deviceUser || !deviceUser.is_active) return null;
-
-    if (deviceUser.role !== "superadmin") {
-      const allowed = deviceUser.allowed_apps;
-      if (!Array.isArray(allowed) || !allowed.some((app: any) => app?.toLowerCase() === mbkautheVar.APP_NAME)) {
-        console.warn(`[mbkauthe] Trusted device check: User "${username}" is not authorized to use the application "${mbkautheVar.APP_NAME}"`);
-        return null;
-      }
-    }
-
-    logAuth(`Trusted device validated for user: ${username}`);
-    return {
-      user_id: deviceUser.user_id || undefined,
-      username,
-      role: deviceUser.role,
-      allowed_apps: deviceUser.allowed_apps,
-    };
-  } catch (deviceErr) {
-    console.error(`[mbkauthe] Error checking trusted device:`, deviceErr);
-    return null;
-  }
-}
-
 export async function completeLoginProcess(
   req: express.Request,
   res: express.Response,
   user: any,
   redirect_url: string | null = null,
-  trust_device: boolean = false,
   method: string | null = null
 ) {
   try {
@@ -137,27 +107,9 @@ export async function completeLoginProcess(
 
       (req as any).session.pre_auth_user = null;
 
-      if (trust_device) {
-        try {
-          const deviceToken = generateDeviceToken();
-          await authRepository.insertTrustedDevice({
-            username,
-            device_token_hash: hashDeviceToken(deviceToken)!,
-            device_name: req.headers["user-agent"] ? req.headers["user-agent"].substring(0, 255) : "Unknown Device",
-            user_agent: req.headers["user-agent"] || "Unknown",
-            ip_address: req.ip || (req.socket?.remoteAddress) || "Unknown",
-            expires_at: new Date(Date.now() + DEVICE_TRUST_DURATION_MS),
-          });
-          res.cookie("device_token", deviceToken, getDeviceTokenCookieOptions());
-          logAuth(`Trusted device token created for user: ${username}`);
-        } catch (deviceErr) {
-          console.error(`[mbkauthe] Error creating trusted device:`, deviceErr);
-        }
-      }
+      logAuth(`User "${username}" logged in successfully via ${method || "password"} (last_login updated)`);
 
-      logAuth(`User "${username}" logged in successfully (last_login updated)`);
-
-      const responsePayload: Record<string, any> = { success: true, message: "Login successful" };
+      const responsePayload: Record<string, any> = { success: true, message: "Login successful", username };
       if (redirect_url) responsePayload.redirect_url = redirect_url;
       res.status(200).json(responsePayload);
     });

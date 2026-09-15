@@ -31,10 +31,11 @@ npm install mbkauthe
 - [Role-Based Access Control (RBAC)](guides/rbac.md) — Role hierarchies (`superadmin`, `admin`, `normaluser`, `guest`), `RoleRegistry`, and role enforcement middleware (`roleChk`, `sessRole`).
 - [Dynamic Permission Catalogs](guides/permissions.md) — Declarative `app:service:action` manifests, `definePermissions`, `syncAppPermissions`, and `sessPerm` / `permChk` middleware.
 - [Provider-Neutral OAuth & OIDC](guides/oauth.md) — Google, GitHub, Microsoft, Discord, Apple, and Custom OIDC social login, account linking, and token encryption.
+- [WebAuthn & Passkeys](guides/passkeys.md) — FIDO2 biometric authentication (Touch ID, Face ID, Windows Hello) and security keys.
 - [OAuth Architecture Reference](oauth.md) — In-depth architectural breakdown of provider-neutral OAuth, PKCE, JWKS, and `createAuth` dependency injection.
 - [Custom OIDC Integration](oauth-custom-oidc.md) — Complete guide to integrating Keycloak, Auth0, Okta, and generic OIDC providers.
 - [OAuth Migration Guide](oauth-migration.md) — Upgrading from Passport or legacy OAuth to MBKAuthe v6.
-- [Two-Factor Authentication (2FA)](guides/2fa.md) — RFC 6238 TOTP authentication, QR code generation, and trusted device tokens.
+- [Two-Factor Authentication (2FA)](guides/2fa.md) — RFC 6238 TOTP authentication and QR code generation.
 
 ### 3. Tokens & Developer Tooling
 - [API Tokens & TokenEngine](guides/api-tokens.md) — Cryptographic `TokenEngine`, prefixed Personal Access Tokens (`mbk_pat_`), SHA-256 constant-time verification, and scoped permissions.
@@ -66,8 +67,8 @@ MBKAuthe provides clean TypeScript subpath exports for modular tree-shaking and 
 | `mbkauthe` | Main Express router, middleware, validation DTOs, and top-level helpers. |
 | `mbkauthe/core` | Core domain logic: `TokenEngine`, `RoleRegistry`, `AuthorizationService`, `AuthContext`, `authEvents`, `MbkAuthError`, `ErrorCodes`. |
 | `mbkauthe/db` | Database layer: `PostgresAdapter`, `SqliteAdapter`, `dblogin`, `dialect`, `wrapPoolWithRetry`, `BaseRepository`. |
-| `mbkauthe/repositories` | Typed data repositories: `UserRepository`, `SessionRepository`, `AuthRepository`, `PermissionRepository`, `ApiTokenRepository`, `OAuthAccountRepository`. |
-| `mbkauthe/services` | Domain services: `AuthService`, `ApiTokenService`, `CliAuthService`, `OAuthService`, `PermissionSyncService`. |
+| `mbkauthe/repositories` | Typed data repositories: `UserRepository`, `SessionRepository`, `PasskeyRepository`, `AuthRepository`, `PermissionRepository`, `ApiTokenRepository`, `OAuthAccountRepository`. |
+| `mbkauthe/services` | Domain services: `AuthService`, `PasskeyService`, `ApiTokenService`, `CliAuthService`, `OAuthService`, `PermissionSyncService`. |
 | `mbkauthe/oauth` | Provider-neutral OAuth/OIDC engine: `createOAuthFlowService`, `OAuthStateStore`, `OAuthTokenEncryption`. |
 | `mbkauthe/oauth/presets` | Built-in identity provider presets: `googleProvider`, `githubProvider`, `microsoftProvider`, `discordProvider`, `appleProvider`, `customOIDCProvider`. |
 | `mbkauthe/express` | Express router adapter: `createOAuthRouter`. |

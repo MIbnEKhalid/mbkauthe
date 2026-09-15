@@ -38,7 +38,7 @@ export function normalizeKey(key: string): string {
 }
 
 const CANONICAL_KEYS = [
-  "app_name", "device_trust_duration_days", "main_secret_token", "session_secret_key",
+  "app_name", "main_secret_token", "session_secret_key",
   "is_deployed", "db_type", "login_db", "sqlite_path", "mbkauth_two_fa_enable",
   "cookie_expire_time", "domain", "login_redirect_url", "oauth_providers",
   "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled"
@@ -47,7 +47,6 @@ const CANONICAL_KEYS = [
 const DEFAULT_CONFIG: Record<string, any> = {
   app_name: "mbkapp",
   domain: "localhost",
-  device_trust_duration_days: 7,
   is_deployed: "false",
   db_type: "postgres",
   sqlite_path: "./mbkauthe.sqlite",
@@ -187,7 +186,6 @@ function normalizeAndValidateConfig(config: Record<string, any>, errors: string[
   }
 
   normalizePositiveNumber(config, "cookie_expire_time", "COOKIE_EXPIRE_TIME", errors);
-  normalizePositiveNumber(config, "device_trust_duration_days", "DEVICE_TRUST_DURATION_DAYS", errors);
   normalizePositiveNumber(config, "max_sessions_per_user", "MAX_SESSIONS_PER_USER", errors, true);
 }
 

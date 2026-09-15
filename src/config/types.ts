@@ -37,7 +37,6 @@ export interface MBKAuthConfig {
   sqlite_path?: string;
   mbkauth_two_fa_enable?: 'true' | 'false' | 'f' | boolean;
   cookie_expire_time?: number;
-  device_trust_duration_days?: number;
   login_redirect_url?: string;
   max_sessions_per_user?: number;
   cli_auth_base_url?: string;
@@ -55,7 +54,6 @@ export interface MBKAuthConfig {
   SQLITE_PATH?: string;
   MBKAUTH_TWO_FA_ENABLE: 'true' | 'false' | 'f' | boolean;
   COOKIE_EXPIRE_TIME?: number;
-  DEVICE_TRUST_DURATION_DAYS?: number;
   LOGIN_REDIRECT_URL?: string;
   MAX_SESSIONS_PER_USER?: number;
   CLI_AUTH_BASE_URL?: string;

@@ -9,9 +9,6 @@ describe("Unified Token Engine", () => {
 
     const cli = TokenEngine.createCliToken();
     expect(cli.startsWith("mbk_cli_")).toBe(true);
-
-    const dev = TokenEngine.createDeviceToken();
-    expect(dev.startsWith("mbk_dev_")).toBe(true);
   });
 
   test("hashes tokens predictably with sha256", () => {

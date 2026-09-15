@@ -8,7 +8,7 @@ export interface AuthLoginSuccessEvent {
   ip?: string;
   userAgent?: string;
   appKey?: string;
-  authMethod?: "password" | "oauth" | "cli" | "token" | "session" | "2fa";
+  authMethod?: "password" | "oauth" | "cli" | "token" | "session" | "2fa" | "passkey";
   provider?: string;
   timestamp: Date;
 }

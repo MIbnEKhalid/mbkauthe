@@ -12,7 +12,6 @@ The `TokenEngine` creates cryptographically secure tokens with standard prefixes
 |---|---|---|---|
 | `pat` | `mbk_pat_` | 32 bytes (64 hex) | Personal Access Token for API clients and automations. |
 | `cli` | `mbk_cli_` | 32 bytes (64 hex) | CLI Device Authorization session token. |
-| `device` | `mbk_dev_` | 32 bytes (64 hex) | 2FA trusted device remember token. |
 | `session` | `mbk_sess_` | 32 bytes (64 hex) | Encrypted user session identifier. |
 
 ### Generating Tokens Programmatically

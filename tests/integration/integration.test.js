@@ -682,10 +682,10 @@ describe('Role permission middleware', () => {
 });
 
 // =====================================================================
-// 5. 2FA success path (+ trusted device skip)
+// 5. 2FA success path
 // =====================================================================
 describe('Two-factor authentication', () => {
-  test('full 2FA login flow with a valid TOTP token and trusted-device skip on re-login', async () => {
+  test('full 2FA login flow with a valid TOTP token', async () => {
     const secret = speakeasy.generateSecret({ length: 20 }).base32;
     await createUser('twofa.full', { twoFASecret: secret, twoFAStatus: 1 });
 
@@ -705,24 +705,17 @@ describe('Two-factor authentication', () => {
 
     const token = speakeasy.totp({ secret, encoding: 'base32' });
     const verify = await jarPost('/mbkauthe/api/verify-2fa', jar, { ip, ua })
-      .send({ token, _csrf: csrfToken, trust_device: true });
+      .send({ token, _csrf: csrfToken });
     expect(verify.status).toBe(200);
     expect(verify.body).toMatchObject({ success: true });
     jar.store(verify.headers['set-cookie']);
 
     expect(await countAppSessions('twofa.full')).toBe(1);
-    expect(jar.has('device_token')).toBe(true);
 
     // Session works on protected routes
     const protectedPage = await jarGet('/mbkauthe/test', jar, { ip, ua });
     expect(protectedPage.status).toBe(200);
     expect(protectedPage.text).toContain('twofa.full');
-
-    // Re-login on the trusted device skips 2FA entirely.
-    const relogin = await login('twofa.full', { jar, ip, ua });
-    expect(relogin.res.status).toBe(200);
-    expect(relogin.res.body).toMatchObject({ success: true });
-    expect(relogin.res.body.two_factor_required).toBeUndefined();
   });
 
   test('invalid TOTP token is rejected with TWO_FA_INVALID_TOKEN and no session is created', async () => {

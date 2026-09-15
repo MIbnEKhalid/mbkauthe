@@ -91,7 +91,7 @@ MBKAuthe exposes pre-instantiated singleton repositories for all domain models:
 - `permissionRepository`: Dynamic permission catalog and role registry persistence.
 - `apiTokenRepository`: Personal access tokens, hashes, and scopes.
 - `cliAuthSessionRepository`: RFC 8628 device authorization requests and polling.
-- `deviceTrustRepository`: Trusted 2FA devices and expiration management.
+- `passkeyRepository`: WebAuthn / FIDO2 public keys, credential IDs, and counter management.
 
 ### Example: Using `UserRepository` & `SessionRepository`
 

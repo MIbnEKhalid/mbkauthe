@@ -39,9 +39,10 @@ Designed for high reliability and defense-in-depth security, MBKAuthe provides d
 - **Provider-Neutral OAuth & OIDC**: Modern social login architecture supporting Google, GitHub, Microsoft/Entra ID, Discord, Apple, and generic OIDC providers with default-on PKCE (RFC 7636) and AES-256-GCM token encryption at rest.
 - **Decoupled Auth & Authorization**: Pure domain `AuthContext` model and dedicated `AuthorizationService` for role, permission, and custom policy evaluation independent of transport or database.
 - **Dynamic Manifest-Driven RBAC**: Declarative `app:service:action` permission manifests (`definePermissions`), database catalog sync (`syncAppPermissions`), `RoleRegistry`, and drop-in middleware (`sessVal`, `sessRole`, `sessPerm`, `roleChk`, `permChk`).
-- **Cryptographic TokenEngine**: Standardized prefixed tokens (`mbk_pat_`, `mbk_cli_`, `mbk_dev_`, `mbk_sess_`) with constant-time SHA-256 verification and last-used tracking.
+- **WebAuthn / FIDO2 Passkeys**: Full passwordless biometric authentication (Touch ID, Face ID, Windows Hello) and hardware security keys with challenge-response ceremonies, anti-replay counter checks, multi-user discoverable credentials, and post-login registration prompts.
+- **Cryptographic TokenEngine**: Standardized prefixed tokens (`mbk_pat_`, `mbk_cli_`, `mbk_sess_`) with constant-time SHA-256 verification and last-used tracking.
 - **RFC 8628 CLI Device Login**: OAuth 2.0 Device Authorization Grant allowing command-line tools to authenticate seamlessly via the browser with 8-character user codes.
-- **TOTP Two-Factor Authentication**: RFC 6238 Time-based One-Time Passwords with QR code setup and trusted device tokens.
+- **TOTP Two-Factor Authentication**: RFC 6238 Time-based One-Time Passwords with QR code setup.
 - **Domain Event Streaming**: Type-safe `authEvents` emitter for audit logs, webhooks, and analytics (`auth:login:success`, `auth:logout`, `auth:token:created`, `oauth.callback.success`, etc.).
 - **Health & Observability**: Real-time diagnostic reporting (`getAuthHealthReport`) and live in-memory database query logging.
 
@@ -147,10 +148,10 @@ import { TokenEngine, RoleRegistry, AuthorizationService, authEvents, definePerm
 import { dblogin, dialect, applySchema, withQueryRetry, BaseRepository, PostgresAdapter, SqliteAdapter } from "mbkauthe/db";
 
 // 4. Typed Repositories
-import { userRepository, sessionRepository, authRepository, permissionRepository, apiTokenRepository, oAuthAccountRepository } from "mbkauthe/repositories";
+import { userRepository, sessionRepository, passkeyRepository, authRepository, permissionRepository, apiTokenRepository, oAuthAccountRepository } from "mbkauthe/repositories";
 
 // 5. Domain Services
-import { authService, apiTokenService, cliAuthService, oAuthService, syncAppPermissions } from "mbkauthe/services";
+import { authService, passkeyService, apiTokenService, cliAuthService, oAuthService, syncAppPermissions } from "mbkauthe/services";
 
 // 6. Provider-Neutral OAuth & Presets
 import { createOAuthFlowService } from "mbkauthe/oauth";
@@ -208,6 +209,13 @@ authEvents.on("oauth.callback.success", (evt) => {
 | `GET` | `/mbkauthe/api/account-sessions` | List active remembered accounts on device | Session Cookie |
 | `POST` | `/mbkauthe/api/checkSession` | Verify session validity | Session Cookie / Token |
 | `POST` | `/mbkauthe/api/verify-2fa` | Complete 2FA TOTP verification | Session Cookie |
+| `POST` | `/mbkauthe/api/passkey/register-options` | Generate WebAuthn registration challenge | Session Cookie |
+| `POST` | `/mbkauthe/api/passkey/register-verify` | Verify attestation & store passkey | Session Cookie |
+| `POST` | `/mbkauthe/api/passkey/login-options` | Generate WebAuthn authentication challenge | Public |
+| `POST` | `/mbkauthe/api/passkey/login-verify` | Verify biometric assertion & create session | Public |
+| `GET` | `/mbkauthe/api/passkey/list` | List user's registered passkeys | Session Cookie |
+| `PATCH` | `/mbkauthe/api/passkey/:id` | Rename registered passkey | Session Cookie |
+| `DELETE` | `/mbkauthe/api/passkey/:id` | Delete registered passkey | Session Cookie |
 | `GET` | `/mbkauthe/oauth/providers` | List configured OAuth providers | Public |
 | `GET` | `/mbkauthe/oauth/:provider/begin` | Initiate OAuth/OIDC authorization flow | Public |
 | `GET` | `/mbkauthe/oauth/:provider/callback`| Complete OAuth/OIDC authorization callback | Public |
@@ -235,6 +243,7 @@ Full interactive guides, recipes, and detailed API references are available at [
 - [Role-Based Access Control (RBAC)](docs/guides/rbac.md)
 - [Dynamic Permissions & Catalogs](docs/guides/permissions.md)
 - [Provider-Neutral OAuth & OIDC](docs/guides/oauth.md)
+- [WebAuthn & Passkeys Guide](docs/guides/passkeys.md)
 - [OAuth Architectural Reference](docs/oauth.md)
 - [Custom OIDC Integration](docs/oauth-custom-oidc.md)
 - [OAuth Migration Guide](docs/oauth-migration.md)

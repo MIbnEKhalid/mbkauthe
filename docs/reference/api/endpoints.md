@@ -87,14 +87,107 @@ Submits TOTP 6-digit code after password verification.
 - **Request Body**:
   ```json
   {
-    "token": "123456",
-    "trustDevice": true
+    "token": "123456"
   }
   ```
 
 ---
 
-## 3. Provider-Neutral OAuth & OIDC Endpoints
+## 3. WebAuthn / FIDO2 Passkeys
+
+Mounted under `/mbkauthe/api/passkey/*`:
+
+### `POST /mbkauthe/api/passkey/register-options`
+Generates WebAuthn registration options and challenge for an authenticated user.
+- **Auth Required**: Session Cookie.
+- **Response (200 OK)**:
+  ```json
+  {
+    "challenge": "e8a9...b4c2",
+    "rp": { "name": "portal", "id": "localhost" },
+    "user": { "id": "1", "name": "alice", "displayName": "Alice Smith" },
+    "pubKeyCredParams": [{ "alg": -7, "type": "public-key" }, { "alg": -257, "type": "public-key" }],
+    "excludeCredentials": []
+  }
+  ```
+
+### `POST /mbkauthe/api/passkey/register-verify`
+Verifies WebAuthn attestation response and stores the passkey.
+- **Auth Required**: Session Cookie.
+- **Request Body**:
+  ```json
+  {
+    "registrationResponse": { "id": "...", "rawId": "...", "response": { ... }, "type": "public-key" },
+    "name": "My MacBook Touch ID"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "passkey": {
+      "id": 1,
+      "name": "My MacBook Touch ID",
+      "device_type": "multiDevice",
+      "created_at": "2026-09-15T12:00:00.000Z"
+    }
+  }
+  ```
+
+### `POST /mbkauthe/api/passkey/login-options`
+Generates WebAuthn assertion options and challenge for passwordless sign-in.
+- **Auth Required**: Public.
+- **Request Body** (optional): `{ "username": "alice" }`
+- **Response (200 OK)**:
+  ```json
+  {
+    "challenge": "f1d2...c3b4",
+    "rpId": "localhost",
+    "timeout": 60000,
+    "userVerification": "preferred"
+  }
+  ```
+
+### `POST /mbkauthe/api/passkey/login-verify`
+Verifies WebAuthn assertion signature, checks counter anti-replay, and mints authenticated session.
+- **Auth Required**: Public.
+- **Request Body**:
+  ```json
+  {
+    "authenticationResponse": { "id": "...", "rawId": "...", "response": { ... }, "type": "public-key" },
+    "redirect": "/dashboard"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "user": {
+      "user_id": 1,
+      "username": "alice",
+      "full_name": "Alice Smith",
+      "role": "normaluser"
+    },
+    "redirect_url": "/dashboard"
+  }
+  ```
+
+### `GET /mbkauthe/api/passkey/list`
+Lists all registered passkeys for the active user.
+- **Auth Required**: Session Cookie.
+
+### `PATCH /mbkauthe/api/passkey/:id`
+Renames an existing registered passkey.
+- **Auth Required**: Session Cookie.
+- **Request Body**: `{ "name": "Office YubiKey 5C" }`
+
+### `DELETE /mbkauthe/api/passkey/:id`
+Deletes a registered passkey.
+- **Auth Required**: Session Cookie.
+
+---
+
+## 4. Provider-Neutral OAuth & OIDC Endpoints
 
 Mounted under `/mbkauthe/oauth/*` (or `/auth/oauth/*` via Express adapter):
 
@@ -109,7 +202,7 @@ Mounted under `/mbkauthe/oauth/*` (or `/auth/oauth/*` via Express adapter):
 
 ---
 
-## 4. Personal Access Tokens (PAT)
+## 5. Personal Access Tokens (PAT)
 
 ### `GET /user/api-tokens`
 Lists active API tokens created by the current logged-in user.
@@ -142,7 +235,7 @@ Tests token validity and returns token user info.
 
 ---
 
-## 5. Admin API Token Management
+## 6. Admin API Token Management
 
 Accessible to `superadmin` users:
 
@@ -154,7 +247,7 @@ Accessible to `superadmin` users:
 
 ---
 
-## 6. RFC 8628 CLI Device Login
+## 7. RFC 8628 CLI Device Login
 
 ### `POST /api/cli/device`
 Initiates a new CLI device authorization session.
@@ -182,7 +275,7 @@ Approves the CLI session from the browser interface.
 
 ---
 
-## 7. Diagnostics & Operations
+## 8. Diagnostics & Operations
 
 ### `GET /mbkauthe/api/health`
 Returns real-time health diagnostic status of MBKAuthe and database connectivity.

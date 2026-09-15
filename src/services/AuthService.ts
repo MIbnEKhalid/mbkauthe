@@ -10,7 +10,6 @@ import { validateLoginDto, validateTotpDto, LoginDto, VerifyTotpDto } from "../c
 import { AuthUser } from "../core/types/user.types.js";
 import { createLogger } from "../utils/logger.js";
 import { TokenEngine } from "../core/tokens/TokenEngine.js";
-import { hashDeviceToken, generateDeviceToken } from "../config/cookies.js";
 
 const debug = createLogger("mbkauthe:auth-service");
 
@@ -20,7 +19,6 @@ export interface LoginOptions {
   appKey?: string;
   maxSessions?: number;
   sessionDurationDays?: number;
-  deviceToken?: string;
 }
 
 export interface LoginResult {
@@ -30,14 +28,12 @@ export interface LoginResult {
   appSessionId?: string;
   expiresAt?: Date;
   tempToken?: string;
-  trustedDeviceUser?: AuthUser | null;
 }
 
 export interface Verify2FAResult {
   user: AuthUser;
   appSessionId: string;
   expiresAt: Date;
-  newDeviceToken?: string;
 }
 
 export class AuthService {
@@ -49,7 +45,7 @@ export class AuthService {
   async loginWithPassword(credentials: LoginDto, options: LoginOptions = {}): Promise<LoginResult> {
     const validated = validateLoginDto(credentials);
     const { username, password, rememberMe } = validated;
-    const { ip, userAgent, appKey, maxSessions = 5, sessionDurationDays, deviceToken } = options;
+    const { ip, userAgent, appKey, maxSessions = 5, sessionDurationDays } = options;
 
     debug("Login attempt for username: %s (app: %s, ip: %s)", username, appKey, ip);
 
@@ -75,13 +71,7 @@ export class AuthService {
       throw new MbkAuthError(ErrorCodes.APP_NOT_AUTHORIZED, 403, "User not authorized for this application");
     }
 
-    // Check trusted device if 2FA is active
-    let trustedDeviceUser: AuthUser | null = null;
-    if (user.is_enabled && deviceToken) {
-      trustedDeviceUser = await this.checkTrustedDevice(deviceToken, username, appKey);
-    }
-
-    if (user.is_enabled && !trustedDeviceUser) {
+    if (user.is_enabled) {
       return {
         requires2FA: true,
         user,
@@ -123,17 +113,16 @@ export class AuthService {
       authContext,
       appSessionId: sessionRow.id,
       expiresAt,
-      trustedDeviceUser,
     };
   }
 
   /**
    * Verifies a 2FA TOTP code and creates a session upon success
    */
-  async verifyTwoFactor(dto: VerifyTotpDto, user: AuthUser, options: LoginOptions & { trustDevice?: boolean } = {}): Promise<Verify2FAResult> {
+  async verifyTwoFactor(dto: VerifyTotpDto, user: AuthUser, options: LoginOptions = {}): Promise<Verify2FAResult> {
     const validated = validateTotpDto(dto);
     const { token } = validated;
-    const { ip, userAgent, appKey, maxSessions = 5, sessionDurationDays, trustDevice } = options;
+    const { ip, userAgent, appKey, maxSessions = 5, sessionDurationDays } = options;
 
     const twoFaRecord = await this.repo.getTwoFASecret(user.username);
     const secret = twoFaRecord?.two_fa_secret || (twoFaRecord as any)?.secret;
@@ -152,22 +141,6 @@ export class AuthService {
     if (!verified) {
       emitAuthEvent("auth:login:failed", { username: user.username, reason: "INVALID_2FA_TOKEN", ip, userAgent, appKey });
       throw new MbkAuthError(ErrorCodes.TWO_FA_INVALID_TOKEN, 401, "Invalid two-factor authentication code");
-    }
-
-    let newDeviceToken: string | undefined;
-    if (trustDevice) {
-      newDeviceToken = generateDeviceToken();
-      const hashedToken = hashDeviceToken(newDeviceToken);
-      if (hashedToken) {
-        await this.repo.insertTrustedDevice({
-          username: user.username,
-          device_token_hash: hashedToken,
-          device_name: userAgent ? userAgent.substring(0, 255) : "Unknown Device",
-          user_agent: userAgent || "Unknown",
-          ip_address: ip || "Unknown",
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        });
-      }
     }
 
     const days = sessionDurationDays || 1;
@@ -193,29 +166,7 @@ export class AuthService {
       user,
       appSessionId: sessionRow.id,
       expiresAt,
-      newDeviceToken,
     };
-  }
-
-  /**
-   * Checks if a trusted device token is valid for a user
-   */
-  async checkTrustedDevice(deviceToken: string, username: string, appKey?: string): Promise<AuthUser | null> {
-    if (!deviceToken || !username) return null;
-    try {
-      const hashed = hashDeviceToken(deviceToken);
-      if (!hashed) return null;
-
-      const deviceUser = await this.repo.touchTrustedDevice(hashed, username);
-      if (!deviceUser || !deviceUser.is_active) return null;
-
-      if (!authorizationService.canAccessApp(deviceUser, appKey)) return null;
-
-      return deviceUser;
-    } catch (err) {
-      debug("Error checking trusted device: %O", err);
-      return null;
-    }
   }
 
   /**

@@ -144,21 +144,23 @@ CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_expires ON mbkcore_sessions (exp
 CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_user_created ON mbkcore_sessions (username, created_at);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_username_expires ON mbkcore_sessions (username, expires_at);
 
--- Table: mbkcore_trusted_devices
-CREATE TABLE IF NOT EXISTS mbkcore_trusted_devices (
+-- Table: mbkcore_passkeys
+CREATE TABLE IF NOT EXISTS mbkcore_passkeys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    device_token TEXT NOT NULL UNIQUE,
-    device_name TEXT,
-    user_agent TEXT,
-    ip_address TEXT,
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    counter INTEGER DEFAULT 0 NOT NULL,
+    device_type TEXT DEFAULT 'single_device' NOT NULL,
+    backed_up INTEGER DEFAULT 0 NOT NULL,
+    transports TEXT DEFAULT '[]',
+    name TEXT DEFAULT 'Passkey' NOT NULL,
+    aaguid TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    expires_at TEXT NOT NULL,
-    last_used TEXT DEFAULT CURRENT_TIMESTAMP
+    last_used_at TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_mbkcore_trusted_devices_expires ON mbkcore_trusted_devices (expires_at);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_trusted_devices_username_expires ON mbkcore_trusted_devices (username, expires_at);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_trusted_devices_token_user_expires ON mbkcore_trusted_devices (device_token, username, expires_at);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_passkeys_username ON mbkcore_passkeys (username);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_passkeys_credential_id ON mbkcore_passkeys (credential_id);
 
 -- Table: mbkcore_two_factor
 CREATE TABLE IF NOT EXISTS mbkcore_two_factor (

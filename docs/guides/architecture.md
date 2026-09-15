@@ -31,12 +31,13 @@ flowchart TB
         RateLimiter["Rate Limiting Middleware"]
         AuthMiddleware["Session & Token Middleware (sessVal, authenticate)"]
         RBACMiddleware["RBAC / Permission Middleware (sessRole, sessPerm)"]
-        Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli)"]
+        Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli, /mbkauthe/api/passkey)"]
     end
 
     subgraph CoreTier["Core Domain & Service Layer (mbkauthe/core & services)"]
         AuthCtx["AuthContext (Domain Entity)"]
         AuthService["AuthService (Session & Password)"]
+        PasskeyService["PasskeyService (WebAuthn / FIDO2)"]
         OAuthService["OAuthFlowService (PKCE & OIDC)"]
         CliAuthService["CliAuthService (Device Flow)"]
         ApiTokenService["ApiTokenService (PAT Management)"]
@@ -48,6 +49,7 @@ flowchart TB
 
     subgraph CryptoTier["Cryptographic & Security Subsystem (mbkauthe/config & core/tokens)"]
         PasswordHasher["Argon2id / PBKDF2 Password Hasher"]
+        WebAuthnEngine["@simplewebauthn/server (FIDO2/WebAuthn)"]
         TokenEngine["TokenEngine (mbk_pat_, mbk_cli_, mbk_sess_)"]
         StateStore["OAuthStateStore (PKCE, State, Nonce)"]
         JoseVerifier["jose (OIDC JWKS Signature Verifier)"]
@@ -70,7 +72,7 @@ flowchart TB
             SqliteAdapter["SqliteAdapter"]
         end
 
-        Repos["Typed Repositories (UserRepository, SessionRepository, OAuthAccountRepo, etc.)"]
+        Repos["Typed Repositories (UserRepository, SessionRepository, PasskeyRepository, OAuthAccountRepo, etc.)"]
     end
 
     Browser -->|HTTP + Encrypted Cookie| SecHeaders
@@ -81,6 +83,7 @@ flowchart TB
     SecHeaders --> RateLimiter --> CookieParser --> AuthMiddleware --> RBACMiddleware --> Routers
 
     Routers --> AuthService
+    Routers --> PasskeyService
     Routers --> OAuthService
     Routers --> CliAuthService
     Routers --> ApiTokenService
@@ -91,6 +94,7 @@ flowchart TB
 
     AuthService --> PasswordHasher
     AuthService --> AESCipher
+    PasskeyService --> WebAuthnEngine
     OAuthService --> StateStore
     OAuthService --> JoseVerifier
     OAuthService --> AESCipher
@@ -98,6 +102,7 @@ flowchart TB
     CliAuthService --> TokenEngine
 
     AuthService --> Repos
+    PasskeyService --> Repos
     OAuthService --> Repos
     CliAuthService --> Repos
     ApiTokenService --> Repos
@@ -587,9 +592,77 @@ flowchart LR
 
 ---
 
+## 10. WebAuthn / FIDO2 Passkey Ceremonies
+
+MBKAuthe v6 natively implements FIDO2 WebAuthn registration and authentication ceremonies powered by `@simplewebauthn/server`.
+
+**Diagram Assets**: [Source (.mmd)](../diagrams/mmd/10-passkey-webauthn-ceremonies.mmd)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant ClientJS as Client WebAuthn JS
+    participant Express as MBKAuthe Router (/mbkauthe/api/passkey)
+    participant PasskeySvc as PasskeyService (@simplewebauthn)
+    participant PasskeyRepo as PasskeyRepository
+    participant SessionRepo as SessionRepository
+    participant DB as PostgreSQL / SQLite DB
+
+    rect rgb(238, 246, 255)
+        note over User, DB: 1. Passkey Registration Ceremony (Authenticated User)
+        User->>ClientJS: Clicks "Register Passkey" / Accepts Prompt
+        ClientJS->>Express: POST /mbkauthe/api/passkey/register-options (Session Cookie)
+        Express->>PasskeySvc: generateRegistrationOptions(userId, username, existingPasskeys)
+        PasskeySvc->>PasskeyRepo: findByUserId(userId)
+        PasskeyRepo->>DB: SELECT * FROM mbkcore_passkeys WHERE user_id = $1
+        DB-->>PasskeyRepo: Passkey records
+        PasskeySvc-->>Express: RegistrationOptions (challenge, rp, user, excludeCredentials)
+        Express-->>ClientJS: 200 OK { options } (challenge in session)
+        
+        ClientJS->>User: Prompts Biometric / Security Key
+        User-->>ClientJS: Confirms Biometric Gesture
+        ClientJS->>ClientJS: navigator.credentials.create({ publicKey: options })
+        ClientJS->>Express: POST /mbkauthe/api/passkey/register-verify { registrationResponse, name }
+        Express->>PasskeySvc: verifyRegistrationResponse(response, challenge, origin, rpId)
+        PasskeySvc-->>Express: VerificationResult (verified: true, registrationInfo)
+        Express->>PasskeyRepo: create({ userId, credentialId, publicKey, counter, deviceType, backedUp, transports, name })
+        PasskeyRepo->>DB: INSERT INTO mbkcore_passkeys (...)
+        DB-->>PasskeyRepo: Created record
+        Express-->>ClientJS: 200 OK { success: true, passkey }
+    end
+
+    rect rgb(240, 253, 244)
+        note over User, DB: 2. Passkey Authentication Ceremony (Passwordless Login)
+        User->>ClientJS: Clicks "Sign in with Passkey"
+        ClientJS->>Express: POST /mbkauthe/api/passkey/login-options { username? }
+        Express->>PasskeySvc: generateAuthenticationOptions(userPasskeys?)
+        PasskeySvc-->>Express: AuthenticationOptions (challenge, rpId, timeout)
+        Express-->>ClientJS: 200 OK { options } (challenge in session)
+
+        ClientJS->>User: Browser Resident Key / Biometric Picker
+        User-->>ClientJS: Selects Account & Completes Biometric Verification
+        ClientJS->>ClientJS: navigator.credentials.get({ publicKey: options })
+        ClientJS->>Express: POST /mbkauthe/api/passkey/login-verify { authenticationResponse }
+        Express->>PasskeyRepo: findByCredentialId(credentialId)
+        PasskeyRepo->>DB: SELECT * FROM mbkcore_passkeys WHERE credential_id = $1
+        DB-->>PasskeyRepo: Passkey record
+        Express->>PasskeySvc: verifyAuthenticationResponse(response, challenge, origin, rpId, credential)
+        PasskeySvc-->>Express: VerificationResult (verified: true, newCounter)
+        Express->>PasskeyRepo: updateCounter(passkeyId, newCounter)
+        PasskeyRepo->>DB: UPDATE mbkcore_passkeys SET counter = $1, last_used_at = NOW()
+        Express->>SessionRepo: createSession({ userId, sessionId, ip, userAgent })
+        SessionRepo->>DB: INSERT INTO sessions (...)
+        Express-->>ClientJS: 200 OK { success: true, user, redirect_url } (Session Cookie set)
+    end
+```
+
+---
+
 ## Next Steps & Related Documentation
 
 - [Getting Started & Installation](getting-started.md)
+- [WebAuthn & Passkeys Guide](passkeys.md)
 - [Dual-Database Architecture & Repositories](dual-database-guide.md)
 - [Provider-Neutral OAuth & OIDC](oauth.md)
 - [Dynamic Permission Catalogs](permissions.md)

@@ -7,6 +7,7 @@
     {{> header}}
 
     {{> showmessage}}
+    {{> passkeyPromptModal}}
 
     <section class="login-container">
         {{> backgroundElements}}
@@ -114,6 +115,11 @@
                         <button type="submit" class="btn-primary btn-submit last-used-parent" id="loginButton">
                             <span id="loginButtonText">Sign In</span>
                             {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                        </button>
+
+                        <button type="button" class="btn-passkey" id="passkeySignInBtn">
+                            <i class="fas fa-fingerprint" aria-hidden="true"></i>
+                            <span>Sign in with Passkey</span>
                         </button>
 
                         {{#if userLoggedIn}}
@@ -237,10 +243,10 @@
                     if (is2fa) {
                         window.location.href = `/mbkauthe/2fa${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`;
                     } else {
-                        loginButtonText.textContent = 'Success! Redirecting...';
+                        loginButtonText.textContent = 'Success!';
                         if (rememberMe) setCookie('rememberedUsername', username, 30);
                         else deleteCookie('rememberedUsername');
-                        window.location.href = redirect || '{{customURL}}';
+                        promptPasskeyOrRedirect(username, redirect || '{{customURL}}');
                     }
                 } else {
                     loginButton.disabled = false;
@@ -290,6 +296,111 @@
 
             if (!usernameInput?.value) usernameInput?.focus();
             else document.getElementById('loginPassword')?.focus();
+        });
+
+        function bufferToBase64URL(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function base64URLToBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const padLen = (4 - (base64.length % 4)) % 4;
+            const padded = base64 + '='.repeat(padLen);
+            const binary = atob(padded);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        async function handlePasskeyLogin(targetUsername) {
+            if (!window.PublicKeyCredential) {
+                showMessage('Passkeys are not supported by this browser.', 'Not Supported');
+                return;
+            }
+            const passkeyBtn = document.getElementById('passkeySignInBtn');
+            if (passkeyBtn) passkeyBtn.disabled = true;
+
+            try {
+                const optRes = await fetch('/mbkauthe/api/passkey/login-options', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: targetUsername || undefined })
+                });
+                const optData = await optRes.json();
+                if (!optData.success || !optData.options) {
+                    throw new Error(optData.message || 'Failed to get passkey options');
+                }
+
+                const options = optData.options;
+                options.challenge = base64URLToBuffer(options.challenge);
+                if (options.allowCredentials) {
+                    options.allowCredentials = options.allowCredentials.map(cred => ({
+                        ...cred,
+                        id: base64URLToBuffer(cred.id)
+                    }));
+                }
+
+                const credential = await navigator.credentials.get({
+                    publicKey: options
+                });
+
+                if (!credential) throw new Error('No credential returned');
+
+                const credentialJSON = {
+                    id: credential.id,
+                    rawId: bufferToBase64URL(credential.rawId),
+                    response: {
+                        authenticatorData: bufferToBase64URL(credential.response.authenticatorData),
+                        clientDataJSON: bufferToBase64URL(credential.response.clientDataJSON),
+                        signature: bufferToBase64URL(credential.response.signature),
+                        userHandle: credential.response.userHandle ? bufferToBase64URL(credential.response.userHandle) : null
+                    },
+                    type: credential.type,
+                    clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {}
+                };
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const pageRedirect = sanitizeRelativeRedirect(urlParams.get('redirect'));
+
+                const verifyRes = await fetch('/mbkauthe/api/passkey/login-verify', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        response: credentialJSON,
+                        redirect: pageRedirect || null
+                    })
+                });
+
+                const verifyData = await verifyRes.json();
+                if (verifyData.success) {
+                    window.location.href = verifyData.redirect_url || '{{customURL}}';
+                } else {
+                    showMessage(verifyData.message || 'Passkey verification failed', 'Login Failed');
+                    if (passkeyBtn) passkeyBtn.disabled = false;
+                }
+            } catch (err) {
+                if (passkeyBtn) passkeyBtn.disabled = false;
+                if (err.name === 'NotAllowedError') {
+                    return;
+                }
+                console.error('[Passkey Error]', err);
+                showMessage(err.message || 'Passkey login failed', 'Passkey Error');
+            }
+        }
+
+        document.getElementById('passkeySignInBtn')?.addEventListener('click', () => {
+            const usernameInput = document.getElementById('loginUsername');
+            const targetUsername = usernameInput?.value?.trim() || undefined;
+            handlePasskeyLogin(targetUsername);
         });
 
         document.querySelectorAll('.oauth-login-btn').forEach((btn) => {

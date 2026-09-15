@@ -7,7 +7,7 @@
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { OAuthFlowService, oAuthFlowService } from "../oauth/OAuthFlowService.js";
-import { completeLoginProcess, checkTrustedDevice } from "../http/session/authFlow.js";
+import { completeLoginProcess } from "../http/session/authFlow.js";
 import { sanitizeRelativeRedirect, isSafeRelativeRedirect } from "../http/utils/redirect.js";
 import { renderError, sendSuccess, sendError } from "../http/response/formatters.js";
 import { isJsonRequest } from "../http/response/contentNegotiation.js";
@@ -89,10 +89,9 @@ export function createOAuthRouter(
     }
 
     // Login Action: create session
-    const trustedDeviceUser = await checkTrustedDevice(req, user.username);
     const is2FaEnabled = String(mbkautheVar.MBKAUTH_TWO_FA_ENABLE || "").toLowerCase() === "true" && user.is_enabled;
 
-    if (is2FaEnabled && !trustedDeviceUser) {
+    if (is2FaEnabled) {
       logOAuth(`${providerId} login: 2FA required for user: ${user.username}`);
       (req as any).session.pre_auth_user = {
         user_id: user.user_id || undefined,
@@ -144,7 +143,7 @@ export function createOAuthRouter(
       image: user.image,
     };
 
-    return completeLoginProcess(req, res, userForSession, returnTo || null, false, providerId.toLowerCase());
+    return completeLoginProcess(req, res, userForSession, returnTo || null, providerId.toLowerCase());
   };
 
   /**

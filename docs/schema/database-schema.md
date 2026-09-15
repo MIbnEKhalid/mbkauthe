@@ -62,11 +62,28 @@ Dynamic permission manifests and role definitions.
 - `label` (VARCHAR(255))
 - `synced_at` (TIMESTAMP DEFAULT NOW())
 
-### 6. `device_trust`
-Trusted 2FA device tokens.
+### 6. `mbkcore_passkeys`
+WebAuthn / FIDO2 Passkey credentials and assertion counters.
+- `id` (SERIAL PRIMARY KEY / INTEGER PRIMARY KEY AUTOINCREMENT)
+- `user_id` (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- `credential_id` (VARCHAR(500) UNIQUE NOT NULL / TEXT UNIQUE NOT NULL)
+- `public_key` (TEXT NOT NULL)
+- `counter` (BIGINT DEFAULT 0 / INTEGER DEFAULT 0)
+- `device_type` (VARCHAR(50) DEFAULT 'singleDevice' / TEXT DEFAULT 'singleDevice')
+- `backed_up` (BOOLEAN DEFAULT FALSE / INTEGER DEFAULT 0)
+- `transports` (TEXT)
+- `name` (VARCHAR(255) NOT NULL DEFAULT 'Passkey' / TEXT NOT NULL DEFAULT 'Passkey')
+- `created_at` (TIMESTAMP DEFAULT NOW() / DATETIME DEFAULT CURRENT_TIMESTAMP)
+- `last_used_at` (TIMESTAMP / DATETIME)
+
+### 7. `oauth_accounts`
+Linked third-party OAuth and OIDC provider identities.
 - `id` (SERIAL PRIMARY KEY)
 - `user_id` (INTEGER REFERENCES users(id) ON DELETE CASCADE)
-- `device_token_hash` (VARCHAR(255) UNIQUE NOT NULL)
-- `device_info` (TEXT)
-- `expires_at` (TIMESTAMP NOT NULL)
+- `provider` (VARCHAR(50) NOT NULL)
+- `provider_user_id` (VARCHAR(255) NOT NULL)
+- `access_token` (TEXT)
+- `refresh_token` (TEXT)
+- `profile_data` (TEXT / JSONB)
 - `created_at` (TIMESTAMP DEFAULT NOW())
+- `updated_at` (TIMESTAMP DEFAULT NOW())

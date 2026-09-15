@@ -121,17 +121,4 @@ export const getClearCookieOptions = (): CookieConfigOptions => createCookieOpti
 export const cachedCookieOptions = getCookieOptions();
 export const cachedClearCookieOptions = getClearCookieOptions();
 
-export const DEVICE_TRUST_DURATION_DAYS = mbkautheVar.DEVICE_TRUST_DURATION_DAYS || 7;
-export const DEVICE_TRUST_DURATION_MS = (Number(DEVICE_TRUST_DURATION_DAYS) || 7) * 86400000;
-
-export const generateDeviceToken = () => crypto.randomBytes(32).toString("hex");
-const getDeviceTokenKey = () => sha256(`${mbkautheVar.SESSION_SECRET_KEY || ""}:device-token`);
-
-export const hashDeviceToken = (device_token?: string | null): string | null =>
-  typeof device_token === "string" && device_token
-    ? crypto.createHmac("sha256", getDeviceTokenKey()).update(device_token).digest("hex")
-    : null;
-
-export const getDeviceTokenCookieOptions = (): CookieConfigOptions => createCookieOptions(DEVICE_TRUST_DURATION_MS);
-
 export { MAX_REMEMBERED_ACCOUNTS, ACCOUNT_LIST_COOKIE };

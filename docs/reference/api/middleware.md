@@ -7,7 +7,7 @@ MBKAuthe v6 provides a modular suite of Express middleware functions for authent
 ## 1. Authentication Middleware
 
 ### `validateSession` (alias: `sessVal`)
-Verifies that the incoming request has a valid, active session or Bearer API token. Populates `req.session.user` and `req.session.permissions`.
+Verifies that the incoming request has a valid, active session or Bearer API token. Populates `req.session.user` and `(req as any).auth` (`AuthContext`).
 
 ```typescript
 import { sessVal } from "mbkauthe";
@@ -16,6 +16,19 @@ app.get("/dashboard", sessVal, (req, res) => {
   res.send(`Logged in as ${req.session.user.username}`);
 });
 ```
+
+### `authenticate(secretOrValidator)`
+Protects routes using a fixed shared secret token or custom validator:
+
+```typescript
+import { authenticate } from "mbkauthe";
+
+// Require Bearer token matching MAIN_SECRET_TOKEN
+app.post("/internal/sync", authenticate(process.env.MAIN_SECRET_TOKEN), handler);
+```
+
+### `validateApiSession`
+Validates requests authenticating via `Authorization: Bearer <mbk_pat_...>` tokens.
 
 ### `strictValidateSession` (alias: `strictSessVal`)
 Strict session validation that requires continuous verification against the database without in-memory cookie shortcuts.
@@ -36,7 +49,7 @@ app.get("/account", sessVal, reloadSessionUser, (req, res) => {
 ## 2. Authorization & Role Middleware
 
 ### `checkRolePermission(roles, notAllowed)` (alias: `roleChk`)
-Ensures the user possesses one of the specified roles.
+Ensures the authenticated user possesses one of the specified roles.
 
 ```typescript
 import { sessVal, roleChk } from "mbkauthe";
@@ -47,7 +60,7 @@ app.get("/admin", sessVal, roleChk("admin"), handler);
 // Multiple acceptable roles
 app.get("/manage", sessVal, roleChk(["admin", "superadmin"]), handler);
 
-// Blacklist role
+// Blacklist role (allow all except guest)
 app.post("/post", sessVal, roleChk("*", "guest"), handler);
 ```
 
@@ -59,6 +72,9 @@ import { sessRole } from "mbkauthe";
 
 app.get("/admin", sessRole("superadmin"), handler);
 ```
+
+### `strictValidateSessionAndRole(roles, notAllowed)` (alias: `strictSessRole`)
+Combines `strictValidateSession` and role checking.
 
 ---
 
@@ -91,4 +107,6 @@ app.post("/users", sessPerm(CorePermissions.users.write), handler);
 - `securityHeadersMiddleware`: Sets strict HSTS, X-Content-Type-Options, X-Frame-Options, and Referrer-Policy headers.
 - `corsMiddleware`: Handles domain-specific CORS origin checking.
 - `sessionRestorationMiddleware`: Automatically decrypts and restores `req.session` from `session_id` cookies.
+- `sessionCookieSyncMiddleware`: Automatically syncs refreshed session timestamps back into client cookies.
 - `requestContextMiddleware`: Injects unique request tracing IDs into async database contexts.
+

@@ -1,6 +1,6 @@
 # Session Engine & Authentication in MBKAuthe v6
 
-MBKAuthe v6 features a multi-session engine with client-side encrypted cookies, automatic session restoration, multi-device tracking, and concurrent session limits (`MAX_SESSIONS_PER_USER`).
+MBKAuthe v6 features a multi-session engine with client-side encrypted cookies, automatic session restoration, unified authentication context (`req.auth` and `req.session`), multi-device tracking, and concurrent session limits (`MAX_SESSIONS_PER_USER`).
 
 ---
 
@@ -12,7 +12,7 @@ MBKAuthe v6 features a multi-session engine with client-side encrypted cookies, 
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
-│ 2. AuthService Validates Password (Argon2id/PBKDF2+Pepper)   │
+│ 2. AuthService Validates Password (PBKDF2/Argon2id + Pepper)│
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -25,7 +25,7 @@ MBKAuthe v6 features a multi-session engine with client-side encrypted cookies, 
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
-│ 5. SessionRestoration Middleware Rebuilds Session on Request│
+│ 5. SessionRestoration Middleware Rebuilds req.session & auth│
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,10 +42,10 @@ MBKAuthe hashes user passwords using cryptographically secure PBKDF2/Argon2id hy
 import { hashPassword, verifyPassword } from "mbkauthe/config";
 
 // Hash a new user password
-const hash = await hashPassword("superSecretP@ssword123");
+const hash = await hashPassword("superSecretP@ssword123", "alice");
 
 // Verify password
-const isValid = await verifyPassword("superSecretP@ssword123", hash);
+const isValid = await verifyPassword("superSecretP@ssword123", "alice", hash);
 console.log("Password valid:", isValid);
 ```
 
@@ -61,14 +61,21 @@ import { sessVal, reloadSessionUser } from "mbkauthe";
 
 const router = express.Router();
 
-// Protect a route
+// Protect a route with session cookie or API token
 router.get("/profile", sessVal, (req, res) => {
+  // Legacy session object
   const user = req.session.user;
+  
+  // Unified AuthContext domain model
+  const auth = (req as any).auth;
+  
   res.json({
-    id: user.id,
+    id: user.user_id || user.id,
     username: user.username,
     role: user.role,
     permissions: req.session.permissions,
+    authPrincipal: auth?.principal,
+    authMethod: auth?.authMethod,
   });
 });
 
@@ -82,7 +89,7 @@ router.get("/refresh-profile", sessVal, reloadSessionUser, (req, res) => {
 
 ## 4. Multi-Session Management & Auto-Pruning
 
-MBKAuthe tracks all active sessions in the database (`app_sessions` / `sessions` table).
+MBKAuthe tracks all active sessions in the database (`app_sessions` table).
 
 - When a user logs in, the engine checks their total active session count.
 - If it exceeds `MAX_SESSIONS_PER_USER` (default: `5`), the oldest active sessions are automatically destroyed.
@@ -99,9 +106,21 @@ import {
   readAccountListFromCookie,
   upsertAccountListCookie,
   removeAccountFromCookie,
+  clearAccountListCookie,
 } from "mbkauthe";
 
 // Inspect active accounts on device
 const accounts = readAccountListFromCookie(req);
 console.log("Active accounts on device:", accounts);
+```
+
+### Switching Active Session
+
+Send a `POST` request to `/mbkauthe/api/switch-session`:
+
+```json
+{
+  "target_username": "alice",
+  "target_sid": "98a7b6c5..."
+}
 ```

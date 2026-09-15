@@ -16,6 +16,7 @@ import oauthRoutes from "./routes/oauth.routes.js";
 import miscRoutes, { checkVersion } from "./routes/misc.routes.js";
 import dbLogsRoutes from "./routes/dbLogs.routes.js";
 import cliAuthRouter from "./routes/cliAuth.routes.js";
+import devRoutes from "./routes/dev.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,6 +25,7 @@ export interface MbkautheAppOptions {
   enableCliAuth?: boolean;
   enableOAuth?: boolean;
   enableDbLogs?: boolean;
+  enableDevRoutes?: boolean;
 }
 
 export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
@@ -32,7 +34,8 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
     enableStaticAssets = true,
     enableCliAuth = true,
     enableOAuth = true,
-    enableDbLogs = process.env.env === "dev",
+    enableDbLogs = process.env.env === "dev" || process.env.dbLogs === "true" || process.env.NODE_ENV !== "production",
+    enableDevRoutes = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV !== "production",
   } = options;
 
   if (process.env.test === "dev") {
@@ -48,7 +51,7 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
   router.use(securityHeadersMiddleware);
   router.use(corsMiddleware);
 
-  if (process.env.env === "dev") {
+  if (process.env.env === "dev" || process.env.NODE_ENV !== "production" || process.env.dbLogs === "true") {
     router.use(requestContextMiddleware);
   }
 
@@ -63,6 +66,15 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
 
   if (enableDbLogs) {
     router.use("/mbkauthe", dbLogsRoutes);
+    router.get(["/db", "/dblogs", "/db-logs"], (req, res) => {
+      const queryParams = new URLSearchParams(req.query as any).toString();
+      return res.redirect(`/mbkauthe/db${queryParams ? `?${queryParams}` : ""}`);
+    });
+  }
+
+  if (enableDevRoutes) {
+    router.use("/dev", devRoutes);
+    router.use("/mbkauthe/dev", devRoutes);
   }
 
   if (enableCliAuth) {

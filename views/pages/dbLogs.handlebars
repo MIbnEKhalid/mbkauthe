@@ -6,83 +6,110 @@
 <body>
   {{> header appName=appName}}
 
-  <section class="db-container">
+    <section class="db-container">
     {{> backgroundElements}}
 
-    <div class="glass-card db-panel">
+    <div class="auth-card db-panel">
       <div class="db-header">
         <div>
-          <div class="db-title">DB Query Monitor</div>
-          <div class="db-subtitle">Recent queries first, plus repeat groups, slowest work, and pool wait pressure.</div>
+          <div class="db-title-row">
+            <div class="auth-icon-badge small" aria-hidden="true"><i class="fas fa-database"></i></div>
+            <h1 class="login-title">Database Query Monitor</h1>
+          </div>
+          <p class="login-subtitle">Real-time SQL diagnostics, execution latency, repeated query shapes, and pool connection telemetry.</p>
         </div>
         <div class="db-actions">
-          <a class="db-link" href="/mbkauthe/">Back</a>
+          <a class="btn-outline btn-sm" href="/mbkauthe/"><i class="fas fa-arrow-left"></i> Back to Portal</a>
         </div>
       </div>
 
-      <div class="db-card">
-        <div class="stat-box"><div class="stat-label">Query Count</div><div class="stat-value" id="query-count">-</div></div>
-        <div class="stat-box"><div class="stat-label">Visible</div><div class="stat-value" id="visible-count">-</div></div>
-        <div class="stat-box"><div class="stat-label">Avg Total</div><div class="stat-value" id="avg-duration">-</div></div>
-        <div class="stat-box"><div class="stat-label">Avg Wait</div><div class="stat-value" id="avg-wait">-</div></div>
-        <div class="stat-box"><div class="stat-label">Errors</div><div class="stat-value" id="error-count">-</div></div>
-        <div class="stat-box"><div class="stat-label">Pool Pressure</div><div class="stat-value" id="pressured-count">-</div></div>
+      <div class="db-metrics-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Queries</div>
+          <div class="stat-value font-mono" id="query-count">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Filtered Visible</div>
+          <div class="stat-value font-mono" id="visible-count">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Execution</div>
+          <div class="stat-value font-mono" id="avg-duration">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Wait Time</div>
+          <div class="stat-value font-mono" id="avg-wait">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Query Errors</div>
+          <div class="stat-value font-mono text-danger" id="error-count">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pool Pressure</div>
+          <div class="stat-value font-mono" id="pressured-count">-</div>
+        </div>
       </div>
 
       <div class="db-stack">
         <form id="filter-form" class="db-toolbar" action="/mbkauthe/db" method="get">
           <div class="toolbar-field">
-            <label for="limit">Limit</label>
-            <input id="limit" class="form-input" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
+            <label for="limit">Query Limit</label>
+            <input id="limit" class="form-input form-input-sm" name="limit" type="number" min="1" max="500" value="{{queryLimit}}" {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
-            <label for="pool-filter">Pool</label>
-            <select id="pool-filter" class="form-input" name="pool" {{#unless isDev}}disabled{{/unless}}>
+            <label for="pool-filter">Connection Pool</label>
+            <select id="pool-filter" class="form-input form-input-sm" name="pool" {{#unless isDev}}disabled{{/unless}}>
               <option value="">All Pools</option>
             </select>
           </div>
           <div class="toolbar-field">
             <label for="username-filter">Username</label>
-            <input id="username-filter" class="form-input" name="username" type="text" value="{{filters.username}}" placeholder="support" {{#unless isDev}}disabled{{/unless}} />
+            <input id="username-filter" class="form-input form-input-sm" name="username" type="text" value="{{filters.username}}" placeholder="Filter user..." {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
             <label for="url-filter">Request URL</label>
-            <input id="url-filter" class="form-input" name="url" type="text" value="{{filters.url}}" placeholder="/mbkauthe/api/login" {{#unless isDev}}disabled{{/unless}} />
+            <input id="url-filter" class="form-input form-input-sm" name="url" type="text" value="{{filters.url}}" placeholder="/api/..." {{#unless isDev}}disabled{{/unless}} />
           </div>
           <div class="toolbar-field">
             <label for="success-filter">Result</label>
-            <select id="success-filter" class="form-input" name="success" {{#unless isDev}}disabled{{/unless}}>
-              <option value="" {{#if filters.successAny}}selected{{/if}}>Any</option>
-              <option value="true" {{#if filters.successTrue}}selected{{/if}}>Success</option>
-              <option value="false" {{#if filters.successFalse}}selected{{/if}}>Error</option>
+            <select id="success-filter" class="form-input form-input-sm" name="success" {{#unless isDev}}disabled{{/unless}}>
+              <option value="" {{#if filters.successAny}}selected{{/if}}>Any Result</option>
+              <option value="true" {{#if filters.successTrue}}selected{{/if}}>Success Only</option>
+              <option value="false" {{#if filters.successFalse}}selected{{/if}}>Errors Only</option>
             </select>
           </div>
           <div class="toolbar-actions">
-            <button type="submit" {{#unless isDev}}disabled{{/unless}}>Apply</button>
-            <button id="reset-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Reset Logs</button>
-            <button id="copy-btn" type="button" {{#unless isDev}}disabled{{/unless}}>Copy Report</button>
+            <button type="submit" class="btn-primary btn-sm" {{#unless isDev}}disabled{{/unless}}><i class="fas fa-filter"></i> Apply</button>
+            <button id="reset-btn" class="btn-outline btn-sm" type="button" {{#unless isDev}}disabled{{/unless}}><i class="fas fa-rotate"></i> Reset</button>
+            <button id="copy-btn" class="btn-outline btn-sm" type="button" {{#unless isDev}}disabled{{/unless}}><i class="fas fa-copy"></i> Copy JSON</button>
           </div>
         </form>
 
         {{#unless isDev}}
-        <div class="notification warn" id="disabled-notice">{{disabledMessage}}</div>
+        <div class="alert-banner alert-warning" id="disabled-notice">
+          <div class="alert-icon"><i class="fas fa-lock"></i></div>
+          <div class="alert-body">{{disabledMessage}}</div>
+        </div>
         {{/unless}}
 
-        <div class="notification" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>Query log and count have been reset.</div>
+        <div class="alert-banner alert-info" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>
+          <div class="alert-icon"><i class="fas fa-check"></i></div>
+          <div class="alert-body">Query logs have been cleared successfully.</div>
+        </div>
 
-        <div class="db-grid">
+        <div class="db-insights-grid">
           <div class="summary-list-card">
-            <div class="section-title">Top Repeated Query Shapes</div>
-            <div id="repeat-groups" class="summary-list"><div class="empty">Loading summary...</div></div>
+            <div class="section-title"><i class="fas fa-layer-group"></i> Top Repeated Query Shapes</div>
+            <div id="repeat-groups" class="summary-list"><div class="empty-state-sm">Loading summary...</div></div>
           </div>
           <div class="summary-list-card">
-            <div class="section-title">Slowest Recent Queries</div>
-            <div id="slow-queries" class="summary-list"><div class="empty">Loading summary...</div></div>
+            <div class="section-title"><i class="fas fa-gauge-high"></i> Slowest Recent Queries</div>
+            <div id="slow-queries" class="summary-list"><div class="empty-state-sm">Loading summary...</div></div>
           </div>
         </div>
 
         <div id="query-log" class="db-table-wrapper">
-          <div class="empty">{{#if isDev}}Loading query log...{{else}}DB logs are disabled.{{/if}}</div>
+          <div class="empty-state-sm">{{#if isDev}}Loading query log...{{else}}DB logs are disabled in this environment.{{/if}}</div>
         </div>
       </div>
     </div>

@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor Client as API Consumer / Service
+    participant Express as Express Middleware (authenticate / sessVal)
+    participant TokenEngine as TokenEngine
+    participant ApiTokenRepo as ApiTokenRepository
+    participant AuthzService as AuthorizationService
+
+    Client->>Express: GET /api/v1/resource (Authorization: Bearer mbk_pat_...)
+    Express->>TokenEngine: parseTokenPrefix("mbk_pat_...")
+    
+    alt Invalid Prefix
+        TokenEngine-->>Express: null
+        Express->>Client: 401 Unauthorized (AUTH_INVALID_TOKEN)
+    end
+
+    Express->>TokenEngine: hashToken(rawToken)
+    TokenEngine-->>Express: tokenHash (SHA-256 hex string)
+
+    Express->>ApiTokenRepo: findByTokenHash(tokenHash)
+    ApiTokenRepo-->>Express: ApiTokenRecord (userId, scopes, expiresAt, revokedAt)
+
+    alt Token Not Found or Revoked
+        Express->>Client: 401 Unauthorized (AUTH_TOKEN_REVOKED)
+    end
+
+    alt Token Expired
+        Express->>Client: 401 Unauthorized (AUTH_TOKEN_EXPIRED)
+    end
+
+    Express->>ApiTokenRepo: updateLastUsedAt(tokenRecord.id, clientIp)
+    
+    Express->>AuthzService: checkTokenHasScope(tokenRecord.scopes, requiredScope)
+    alt Insufficient Scope
+        Express->>Client: 403 Forbidden (AUTHZ_INSUFFICIENT_SCOPE)
+    end
+
+    Express->>Express: Attach AuthContext (userId, scopes, tokenType='pat')
+    Express->>Client: 200 OK (API Response Data)

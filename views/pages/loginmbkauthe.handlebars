@@ -11,29 +11,38 @@
     <section class="login-container">
         {{> backgroundElements}}
 
-        <div class="glass-card login-box login-box-split">
+        <div class="auth-card login-box login-box-split">
             <div class="login-box-inner">
+                <!-- Left Sidebar: Brand & OAuth -->
                 <div class="login-sidebar">
                     <div class="sidebar-content">
                         <div class="brand-section">
-                            <div class="logo logo-centered">
-                                <img src="/icon.svg" alt="Logo" class="logo-image">
-                                <span class="logo-text">BK <span>Tech</span></span>
+                            <div class="logo logo-sidebar">
+                                <img src="/icon.svg" alt="MBK Tech Logo" class="logo-image">
+                                <span class="logo-text">BK<span>Tech</span></span>
                             </div>
                             <h2 class="brand-title">Welcome to MBKAuthe</h2>
-                            <p class="brand-description">Secure authentication for MBKTech.org services</p>
+                            <p class="brand-description">Enterprise single sign-on & secure access across MBKTech services.</p>
                         </div>
 
+                        {{#if hasOAuthProviders}}
                         <div class="sidebar-actions">
-                            {{#each enabledOAuthProviders}}
-                            <button type="button" id="{{id}}LoginBtn" data-provider="{{id}}" data-url="{{loginUrl}}" class="{{btnClass}} last-used-parent oauth-login-btn">
-                                <i class="{{iconClass}}"></i>
-                                <span>{{displayName}}</span>
-                                {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
-                            </button>
-                            {{/each}}
-                            <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
-                                <i class="fa fa-user-group"></i>
+                            <span class="sidebar-section-title">Sign in with provider</span>
+                            <div class="oauth-providers-list">
+                                {{#each enabledOAuthProviders}}
+                                <button type="button" id="{{id}}LoginBtn" data-provider="{{id}}" data-url="{{loginUrl}}" class="btn-oauth {{btnClass}} last-used-parent oauth-login-btn">
+                                    <i class="{{iconClass}} oauth-icon"></i>
+                                    <span class="oauth-name">{{displayName}}</span>
+                                    {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                                </button>
+                                {{/each}}
+                            </div>
+                        </div>
+                        {{/if}}
+
+                        <div class="sidebar-switch">
+                            <a href="/mbkauthe/accounts" id="switchacc" class="btn-action-link">
+                                <i class="fas fa-users"></i>
                                 <span>Switch Account</span>
                             </a>
                         </div>
@@ -43,95 +52,108 @@
                                 <i class="fas fa-key"></i> Forgot Password?
                             </a>
                             <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer" class="sidebar-link">
-                                <i class="fas fa-life-ring"></i> Need Help?
+                                <i class="fas fa-headset"></i> Help & Support
                             </a>
                         </div>
                     </div>
                 </div>
 
+                <!-- Right Panel: Password Form -->
                 <div class="login-main">
-                    <h1 class="login-title title-underline">Login</h1>
+                    <div class="login-main-header">
+                        <h1 class="login-title">Sign In</h1>
+                        <p class="login-subtitle">Enter your credentials to access your account</p>
+                    </div>
 
                     {{#if showLoggedOutMessage}}
-                    <div class="WarningboxInfo" style="margin-bottom: 20px; border-left-color: #ff3b30;">
-                        <strong class="warning-title">Authentication Required</strong>
-                        <div>You have been redirected here because you are not logged in or your session has expired. Please log in to continue.</div>
-                        {{#if redirectTarget}}
-                        <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.9;">
-                            <strong>Attempted URL:</strong> <code>{{redirectTarget}}</code>
+                    <div class="alert-banner alert-warning" role="alert">
+                        <div class="alert-icon"><i class="fas fa-shield-alt"></i></div>
+                        <div class="alert-body">
+                            <strong class="alert-heading">Authentication Required</strong>
+                            <p class="alert-text">You have been redirected because your session expired or is required.</p>
+                            {{#if redirectTarget}}
+                            <div class="alert-meta"><code>{{redirectTarget}}</code></div>
+                            {{/if}}
                         </div>
-                        {{/if}}
                     </div>
                     {{/if}}
 
-                    <form id="loginForm" method="POST" class="login-form">
+                    <form id="loginForm" method="POST" class="login-form" novalidate>
                         <input type="hidden" name="_csrf" value="{{csrfToken}}">
-                        <div class="form-group">
+                        
+                        <div class="form-group floating-group">
                             <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" "
-                                required pattern="^[a-z0-9.]+$"
-                                title="Username must contain lowercase letters, numbers, and periods only, no spaces, no special characters."
+                                required pattern="^[a-z0-9.]+$" autocomplete="username"
+                                title="Username must contain lowercase letters, numbers, and periods only."
                                 oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9.]/g, '')" />
-                            <label class="form-label">Username</label>
+                            <label class="form-label" for="loginUsername">Username</label>
                             <button type="button" class="icon-button input-icon" onclick="usernameinfo()" aria-label="What is my username?">
-                                <i class="fas fa-info-circle"></i>
+                                <i class="fas fa-circle-question"></i>
                             </button>
                         </div>
 
-                        <div class="form-group">
-                            <input id="loginPassword" class="form-input" type="password" name="Password" placeholder=""
-                                required minlength="8" title="Password must be at least 8 characters long" />
-                            <label class="form-label">Password</label>
+                        <div class="form-group floating-group">
+                            <input id="loginPassword" class="form-input" type="password" name="Password" placeholder=" "
+                                required minlength="8" autocomplete="current-password"
+                                title="Password must be at least 8 characters long" />
+                            <label class="form-label" for="loginPassword">Password</label>
                             <button type="button" class="icon-button input-icon" id="togglePassword" aria-label="Show password">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
 
                         <div class="form-row-split">
-                            <div class="remember-me remember-me-inline">
+                            <label class="checkbox-label" for="rememberMe">
                                 <input type="checkbox" id="rememberMe" name="rememberMe" class="custom-checkbox">
-                                <label for="rememberMe">Remember me</label>
-                            </div>
-                            <a href="https://portal.mbktech.org/forgot-password" class="login-link login-link-nowrap">Forgot Password?</a>
+                                <span class="checkbox-box"></span>
+                                <span class="checkbox-text">Remember me</span>
+                            </label>
+                            <a href="https://portal.mbktech.org/forgot-password" class="auth-link">Forgot password?</a>
                         </div>
 
-                        <button type="submit" class="btn-login last-used-parent" id="loginButton">
-                            <span id="loginButtonText">Login</span>
+                        <button type="submit" class="btn-primary btn-submit last-used-parent" id="loginButton">
+                            <span id="loginButtonText">Sign In</span>
                             {{#if lastLoginPassword}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                         </button>
 
-                        {{#if userLoggedIn }}
-                        <div class="WarningboxInfo already-logged-info">
-                            You are already logged in as <strong class="username"><span id="headerProfileUserName">{{username}}</span></strong>. <a class="link-primary" href="{{customURL}}">Go to dashboard</a> or <a class="link-primary" href="/mbkauthe/accounts">switch account</a>.
+                        {{#if userLoggedIn}}
+                        <div class="alert-banner alert-info already-logged-info">
+                            <div class="alert-icon"><i class="fas fa-user-check"></i></div>
+                            <div class="alert-body">
+                                Signed in as <strong class="username"><span id="headerProfileUserName">{{username}}</span></strong>.
+                                <div class="alert-actions">
+                                    <a class="link-primary" href="{{customURL}}">Dashboard</a> &bull; 
+                                    <a class="link-primary" href="/mbkauthe/accounts">Switch Account</a>
+                                </div>
+                            </div>
                         </div>
                         {{/if}}
 
-                        <div class="mobile-actions">
+                        <div class="mobile-oauth-section">
                             {{#if hasOAuthProviders}}
-                            <div class="social-login">
-                                <div class="divider"><span>or</span></div>
-                                <div class="social-icons-row">
-                                    {{#each enabledOAuthProviders}}
-                                    <button type="button" class="swi s {{mobileBtnClass}} last-used-parent oauth-login-btn" data-provider="{{id}}" data-url="{{loginUrl}}" title="{{displayName}}" aria-label="{{displayName}}">
-                                        <i class="{{iconClass}}"></i>
-                                        {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
-                                    </button>
-                                    {{/each}}
-                                </div>
+                            <div class="auth-divider"><span>or continue with</span></div>
+                            <div class="mobile-oauth-grid">
+                                {{#each enabledOAuthProviders}}
+                                <button type="button" class="btn-oauth-icon oauth-login-btn last-used-parent" data-provider="{{id}}" data-url="{{loginUrl}}" title="{{displayName}}" aria-label="{{displayName}}">
+                                    <i class="{{iconClass}}"></i>
+                                    {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                                </button>
+                                {{/each}}
                             </div>
-                            <div class="divider"><span>or</span></div>
                             {{/if}}
 
-                            <a href="/mbkauthe/accounts" class="swi btn-social btn-switch-side">
-                                <i class="fa fa-user-group"></i>
-                                <span>Switch Account</span>
-                            </a>
+                            <div class="mobile-switch-row">
+                                <a href="/mbkauthe/accounts" class="btn-action-link full-width">
+                                    <i class="fas fa-users"></i>
+                                    <span>Switch Account</span>
+                                </a>
+                            </div>
                         </div>
 
                         <p class="terms-info">
-                            By logging in, you agree to our
-                            <a href="https://mbktech.org/Terms&Conditions" target="_blank" rel="noopener noreferrer" class="link-primary">Terms & Conditions</a>
-                            and
-                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer" class="link-primary">Privacy Policy</a>.
+                            Protected by MBKAuthe enterprise security. By signing in, you agree to our
+                            <a href="https://mbktech.org/Terms&Conditions" target="_blank" rel="noopener noreferrer">Terms</a> &amp; 
+                            <a href="https://mbktech.org/PrivacyPolicy" target="_blank" rel="noopener noreferrer">Privacy</a>.
                         </p>
                     </form>
                 </div>

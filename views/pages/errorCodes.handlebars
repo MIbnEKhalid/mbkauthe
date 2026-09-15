@@ -1,99 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="Error Codes Reference" ogUrl="/mbkauthe/ErrorCode"}}
+{{> head pageTitle="Error Code Reference" ogUrl="/mbkauthe/ErrorCode"}}
 
 <body>
-    {{> header}}
+    {{> header appName=appName}}
 
-    <div class="container">
-        <div class="page-header-doc">
-            <h1>🔐 MBKAuthe Error Codes</h1>
-            <p>Complete reference guide for all error codes and their solutions</p>
-        </div>
+    <main class="doc-container">
+        {{> backgroundElements}}
 
-        <div class="search-box-sticky">
-            <input type="text" class="search-input-doc form-input" id="searchInput" placeholder="Search by error code, name, or description...">
-        </div>
-
-        <div id="errorContainer">
-            {{#each errorCategories}}
-            <div class="category" data-category="{{this.category}}">
-                <div class="category-header">
-                    <h2>{{this.icon}} {{this.name}}</h2>
-                    <span class="range">{{this.range}}</span>
-                </div>
-
-                {{#each this.errors}}
-                <div class="error-card" id="error-{{this.code}}" data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
-                    <div class="error-header">
-                        <span class="error-code">{{this.code}}</span>
-                        <span class="error-name">{{this.name}}</span>
-                    </div>
-                    <div class="error-message">{{this.userMessage}}</div>
-                    <div class="error-hint">💡 {{this.hint}}</div>
-                </div>
-                {{/each}}
+        <!-- Hero Header -->
+        <header class="doc-hero">
+            <div class="doc-hero-nav">
+                <a href="/mbkauthe/login" class="btn-action-link btn-sm">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Portal</span>
+                </a>
+                <span class="badge badge-neutral">API &amp; Security Catalog</span>
             </div>
+
+            <h1 class="doc-hero-title">Error Code Reference</h1>
+            <p class="doc-hero-subtitle">Comprehensive diagnostic directory and troubleshooting resolutions for all MBKAuthe authentication and session errors.</p>
+
+            <div class="doc-metrics-row">
+                <div class="doc-metric-pill">
+                    <i class="fas fa-shield-halved text-primary"></i>
+                    <span><strong>{{#if totalErrors}}{{totalErrors}}{{else}}26{{/if}}</strong> Total Error Codes</span>
+                </div>
+                <div class="doc-metric-pill">
+                    <i class="fas fa-layer-group text-primary"></i>
+                    <span><strong>{{#if totalCategories}}{{totalCategories}}{{else}}8{{/if}}</strong> Categories</span>
+                </div>
+                <div class="doc-metric-pill">
+                    <i class="fas fa-code-branch text-primary"></i>
+                    <span>Client Standard: <strong>RFC 6749 / 8628</strong></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sticky Search & Category Filter Toolbar -->
+        <section class="doc-toolbar-sticky" aria-label="Search and filter error codes">
+            <div class="doc-search-box">
+                <i class="fas fa-search doc-search-icon" aria-hidden="true"></i>
+                <input 
+                    type="search" 
+                    class="form-input doc-search-input" 
+                    id="searchInput" 
+                    placeholder="Search by code number (e.g. 601), name (e.g. INVALID_CREDENTIALS), message, or solution..."
+                    aria-label="Search error codes"
+                    autocomplete="off"
+                >
+                <kbd class="doc-search-kbd" title="Press / to search">/</kbd>
+            </div>
+
+            <nav class="doc-category-pills" id="categoryPills" aria-label="Filter by category">
+                <button type="button" class="doc-pill active" data-filter="all">All ({{#if totalErrors}}{{totalErrors}}{{else}}26{{/if}})</button>
+                {{#each errorCategories}}
+                <button type="button" class="doc-pill" data-filter="{{this.category}}">
+                    <span>{{this.icon}} {{this.name}}</span>
+                    <span class="pill-count">{{this.errors.length}}</span>
+                </button>
+                {{/each}}
+            </nav>
+        </section>
+
+        <!-- Error Categories & Card Decks -->
+        <div id="errorContainer" class="doc-content-deck">
+            {{#each errorCategories}}
+            <section class="doc-category-section" id="cat-{{this.category}}" data-category="{{this.category}}">
+                <div class="doc-category-header">
+                    <div class="doc-category-title-wrap">
+                        <span class="doc-cat-icon" aria-hidden="true">{{this.icon}}</span>
+                        <h2 class="doc-category-title">{{this.name}}</h2>
+                    </div>
+                    <span class="doc-range-tag">{{this.range}}</span>
+                </div>
+
+                <div class="doc-cards-grid">
+                    {{#each this.errors}}
+                    <article class="doc-error-card" id="error-{{this.code}}" data-search="{{this.code}} {{this.name}} {{this.message}} {{this.userMessage}} {{this.hint}}">
+                        <div class="doc-card-top">
+                            <div class="doc-code-tag-group">
+                                <a href="#error-{{this.code}}" class="doc-code-badge" title="Direct link to error {{this.code}}">
+                                    <span class="hash">#</span>{{this.code}}
+                                </a>
+                                <h3 class="doc-error-identifier">{{this.name}}</h3>
+                            </div>
+                            <button type="button" class="doc-btn-copy" onclick="copyDirectLink('{{this.code}}')" title="Copy link to this error" aria-label="Copy link to error {{this.code}}">
+                                <i class="fas fa-link"></i>
+                            </button>
+                        </div>
+
+                        <div class="doc-card-body">
+                            <div class="doc-system-row">
+                                <span class="doc-meta-label">System Message:</span>
+                                <code class="doc-system-msg">{{this.message}}</code>
+                            </div>
+
+                            <p class="doc-user-desc">{{this.userMessage}}</p>
+
+                            <div class="doc-hint-box">
+                                <div class="doc-hint-icon"><i class="fas fa-lightbulb"></i></div>
+                                <div class="doc-hint-text">
+                                    <strong>Resolution:</strong> {{this.hint}}
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                    {{/each}}
+                </div>
+            </section>
             {{/each}}
         </div>
 
-        <div class="no-results hidden-by-default" id="noResults">
-            No error codes found matching your search.
+        <!-- No Results Fallback -->
+        <div class="doc-empty-state hidden-by-default" id="noResults">
+            <div class="empty-state-icon"><i class="fas fa-circle-question"></i></div>
+            <h3>No Matching Error Codes</h3>
+            <p>No error codes found matching "<span id="searchedTermText"></span>". Try searching with another keyword or code.</p>
+            <button type="button" class="btn-primary btn-sm" onclick="resetSearch()">Clear Search Filter</button>
         </div>
-    </div>
 
-    <div class="back-to-top" id="backToTop" aria-label="Back to top">↑</div>
+        <!-- Assistance & Support Footer Card -->
+        <aside class="doc-support-card">
+            <div class="doc-support-info">
+                <div class="auth-icon-badge small" aria-hidden="true"><i class="fas fa-headset"></i></div>
+                <div>
+                    <h4>Need Technical Support?</h4>
+                    <p>If you encounter an unlisted error code or need account access troubleshooting, contact MBKTech Support.</p>
+                </div>
+            </div>
+            <div class="doc-support-actions">
+                <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm">
+                    <span>Contact Support</span>
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+                <a href="https://mbkauthe.mbktech.org/docs" target="_blank" rel="noopener noreferrer" class="btn-outline btn-sm">
+                    <span>API Documentation</span>
+                </a>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Floating Back to Top Button -->
+    <button type="button" class="back-to-top" id="backToTop" aria-label="Back to top" title="Back to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    {{> versionInfo}}
 
     <script>
         const searchInput = document.getElementById('searchInput');
-        const errorCards = document.querySelectorAll('.error-card');
-        const categories = document.querySelectorAll('.category');
+        const errorCards = Array.from(document.querySelectorAll('.doc-error-card'));
+        const categories = Array.from(document.querySelectorAll('.doc-category-section'));
+        const categoryPills = Array.from(document.querySelectorAll('.doc-pill'));
         const noResults = document.getElementById('noResults');
+        const termText = document.getElementById('searchedTermText');
+        const backToTop = document.getElementById('backToTop');
 
-        searchInput?.addEventListener('input', function () {
-            const term = this.value.toLowerCase().trim();
-            let hasResults = !term;
+        let activeCategoryFilter = 'all';
 
-            errorCards.forEach((card) => {
-                const match = !term || (card.getAttribute('data-search') || '').toLowerCase().includes(term);
-                card.classList.toggle('is-hidden', !match);
-                if (match) hasResults = true;
-            });
+        function applyFilters() {
+            const term = (searchInput?.value || '').toLowerCase().trim();
+            if (termText) termText.textContent = term;
+
+            let totalVisible = 0;
 
             categories.forEach((cat) => {
-                const hasVisible = !term || Boolean(cat.querySelector('.error-card:not(.is-hidden)'));
-                cat.classList.toggle('is-hidden', !hasVisible);
+                const catName = cat.getAttribute('data-category');
+                const catMatchesFilter = activeCategoryFilter === 'all' || activeCategoryFilter === catName;
+
+                let visibleInCat = 0;
+                const cards = cat.querySelectorAll('.doc-error-card');
+
+                cards.forEach((card) => {
+                    const searchData = (card.getAttribute('data-search') || '').toLowerCase();
+                    const matchesSearch = !term || searchData.includes(term);
+                    const isVisible = catMatchesFilter && matchesSearch;
+
+                    card.classList.toggle('is-hidden', !isVisible);
+                    if (isVisible) {
+                        visibleInCat++;
+                        totalVisible++;
+                    }
+                });
+
+                cat.classList.toggle('is-hidden', visibleInCat === 0);
             });
 
-            noResults?.classList.toggle('hidden-by-default', hasResults);
+            noResults?.classList.toggle('hidden-by-default', totalVisible > 0);
+        }
+
+        searchInput?.addEventListener('input', applyFilters);
+
+        categoryPills.forEach((pill) => {
+            pill.addEventListener('click', () => {
+                categoryPills.forEach((p) => p.classList.remove('active'));
+                pill.classList.add('active');
+                activeCategoryFilter = pill.getAttribute('data-filter') || 'all';
+                applyFilters();
+            });
         });
 
-        const backToTop = document.getElementById('backToTop');
-        window.addEventListener('scroll', () => backToTop?.classList.toggle('visible', window.pageYOffset > 300));
-        backToTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        function resetSearch() {
+            if (searchInput) searchInput.value = '';
+            activeCategoryFilter = 'all';
+            categoryPills.forEach((p, idx) => p.classList.toggle('active', idx === 0));
+            applyFilters();
+            searchInput?.focus();
+        }
 
-        function scrollToError() {
+        // Global hotkey: press '/' to search
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput?.focus();
+                searchInput?.select();
+            }
+        });
+
+        // Copy direct link to clipboard
+        window.copyDirectLink = async function(code) {
+            const url = new URL(window.location.href);
+            url.hash = `error-${code}`;
+            try {
+                await navigator.clipboard.writeText(url.toString());
+                if (window.showMessage) {
+                    showMessage(`Link to error #${code} copied to clipboard!`, 'Link Copied');
+                }
+            } catch {
+                window.location.hash = `error-${code}`;
+            }
+        };
+
+        // Scroll to error on load or hash change
+        function scrollToHashError() {
             if (!window.location.hash) return;
             const rawId = window.location.hash.substring(1);
             const targetId = (!rawId.startsWith('error-') && /^\d+$/.test(rawId)) ? `error-${rawId}` : rawId;
             const targetEl = document.getElementById(targetId);
 
             if (targetEl) {
+                // Ensure category and card are visible
+                targetEl.classList.remove('is-hidden');
+                const parentCat = targetEl.closest('.doc-category-section');
+                if (parentCat) parentCat.classList.remove('is-hidden');
+
                 setTimeout(() => {
                     targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    targetEl.style.borderColor = 'var(--primary)';
-                    targetEl.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.3)';
-                    setTimeout(() => {
-                        targetEl.style.borderColor = '';
-                        targetEl.style.boxShadow = '';
-                    }, 2500);
-                }, 100);
+                    targetEl.classList.add('highlight-flash');
+                    setTimeout(() => targetEl.classList.remove('highlight-flash'), 2500);
+                }, 150);
             }
         }
 
-        scrollToError();
-        window.addEventListener('hashchange', scrollToError);
+        window.addEventListener('load', scrollToHashError);
+        window.addEventListener('hashchange', scrollToHashError);
+
+        // Back to top scroll listener
+        window.addEventListener('scroll', () => {
+            backToTop?.classList.toggle('visible', window.pageYOffset > 300);
+        });
+
+        backToTop?.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     </script>
 </body>
 </html>

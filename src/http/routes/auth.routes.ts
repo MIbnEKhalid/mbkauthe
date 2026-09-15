@@ -338,8 +338,6 @@ router.post("/api/switch-session", LoginLimit, async (req, res) => {
     await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => (err ? reject(err) : resolve())));
 
     res.cookie("full_name", full_name, { ...cachedCookieOptions, httpOnly: false });
-    res.cookie("profile_image_url", switch_profile_image || "default", { ...cachedCookieOptions, httpOnly: false });
-    res.cookie("profile_image_user", row.username, { ...cachedCookieOptions, httpOnly: false });
     const encrypted_sid = encryptSessionId(row.sid);
     if (encrypted_sid) res.cookie("session_id", encrypted_sid, cachedCookieOptions);
 

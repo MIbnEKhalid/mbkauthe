@@ -4,7 +4,7 @@ import { hashApiToken } from "../../config/security.js";
 import { renderError } from "../response/formatters.js";
 import { isJsonRequest } from "../response/contentNegotiation.js";
 import { clearSessionCookies } from "../session/accountCookies.js";
-import { cachedCookieOptions, encryptSessionId } from "../../config/cookies.js";
+import { cachedCookieOptions, encryptSessionId, decryptSessionId } from "../../config/cookies.js";
 import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
 import { extractAuthorizationToken, timingSafeTokenMatch } from "../../core/tokens/index.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
@@ -193,35 +193,44 @@ function respondSessionFailure(req: Request, res: Response, { prefersJson, code,
  * Validates cookie session authentication.
  */
 async function validateCookieSession(req: Request, res: Response, next: NextFunction, { prefersJson }: { prefersJson: boolean }) {
-  if (!(req as any).session?.user) {
+  let session_id = (req as any).session?.user?.session_id;
+  let username = (req as any).session?.user?.username;
+
+  if (!session_id && (req as any).cookies?.session_id) {
+    const decrypted = decryptSessionId((req as any).cookies.session_id);
+    if (decrypted) {
+      session_id = decrypted;
+    }
+  }
+
+  const loginRedirect = `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`;
+
+  if (!session_id) {
     if (IS_DEV) {
-      logAuth(`User not authenticated`);
+      logAuth(`User not authenticated (no session)`);
       logAuth(`req.session.user: %O`, (req as any).session?.user);
     }
     if (prefersJson) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
     return res.redirect(302, `/mbkauthe/login?${new URLSearchParams({ redirect: req.originalUrl, reason: "logged_out" }).toString()}`);
   }
 
+  if (!isUuid(session_id)) {
+    console.warn(`[mbkauthe] Missing or invalid session_id for user "${username || "unknown"}"`);
+    return respondSessionFailure(req, res, {
+      prefersJson,
+      code: 401,
+      errorCode: ErrorCodes.SESSION_EXPIRED,
+      error: "Session Expired",
+      message: "Your Session Has Expired. Please Log In Again.",
+      page: loginRedirect,
+    });
+  }
+
   try {
-    const { session_id, username } = (req as any).session.user;
-    const loginRedirect = `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`;
-
-    if (!session_id || !isUuid(session_id)) {
-      console.warn(`[mbkauthe] Missing session_id for user "${username}"`);
-      return respondSessionFailure(req, res, {
-        prefersJson,
-        code: 401,
-        errorCode: ErrorCodes.SESSION_EXPIRED,
-        error: "Session Expired",
-        message: "Your Session Has Expired. Please Log In Again.",
-        page: loginRedirect,
-      });
-    }
-
     const sessionRow = await authRepository.getSessionAuthData(session_id, prefersJson ? "validate-app-session-for-api" : "validate-app-session");
 
     if (!sessionRow) {
-      logAuth(`Session not found for user "${username}"`);
+      logAuth(`Session not found for session_id "${session_id}"`);
       return respondSessionFailure(req, res, {
         prefersJson,
         code: 401,
@@ -260,15 +269,31 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       });
     }
 
+    const userForSession = {
+      session_id: String(session_id),
+      user_id: sessionRow.user_id || undefined,
+      username: sessionRow.username || username || "unknown",
+      full_name: (typeof sessionRow.full_name === "string" && sessionRow.full_name.trim()) || (sessionRow.username || username || "unknown"),
+      role: sessionRow.role,
+      allowed_apps: sessionRow.allowed_apps,
+      image: sessionRow.image || undefined,
+    };
+
+    if ((req as any).session) {
+      (req as any).session.user = {
+        ...((req as any).session.user || {}),
+        ...userForSession,
+      };
+      await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
+    } else {
+      await attachSessionPermissions(userForSession, userForSession.username, sessionRow.role);
+    }
+
+    const sessionUser = (req as any).session?.user || userForSession;
+
     // Build unified AuthContext with fresh DB session data taking precedence
     const context = createSessionAuthContext(
-      {
-        ...(req as any).session.user,
-        user_id: sessionRow.user_id,
-        username: sessionRow.username || username,
-        role: sessionRow.role,
-        allowed_apps: sessionRow.allowed_apps,
-      },
+      sessionUser,
       {
         id: session_id,
         expiresAt: sessionRow.expires_at,

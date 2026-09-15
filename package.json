@@ -11,8 +11,7 @@
     "publish": "node scripts/publish.js",
     "create-tables": "node dist/db/schema/createTable.js",
     "test": "vitest run",
-    "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.svg",
-    "render:mermaid:png": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.png -s 20",
+    "generate:diagrams": "node scripts/generate-diagrams.mjs",
     "install-mermaid": "npm i @mermaid-js/mermaid-cli@11.15.0 --save-dev"
   },
   "exports": {
@@ -95,6 +94,7 @@
   "files": [
     "dist/",
     "docs/",
+    "!docs/diagrams/**",
     "public/",
     "views/",
     ".env.example",

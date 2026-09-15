@@ -8,14 +8,13 @@ Ready-to-use recipes and full integration patterns for MBKAuthe v6.
 
 ```typescript
 import express from "express";
-import mbkauthe, { sessVal, roleChk, sessPerm } from "mbkauthe";
-import { definePermissions } from "mbkauthe/core";
+import mbkauthe, { sessVal, sessRole, sessPerm, permChk } from "mbkauthe";
+import { definePermissions, authEvents } from "mbkauthe/core";
 import { syncAppPermissions } from "mbkauthe/services";
-import { authEvents } from "mbkauthe/core";
 
 const app = express();
 
-// 1. Define App Permissions
+// 1. Define App Permissions & Role Mapping
 const AppPermissions = definePermissions({
   appKey: "analytics",
   permissions: {
@@ -97,23 +96,24 @@ export const projectRepository = new ProjectRepository();
 ```typescript
 import { authService, apiTokenService } from "mbkauthe/services";
 
-// Authenticate programmatically
-const loginResult = await authService.authenticate({
+// Authenticate programmatically with password
+const loginResult = await authService.loginWithPassword({
   username: "developer",
   password: "securePassword123",
 });
 
-if (loginResult.success) {
+if (!loginResult.requires2FA && loginResult.user) {
   console.log("Logged in user:", loginResult.user.username);
 
-  // Issue Personal Access Token
-  const { token } = await apiTokenService.createToken({
-    userId: loginResult.user.id,
+  // Issue Personal Access Token (PAT)
+  const { token, tokenRecord } = await apiTokenService.createToken(loginResult.user.username, {
     name: "CLI Token",
     scopes: ["analytics:reports:view"],
     expiresInDays: 30,
   });
 
-  console.log("Generated PAT:", token);
+  console.log("Generated PAT (display once):", token);
+  console.log("Stored token ID:", tokenRecord.id);
 }
 ```
+

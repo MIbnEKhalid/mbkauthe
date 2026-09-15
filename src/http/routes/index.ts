@@ -5,3 +5,4 @@ export * from "./adminApiToken.routes.js";
 export * from "./cliAuth.routes.js";
 export * from "./misc.routes.js";
 export * from "./dbLogs.routes.js";
+export * from "./dev.routes.js";

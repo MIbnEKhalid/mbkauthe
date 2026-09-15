@@ -7,7 +7,10 @@ import { mbkautheVar } from "../../config/env.js";
 
 const router = express.Router();
 
-const isDbLogsEnabled = () => process.env.env === "dev" && process.env.dbLogs === "true";
+const isDbLogsEnabled = () => {
+  if (process.env.dbLogs === "false") return false;
+  return process.env.dbLogs === "true" || process.env.env === "dev" || process.env.NODE_ENV !== "production";
+};
 
 const clampLimit = (value: unknown, fallback = 50, max = 500) => {
   const parsed = Number(value);

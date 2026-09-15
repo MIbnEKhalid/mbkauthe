@@ -1,0 +1,64 @@
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant Express as Express OAuth Adapter (/auth/oauth)
+    participant FlowService as OAuthFlowService
+    participant StateStore as OAuthStateStore (In-Memory/Cache)
+    participant Provider as Identity Provider (Google, GitHub, OIDC)
+    participant Jose as jose (JWKS / JWT Verifier)
+    participant Cipher as AES-256-GCM Encryptor
+    participant OAuthRepo as OAuthAccountRepository
+    participant UserRepo as UserRepository
+    participant EventBus as authEvents
+
+    User->>Express: GET /auth/oauth/:provider/login
+    Express->>FlowService: startAuthorizationFlow(providerId, options)
+    FlowService->>FlowService: Generate PKCE (code_verifier + code_challenge S256)
+    FlowService->>FlowService: Generate State & Nonce
+    FlowService->>StateStore: saveState(state, { verifier, nonce, redirectUrl })
+    FlowService-->>Express: Build Authorization URL (with client_id, challenge, state, nonce)
+    Express->>User: 302 Redirect to Provider Auth URL
+
+    User->>Provider: Authenticate & Grant Consent
+    Provider->>User: 302 Redirect to Callback URL (?code=...&state=...)
+    User->>Express: GET /auth/oauth/:provider/callback?code=...&state=...
+
+    Express->>FlowService: handleCallback(providerId, code, state)
+    FlowService->>StateStore: consumeState(state)
+    StateStore-->>FlowService: { verifier, nonce, redirectUrl }
+
+    FlowService->>Provider: POST /token (code, code_verifier, client_id, client_secret)
+    Provider-->>FlowService: TokenResponse (access_token, id_token, refresh_token)
+
+    alt Provider is OpenID Connect (OIDC)
+        FlowService->>Provider: Fetch /.well-known/openid-configuration
+        Provider-->>FlowService: OpenID Config (jwks_uri, issuer)
+        FlowService->>Jose: Validate ID Token (JWKS remote, iss, aud, nonce)
+        Jose-->>FlowService: Verified JWT Claims (sub, email, name)
+    else Standard OAuth2 (e.g. GitHub)
+        FlowService->>Provider: GET /user (Bearer access_token)
+        Provider-->>FlowService: UserProfile (id, email, name)
+    end
+
+    FlowService->>OAuthRepo: findByProviderSubject(providerId, subjectId)
+
+    alt OAuth Account Linked
+        OAuthRepo-->>FlowService: OAuthAccountRecord
+        FlowService->>UserRepo: findById(oauthAccount.user_id)
+        UserRepo-->>FlowService: UserRecord
+    else New OAuth Account & allowAutoLinkByEmail == true
+        FlowService->>UserRepo: findByEmail(profile.email)
+        alt Existing User Found
+            UserRepo-->>FlowService: Existing UserRecord
+        else No User Exists
+            FlowService->>UserRepo: createUser({ username, email, role: 'normaluser' })
+            UserRepo-->>FlowService: New UserRecord
+        end
+        FlowService->>Cipher: encryptTokens(access_token, refresh_token)
+        Cipher-->>FlowService: { encryptedAccessToken, encryptedRefreshToken }
+        FlowService->>OAuthRepo: linkAccount(userId, providerId, subjectId, encryptedTokens)
+    end
+
+    FlowService->>EventBus: emit("oauth.callback.success", { userId, providerId })
+    FlowService-->>Express: { user, redirectUrl }
+    Express->>User: Create Local Session + Redirect to App Dashboard

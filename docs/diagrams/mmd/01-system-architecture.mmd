@@ -1,0 +1,96 @@
+flowchart TB
+    subgraph ClientTier["Client / Consumer Tier"]
+        Browser["Web Browser (SPA / SSR)"]
+        Mobile["Mobile Application"]
+        CLIClient["CLI Terminal Tool (RFC 8628)"]
+        APIClient["API Client / Microservice (Bearer PAT)"]
+    end
+
+    subgraph HttpTier["HTTP & Express Middleware Layer (mbkauthe/middleware & express)"]
+        SecHeaders["Security Headers & CORS"]
+        CookieParser["Cookie Parser & Decryption (AES-256-GCM)"]
+        RateLimiter["Rate Limiting Middleware"]
+        AuthMiddleware["Session & Token Middleware (sessVal, authenticate)"]
+        RBACMiddleware["RBAC / Permission Middleware (sessRole, sessPerm)"]
+        Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli)"]
+    end
+
+    subgraph CoreTier["Core Domain & Service Layer (mbkauthe/core & services)"]
+        AuthCtx["AuthContext (Domain Entity)"]
+        AuthService["AuthService (Session & Password)"]
+        OAuthService["OAuthFlowService (PKCE & OIDC)"]
+        CliAuthService["CliAuthService (Device Flow)"]
+        ApiTokenService["ApiTokenService (PAT Management)"]
+        AuthzService["AuthorizationService (Policy Engine)"]
+        RoleReg["RoleRegistry (In-Memory RBAC)"]
+        PermSync["PermissionSyncService (Catalog Sync)"]
+        EventBus["authEvents (Domain Event Emitter)"]
+    end
+
+    subgraph CryptoTier["Cryptographic & Security Subsystem (mbkauthe/config & core/tokens)"]
+        PasswordHasher["Argon2id / PBKDF2 Password Hasher"]
+        TokenEngine["TokenEngine (mbk_pat_, mbk_cli_, mbk_sess_)"]
+        StateStore["OAuthStateStore (PKCE, State, Nonce)"]
+        JoseVerifier["jose (OIDC JWKS Signature Verifier)"]
+        AESCipher["AES-256-GCM Field & Cookie Encryptor"]
+    end
+
+    subgraph PersistenceTier["Dual-Database Persistence Engine (mbkauthe/db)"]
+        Dialect["SQL Dialect Translator (Postgres $n <-> SQLite ?)"]
+        QueryLogger["DbQueryLogger (In-Memory Audit Buffer)"]
+        
+        subgraph PostgresEngine["PostgreSQL Engine"]
+            PGPool["Connection Pool (pg.Pool)"]
+            PGRetry["Retry Wrapper (Exponential Backoff)"]
+            PGAdapter["PostgresAdapter"]
+        end
+
+        subgraph SqliteEngine["SQLite Engine"]
+            SqliteMutex["SqliteMutex (FIFO Queue Lock)"]
+            SqliteWAL["better-sqlite3 (WAL Mode + Busy Timeout)"]
+            SqliteAdapter["SqliteAdapter"]
+        end
+
+        Repos["Typed Repositories (UserRepository, SessionRepository, OAuthAccountRepo, etc.)"]
+    end
+
+    Browser -->|HTTP + Encrypted Cookie| SecHeaders
+    Mobile -->|HTTP + Bearer Token| SecHeaders
+    CLIClient -->|Device Grant Polling| SecHeaders
+    APIClient -->|HTTP + mbk_pat_ Token| SecHeaders
+
+    SecHeaders --> RateLimiter --> CookieParser --> AuthMiddleware --> RBACMiddleware --> Routers
+
+    Routers --> AuthService
+    Routers --> OAuthService
+    Routers --> CliAuthService
+    Routers --> ApiTokenService
+
+    AuthMiddleware --> AuthCtx
+    RBACMiddleware --> AuthzService
+    AuthzService --> RoleReg
+
+    AuthService --> PasswordHasher
+    AuthService --> AESCipher
+    OAuthService --> StateStore
+    OAuthService --> JoseVerifier
+    OAuthService --> AESCipher
+    ApiTokenService --> TokenEngine
+    CliAuthService --> TokenEngine
+
+    AuthService --> Repos
+    OAuthService --> Repos
+    CliAuthService --> Repos
+    ApiTokenService --> Repos
+    PermSync --> Repos
+
+    AuthService -.->|Emit Events| EventBus
+    OAuthService -.->|Emit Events| EventBus
+    CliAuthService -.->|Emit Events| EventBus
+
+    Repos --> Dialect
+    Dialect --> QueryLogger
+    QueryLogger --> PGAdapter & SqliteAdapter
+
+    PGAdapter --> PGRetry --> PGPool
+    SqliteAdapter --> SqliteMutex --> SqliteWAL

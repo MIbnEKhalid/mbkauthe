@@ -243,6 +243,7 @@ export { authRouter } from "./http/routes/auth.routes.js";
 export { oauthRouter } from "./http/routes/oauth.routes.js";
 export { miscRouter, checkVersion } from "./http/routes/misc.routes.js";
 export { dbLogsRouter } from "./http/routes/dbLogs.routes.js";
+export { devRouter } from "./http/routes/dev.routes.js";
 export { createMbkautheApp, mbkautheApp } from "./http/app.js";
 
 // 13. Legacy mbkauthShared compatibility object

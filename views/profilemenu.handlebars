@@ -121,245 +121,245 @@
 </script>
 
 <style>
+/* ==========================================================================
+   ProfileMenu Component Self-Contained Styles
+   ========================================================================== */
 .mbkauthe-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-left: auto;
-  font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.mbkauthe-header-actions *,
+.mbkauthe-header-actions *::before,
+.mbkauthe-header-actions *::after {
+    box-sizing: border-box;
 }
 
 .mbkauthe-btn-login-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 7px 18px;
-  font-size: 0.88rem;
-  border-radius: var(--radius, 8px);
-  font-weight: 600;
-  text-decoration: none;
-  background: var(--primary-color-ml, #0f766e);
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(15, 118, 110, 0.2);
-  transition: var(--transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 1.15rem;
+    font-size: 0.84rem;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius, 0.5rem);
+    background: var(--primary-600, #0d9488);
+    color: #ffffff !important;
+    text-decoration: none !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.15s ease;
+    border: none;
+    cursor: pointer;
 }
 
 .mbkauthe-btn-login-header:hover {
-  background: var(--primary-hover, #0d635c);
-  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
-  transform: translateY(-1px);
+    background: var(--primary-700, #0f766e);
+    box-shadow: 0 4px 10px rgba(15, 118, 110, 0.2);
+    transform: translateY(-1px);
 }
 
 .mbkauthe-profile-menu {
-  position: relative;
+    position: relative;
+    display: inline-block;
 }
 
 .mbkauthe-profile-trigger {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border-color, rgba(15, 118, 110, 0.15));
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: var(--transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
-  padding: 0;
-  position: relative;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
 }
 
 .mbkauthe-profile-trigger:hover {
-  border-color: var(--primary-color-ml, #0f766e);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
-  transform: translateY(-1px);
+    border-color: var(--primary, #0d9488);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
 }
 
 .mbkauthe-profile-trigger:focus-visible {
-  outline: 2px solid var(--primary-color-ml, #0f766e);
-  outline-offset: 2px;
+    outline: 2px solid var(--primary, #0d9488);
+    outline-offset: 2px;
 }
 
-.mbkauthe-profile-avatar,
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  object-fit: cover;
-  display: block;
+.avatar-img, .mbkauthe-profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    object-fit: cover;
+    display: block;
 }
 
 .mbkauthe-avatar-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--primary-color-ml, #0f766e);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  font-family: var(--font-headings, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
-  text-transform: uppercase;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--primary-600, #0d9488);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
 }
 
 .mbkauthe-avatar-fallback.small {
-  font-size: 0.85rem;
+    font-size: 0.78rem;
 }
 
 .mbkauthe-profile-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.65rem);
-  background: #ffffff;
-  border: 1px solid var(--border-color, rgba(15, 118, 110, 0.15));
-  border-radius: var(--radius-lg, 14px);
-  min-width: 230px;
-  box-shadow: 0 14px 35px rgba(15, 42, 42, 0.12), 0 4px 10px rgba(0, 0, 0, 0.04);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px) scale(0.97);
-  transition: var(--transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
-  z-index: 1000;
-  color: var(--dark-color-ml, #1f2a2a);
-  padding: 6px;
-  box-sizing: border-box;
-}
-
-.mbkauthe-profile-dropdown * {
-  box-sizing: border-box;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.65rem);
+    background: #ffffff;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-lg, 0.75rem);
+    min-width: 230px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px) scale(0.98);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+    z-index: 10000;
+    padding: 0.45rem;
 }
 
 .mbkauthe-profile-dropdown.open {
-  display: block;
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
 }
 
 .mbkauthe-profile-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 8px 10px 10px;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.65rem 0.65rem;
 }
 
 .mbkauthe-profile-header-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border-color, rgba(15, 118, 110, 0.15));
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--bg-surface-tertiary, #e9f2ee);
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--slate-100, #f1f5f9);
 }
 
 .mbkauthe-profile-header-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .mbkauthe-profile-header-meta {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .mbkauthe-profile-signed-in {
-  font-size: 0.72rem;
-  color: var(--text-muted, #667c79);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
+    font-size: 0.68rem;
+    font-family: inherit;
+    color: var(--text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
 }
 
 .mbkauthe-profile-username {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--primary-dark-color-ml, #0b4f4a);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--slate-900, #0f172a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mbkauthe-dropdown-divider {
-  height: 1px;
-  background: var(--border-color-light, rgba(15, 118, 110, 0.08));
-  margin: 4px 0;
+    height: 1px;
+    background: var(--border-color-light, #f1f5f9);
+    margin: 0.35rem 0;
 }
 
 .mbkauthe-profile-body,
 .mbkauthe-profile-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .mbkauthe-profile-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.85rem;
-  color: var(--dark-color-ml, #1f2a2a);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm, 6px);
-  text-decoration: none;
-  text-align: left;
-  font-weight: 500;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: var(--transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
-  font-family: inherit;
-  box-sizing: border-box;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    color: var(--text-main, #334155);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm, 0.375rem);
+    text-decoration: none !important;
+    text-align: left;
+    font-weight: 500;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
 }
 
 .mbkauthe-item-icon {
-  width: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary-color-ml, #0f766e);
-  font-size: 0.95rem;
-  transition: var(--transition, all 0.25s cubic-bezier(0.4, 0, 0.2, 1));
+    width: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-600, #0d9488);
+    font-size: 0.88rem;
+    transition: color 0.15s ease;
 }
 
 .mbkauthe-item-text {
-  flex: 1;
+    flex: 1;
 }
 
 .mbkauthe-profile-item:hover {
-  background: var(--primary-light-color-ml, #d7f4ee);
-  color: var(--primary-dark-color-ml, #0b4f4a);
+    background: var(--primary-50, #f0fdfa);
+    color: var(--primary-800, #115e59);
 }
 
 .mbkauthe-profile-item:hover .mbkauthe-item-icon {
-  color: var(--primary-dark-color-ml, #0b4f4a);
-  transform: translateX(1px);
+    color: var(--primary-800, #115e59);
 }
 
 .mbkauthe-profile-item.logout-item:hover {
-  background: rgba(220, 38, 38, 0.08);
-  color: var(--danger-color-ml, #dc2626);
+    background: var(--danger-bg, #fff1f2);
+    color: var(--danger, #e11d48);
 }
 
 .mbkauthe-profile-item.logout-item:hover .mbkauthe-item-icon {
-  color: var(--danger-color-ml, #dc2626);
+    color: var(--danger, #e11d48);
 }
 
 .mbkauthe-profile-item:focus-visible {
-  outline: 2px solid var(--primary-color-ml, #0f766e);
-  outline-offset: 1px;
-}
-
-.mbkauthe-profile-item:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+    outline: 2px solid var(--primary, #0d9488);
+    outline-offset: 1px;
 }
 </style>

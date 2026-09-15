@@ -136,7 +136,7 @@ export class AuthRepository extends BaseRepository {
   }
 
   async getSessionAuthData(session_id: string, query_name: string = "validate-app-session"): Promise<AuthUser | null> {
-    const query = "SELECT s.expires_at, u.is_active, u.role, u.allowed_apps, u.username FROM mbkcore_sessions s JOIN mbkcore_users u ON s.username = u.username WHERE s.id = $1 LIMIT 1";
+    const query = `SELECT ${this.buildSessionUserSelect({ includeProfile: true })} FROM mbkcore_sessions s JOIN mbkcore_users u ON s.username = u.username WHERE s.id = $1 LIMIT 1`;
     const result = await this.executeRaw({ name: query_name, text: query, values: [session_id] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }

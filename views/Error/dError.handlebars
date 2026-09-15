@@ -9,7 +9,7 @@
   <section class="login-container">
     {{> backgroundElements}}
 
-    <div class="glass-card error-page-box" role="region" aria-label="Error Notice">
+    <div class="auth-card error-page-box" role="region" aria-label="Error Notice">
       <div class="error-hero-icon {{#if (eq code 500)}}is-5xx{{else}}{{#if (eq code 404)}}is-4xx{{/if}}{{/if}}" aria-hidden="true">
         {{#if (eq code 404)}}
         <i class="fas fa-compass"></i>
@@ -20,29 +20,29 @@
         {{else if (eq code 401)}}
         <i class="fas fa-key"></i>
         {{else}}
-        <i class="fas fa-exclamation-triangle"></i>
+        <i class="fas fa-triangle-exclamation"></i>
         {{/if}}
       </div>
 
-      <h1 class="status-code">{{code}}</h1>
-      <h2 class="status-title">{{error}}</h2>
+      <div class="status-code">{{code}}</div>
+      <h1 class="login-title">{{error}}</h1>
 
       <div class="status-content">
         <p class="status-message">{{message}}</p>
       </div>
 
       <div class="status-links">
-        <a href="{{page}}" class="btn btn-primary">
+        <a href="{{page}}" class="btn-primary">
           <i class="fas fa-arrow-left" aria-hidden="true"></i>
           <span>Return to {{#if pagename}}{{pagename}}{{else}}Home{{/if}}</span>
         </a>
-        <a href="/mbkauthe/login" class="btn btn-outline">
+        <a href="/mbkauthe/login" class="btn-outline">
           <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
           <span>Login</span>
         </a>
-        <a href="/mbkauthe/ErrorCode" class="btn btn-outline">
+        <a href="/mbkauthe/ErrorCode" class="btn-outline">
           <i class="fas fa-book" aria-hidden="true"></i>
-          <span>Error Codes</span>
+          <span>Error Reference</span>
         </a>
       </div>
 
@@ -52,14 +52,14 @@
           <span class="details-toggle-left">
             <i class="fas fa-terminal icon-primary" aria-hidden="true"></i>
             <span>Diagnostic & Trace</span>
-            <span class="details-badge badge-success"><i class="fas fa-shield-alt" aria-hidden="true"></i> Redacted</span>
+            <span class="badge badge-success"><i class="fas fa-shield-halved" aria-hidden="true"></i> Redacted</span>
           </span>
           <i class="fas fa-chevron-down chev" aria-hidden="true"></i>
         </button>
         <div class="error-details-wrapper" id="errorDetails" hidden>
           <div class="details-security-notice" role="status">
-            <i class="fas fa-shield-alt icon-primary" aria-hidden="true"></i>
-            <span>Sensitive tokens, keys, and credentials are automatically scrubbed.</span>
+            <i class="fas fa-shield-halved icon-primary" aria-hidden="true"></i>
+            <span>Sensitive tokens, keys, and credentials have been automatically scrubbed.</span>
           </div>
 
           <div class="details-terminal">
@@ -68,7 +68,7 @@
                 <span class="terminal-dot dot-red"></span>
                 <span class="terminal-dot dot-yellow"></span>
                 <span class="terminal-dot dot-green"></span>
-                <span style="margin-left: 6px;">trace.log</span>
+                <span class="terminal-title">trace.log</span>
               </span>
               <div class="terminal-actions">
                 <button class="terminal-btn btn-wrap-toggle" type="button" title="Toggle line wrap">

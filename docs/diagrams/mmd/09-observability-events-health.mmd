@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph CoreServices["Domain Services"]
+        AuthSvc["AuthService"]
+        OAuthSvc["OAuthFlowService"]
+        TokenSvc["ApiTokenService"]
+        CliSvc["CliAuthService"]
+    end
+
+    subgraph EventStream["Domain Event Bus (authEvents)"]
+        Emitter["EventEmitter (authEvents)"]
+        
+        AuthSvc -.->|"auth:login:success\nauth:logout\nauth:session:pruned"| Emitter
+        OAuthSvc -.->|"oauth.callback.success\noauth.link.success"| Emitter
+        TokenSvc -.->|"auth:token:created\nauth:token:revoked"| Emitter
+        CliSvc -.->|"auth:cli:approved\nauth:cli:completed"| Emitter
+    end
+
+    subgraph EventSubscribers["External Consumers & Handlers"]
+        AuditLog["Audit Log Storage"]
+        Webhooks["Webhook Dispatcher"]
+        Analytics["Security Telemetry / SIEM"]
+    end
+
+    Emitter --> AuditLog
+    Emitter --> Webhooks
+    Emitter --> Analytics
+
+    subgraph Diagnostics["Diagnostics Engine (mbkauthe/diagnostics)"]
+        HealthFunc["getAuthHealthReport()"]
+        DBPing["Database Ping Check"]
+        TableCheck["Schema Table Integrity Check"]
+        LoggerCheck["DbQueryLogger Error Rate Check"]
+
+        HealthFunc --> DBPing & TableCheck & LoggerCheck
+        DBPing & TableCheck & LoggerCheck --> HealthReport["AuthHealthReport JSON (status: 'healthy' | 'degraded' | 'unhealthy')"]
+    end

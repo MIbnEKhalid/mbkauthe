@@ -35,22 +35,23 @@ export function createErrorHandler(options: ErrorHandlerOptions = {}) {
 }
 
 export interface NotFoundHandlerOptions {
+  appName?: string;
   defaultPage?: string;
   defaultPageName?: string;
 }
 
 export function createNotFoundHandler(options: NotFoundHandlerOptions = {}) {
-  const { defaultPage = "/", defaultPageName = "Home" } = options;
+  const { defaultPage = "/mbkauthe/login", defaultPageName = "Login Portal" } = options;
 
   return (req: Request, res: Response) => {
     if (req.path?.startsWith("/Assets/") || req.path?.startsWith("/assets/")) return res.status(404).end();
     if (isJsonRequest(req)) {
-      return sendError(res, "The requested API route was not found.", { statusCode: 404, code: "ROUTE_NOT_FOUND" });
+      return sendError(res, `The requested route '${req.originalUrl}' was not found.`, { statusCode: 404, code: "ROUTE_NOT_FOUND", req });
     }
     return renderError(res, req, {
       code: 404,
-      error: "Not Found",
-      message: "The requested page was not found.",
+      error: "Page Not Found",
+      message: `The requested URL '${req.originalUrl}' was not found on this server.`,
       pagename: defaultPageName,
       page: defaultPage,
     });

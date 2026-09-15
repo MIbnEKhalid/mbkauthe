@@ -13,6 +13,7 @@ import { clearSessionCookies } from "../session/accountCookies.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { isSafeFetchUrl } from "../utils/urlSafety.js";
 import { createLogger } from "../../utils/logger.js";
+import { getAuthHealthReport } from "../../diagnostics/index.js";
 
 dotenv.config();
 
@@ -88,18 +89,15 @@ router.get("/user/profilepic", async (req, res) => {
   };
 
   try {
-    if (!(req as any).session?.user?.username) return serveDefaultIcon();
+    const sessionUser = (req as any).session?.user || (req as any).auth?.user;
+    if (!sessionUser?.username) return serveDefaultIcon();
 
-    const username = (req as any).session.user.username;
-    let image_url = ((req as any).cookies?.profile_image_user === username && (req as any).cookies?.profile_image_url)
-      ? (req as any).cookies.profile_image_url
-      : null;
+    const username = sessionUser.username;
+    let image_url = sessionUser.image?.trim() ? sessionUser.image : null;
 
     if (!image_url) {
       const profile = await authRepository.getUserImageByUsername(username, "get-user-profile-pic");
       image_url = profile?.image?.trim() ? profile.image : "default";
-      res.cookie("profile_image_url", image_url, { ...cachedCookieOptions, httpOnly: false });
-      res.cookie("profile_image_user", username, { ...cachedCookieOptions, httpOnly: false });
     }
 
     const etag = `"${Buffer.from(username + ":" + image_url).toString("base64")}"`;
@@ -110,24 +108,18 @@ router.get("/user/profilepic", async (req, res) => {
 
     if (!isSafeFetchUrl(image_url)) {
       console.warn(`[mbkauthe] Blocked unsafe profile image URL for user ${username}`);
-      res.cookie("profile_image_url", "default", { ...cachedCookieOptions, httpOnly: false });
-      res.cookie("profile_image_user", username, { ...cachedCookieOptions, httpOnly: false });
       return serveDefaultIcon();
     }
 
     try {
       const imageResponse = await fetch(image_url, { headers: { "User-Agent": "mbkauthe/1.0" }, signal: AbortSignal.timeout(5000) });
       if (!imageResponse.ok) {
-        res.cookie("profile_image_url", "default", { ...cachedCookieOptions, httpOnly: false });
-        res.cookie("profile_image_user", username, { ...cachedCookieOptions, httpOnly: false });
         return serveDefaultIcon();
       }
       res.setHeader("Content-Type", imageResponse.headers.get("content-type") || "image/jpeg");
       const buffer = Buffer.from(await imageResponse.arrayBuffer());
       return res.send(buffer);
     } catch {
-      res.cookie("profile_image_url", "default", { ...cachedCookieOptions, httpOnly: false });
-      res.cookie("profile_image_user", username, { ...cachedCookieOptions, httpOnly: false });
       return serveDefaultIcon();
     }
   } catch {
@@ -260,7 +252,7 @@ router.get("/ErrorCode", (req, res) => {
       { name: "Two-Factor Authentication Errors", icon: "📱", range: "(700-799)", category: "2fa", codes: [701, 702, 703, 704] },
       { name: "Session Management Errors", icon: "🔄", range: "(800-899)", category: "session", codes: [801, 802, 803] },
       { name: "Authorization Errors", icon: "🛡️", range: "(900-999)", category: "authorization", codes: [901, 902] },
-      { name: "Input Validation Errors", icon: "✏️", range: "(1000-1099)", category: "validation", codes: [1001, 1002, 1003, 1004] },
+      { name: "Input Validation Errors", icon: "✏️", range: "(1000-1099)", category: "validation", codes: [1001, 1002, 1003, 1004, 1005, 1006, 1007] },
       { name: "Rate Limiting Errors", icon: "⏱️", range: "(1100-1199)", category: "ratelimit", codes: [1101] },
       { name: "Server Errors", icon: "⚠️", range: "(1200-1299)", category: "server", codes: [1201, 1202, 1203] },
       { name: "OAuth Errors", icon: "🔗", range: "(1300-1399)", category: "oauth", codes: [1301, 1302, 1303] },
@@ -270,10 +262,14 @@ router.get("/ErrorCode", (req, res) => {
       .map((cat) => ({ ...cat, errors: cat.codes.filter((code) => ErrorMessages[code]).map((code) => ({ code, name: getErrorName(code), ...ErrorMessages[code] })) }))
       .filter((cat) => cat.errors.length > 0);
 
+    const totalErrors = categoriesWithErrors.reduce((acc, cat) => acc + cat.errors.length, 0);
+
     return renderPage(req, res, "pages/errorCodes.handlebars", false, {
       pageTitle: "Error Codes",
       appName: mbkautheVar.APP_NAME,
       errorCategories: categoriesWithErrors,
+      totalErrors,
+      totalCategories: categoriesWithErrors.length,
     });
   } catch (err) {
     console.error(`[mbkauthe] Error rendering error codes page:`, err);
@@ -351,6 +347,24 @@ router.get(["/info.json", "/i.json"], LoginLimit, async (req, res) => {
     res.json({ mbkautheVar: safe_mbkautheVar, CurrentVersion: packageJson.version, APP_VERSION: appVersion, latestVersion });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch version information" });
+  }
+});
+
+router.get(["/api/health", "/health", "/health.json", "/api/health.json"], async (req, res) => {
+  try {
+    const report = await getAuthHealthReport();
+    const isOk = report.status === "healthy" || report.status === "degraded";
+    return res.status(isOk ? 200 : 503).json({
+      success: report.status !== "unhealthy",
+      ...report,
+    });
+  } catch (err: any) {
+    return res.status(503).json({
+      success: false,
+      status: "unhealthy",
+      error: err?.message || String(err),
+      timestamp: new Date().toISOString(),
+    });
   }
 });
 

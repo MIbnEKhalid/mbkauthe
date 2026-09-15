@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph RepoLayer["Repository Layer (BaseRepository)"]
+        QueryCall["repository.query(sql, [params])"]
+    end
+
+    subgraph DialectLayer["Dialect Translation Engine (mbkauthe/db/dialect)"]
+        DetectDialect{"Active DB_TYPE"}
+        ConvertPG["Translate SQL placeholders: '?' -> '$1, $2, $3'"]
+        ConvertSqlite["Translate Postgres specific functions -> SQLite equivalents"]
+        
+        QueryCall --> DetectDialect
+        DetectDialect -- "postgres" --> ConvertPG
+        DetectDialect -- "sqlite" --> ConvertSqlite
+    end
+
+    subgraph LoggingLayer["Live Query Logger (mbkauthe/db/dbQueryLogger)"]
+        LogBuffer["Push query metadata to in-memory circular buffer (timestamp, sql, duration)"]
+    end
+
+    subgraph PostgresBranch["PostgreSQL Connection Execution"]
+        PGWrap["wrapPoolWithRetry(pool, retryConfig)"]
+        PGExec["pool.query(sql, params)"]
+        PGError{"Transient Error (ECONNREFUSED, Connection Terminated)?"}
+        PGBackoff["Exponential Backoff Delay (initialMs * factor^attempt)"]
+        PGSuccess["Return QueryResult"]
+
+        ConvertPG --> PGWrap --> PGExec
+        PGExec --> PGError
+        PGError -- "Yes (attempts < maxRetries)" --> PGBackoff --> PGExec
+        PGError -- "No / Exhausted" --> ThrowDBError["Throw MbkAuthError (DATABASE_QUERY_ERROR)"]
+        PGError -- "Success" --> PGSuccess
+    end
+
+    subgraph SqliteBranch["SQLite (better-sqlite3) Execution"]
+        MutexQueue["SqliteMutex.runExclusive() (FIFO Async Queue)"]
+        WALExecution["better-sqlite3 prepared statement execution (WAL Mode)"]
+        SqliteSuccess["Return QueryResult"]
+
+        ConvertSqlite --> MutexQueue --> WALExecution --> SqliteSuccess
+    end
+
+    PGSuccess & SqliteSuccess --> LogBuffer
+    LogBuffer --> ReturnData(["Return Data to Domain Service"])

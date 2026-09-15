@@ -1,0 +1,47 @@
+flowchart TD
+    ReqStart(["Incoming HTTP Request"]) --> CheckHeader{"Authorization Header (Bearer)?"}
+
+    %% Bearer Token Branch
+    CheckHeader -- "Yes (mbk_pat_ / mbk_cli_)" --> VerifyBearer["Extract & Hash Token (SHA-256)"]
+    VerifyBearer --> LookupToken["Query ApiTokenRepository"]
+    LookupToken --> TokenValid{"Token Valid & Active?"}
+    TokenValid -- "No" --> Ret401["401 Unauthorized (AUTH_INVALID_TOKEN)"]
+    TokenValid -- "Yes" --> CheckTokenExpiry{"Token Expired?"}
+    CheckTokenExpiry -- "Yes" --> Ret401
+    CheckTokenExpiry -- "No" --> AsyncTouch["Async Touch: updateLastUsedAt(tokenId)"]
+    AsyncTouch --> BuildTokenCtx["Construct AuthContext (User, Role, Token Scopes)"]
+
+    %% Cookie Branch
+    CheckHeader -- "No" --> CheckCookie{"Encrypted Cookie Present?"}
+    CheckCookie -- "No" --> GuestCtx["Construct Guest AuthContext"]
+    CheckCookie -- "Yes" --> DecryptCookie["AES-256-GCM Decrypt Cookie"]
+    DecryptCookie --> DecryptSuccess{"Decryption Successful?"}
+    DecryptSuccess -- "No" --> ClearCookie["Clear Stale Cookie"] --> GuestCtx
+    DecryptSuccess -- "Yes" --> QuerySession["Query SessionRepository (by ID)"]
+    QuerySession --> SessionFound{"Session Exists & Active?"}
+    SessionFound -- "No" --> ClearCookie
+    SessionFound -- "Yes" --> CheckSessExpiry{"Session Expired?"}
+    CheckSessExpiry -- "Yes" --> ExpireSess["Delete Session"] --> ClearCookie
+    CheckSessExpiry -- "No" --> CheckFingerprint{"Browser Fingerprint Match?"}
+    CheckFingerprint -- "Mismatch (Anti-Theft)" --> LogTheft["Log Security Warning"] --> Ret401
+    CheckFingerprint -- "Match" --> QueryUser["Query UserRepository (by UserID)"]
+    QueryUser --> BuildUserCtx["Construct AuthContext (User, Role, Permissions)"]
+
+    %% Middleware Evaluation
+    BuildTokenCtx & BuildUserCtx & GuestCtx --> AttachCtx["Attach to req.authContext & req.session"]
+    AttachCtx --> MiddlewareEval{"Target Route Protected by:"}
+
+    %% Route Check Branches
+    MiddlewareEval -- "sessVal" --> CheckIsAuth{"authContext.isAuthenticated?"}
+    CheckIsAuth -- "No" --> Ret401
+    CheckIsAuth -- "Yes" --> PassRoute(["Call next() -> Route Handler"])
+
+    MiddlewareEval -- "sessRole(roles)" --> CheckRole{"AuthorizationService.hasAnyRole(user, roles)?"}
+    CheckRole -- "No" --> Ret403["403 Forbidden (AUTHZ_FORBIDDEN_ROLE)"]
+    CheckRole -- "Superadmin (Bypass)" --> PassRoute
+    CheckRole -- "Yes" --> PassRoute
+
+    MiddlewareEval -- "sessPerm(perm)" --> CheckPerm{"AuthorizationService.hasPermission(user, perm)?"}
+    CheckPerm -- "No" --> Ret403
+    CheckPerm -- "Superadmin (Bypass)" --> PassRoute
+    CheckPerm -- "Yes / Wildcard Match" --> PassRoute

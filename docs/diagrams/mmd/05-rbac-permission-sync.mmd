@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph DevTime["1. Manifest Definition (Application Startup)"]
+        DefCode["definePermissions({ appKey: 'portal', permissions: {...}, roles: {...} })"]
+        ManifestObj["PermissionManifest Object"]
+        DefCode --> ManifestObj
+    end
+
+    subgraph SyncEngine["2. Catalog Synchronization (PermissionSyncService)"]
+        SyncCall["syncAppPermissions(manifest, dblogin)"]
+        DiffEngine["Diff Manifest against permission_catalog DB Table"]
+        InsertPerms["INSERT New Permissions"]
+        UpdatePerms["UPDATE Modified Descriptions"]
+        SyncRoles["Sync Default Role Mappings (role_permissions table)"]
+        
+        SyncCall --> DiffEngine
+        DiffEngine --> InsertPerms & UpdatePerms --> SyncRoles
+    end
+
+    subgraph MemorySync["3. In-Memory RoleRegistry Loading"]
+        LoadRegistry["RoleRegistry.loadFromDatabase()"]
+        PopulateMap["Map Roles to Set<PermissionStrings>"]
+        
+        SyncRoles --> LoadRegistry --> PopulateMap
+    end
+
+    subgraph RuntimeAuthz["4. Runtime Authorization Evaluation (AuthorizationService)"]
+        IncomingReq["Protected Request (sessPerm / permChk)"]
+        CheckUserRole["Lookup user.role in RoleRegistry"]
+        
+        SuperCheck{"Is role 'superadmin'?"}
+        ExactCheck{"Has exact permission ('portal:reports:view')?"}
+        WildcardCheck{"Has wildcard permission ('portal:reports:*' or 'portal:*')?"}
+        
+        IncomingReq --> CheckUserRole --> SuperCheck
+        SuperCheck -- "Yes" --> Allow(["Access Granted (200 OK)"])
+        SuperCheck -- "No" --> ExactCheck
+        ExactCheck -- "Yes" --> Allow
+        ExactCheck -- "No" --> WildcardCheck
+        WildcardCheck -- "Yes" --> Allow
+        WildcardCheck -- "No" --> Deny(["Access Denied (403 Forbidden)"])
+    end
+
+    ManifestObj --> SyncCall

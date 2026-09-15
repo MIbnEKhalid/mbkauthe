@@ -1,6 +1,6 @@
 # Getting Started with MBKAuthe v6
 
-MBKAuthe is a developer-first authentication and authorization engine for Node.js and Express. It provides unified session management, dual-database persistence (PostgreSQL & SQLite), dynamic manifest-driven permissions (RBAC), cryptographic token creation, RFC 8628 CLI device flows, and domain event streaming.
+MBKAuthe is a developer-first authentication and authorization engine for Node.js and Express. It provides unified session management, dual-database persistence (PostgreSQL & SQLite), provider-neutral OAuth 2.0 & OIDC, dynamic manifest-driven permissions (RBAC), decoupled authorization policies, cryptographic token creation, RFC 8628 CLI device flows, and domain event streaming.
 
 ---
 
@@ -69,33 +69,57 @@ Mount MBKAuthe as a router or create the full application via the factory:
 
 ```typescript
 import express from "express";
-import mbkauthe, { sessVal, roleChk, sessPerm } from "mbkauthe";
+import mbkauthe, { sessVal, sessRole, sessPerm } from "mbkauthe";
+import { definePermissions } from "mbkauthe/core";
+import { syncAppPermissions } from "mbkauthe/services";
 
 const app = express();
 
-// 1. Mount MBKAuthe authentication routes (/mbkauthe/*)
+// 1. Define App Permissions & Roles
+const AppPermissions = definePermissions({
+  appKey: "my_app",
+  permissions: {
+    dashboard: { view: "View main analytics dashboard" },
+    admin: { manage: "Manage system configuration" },
+  },
+  roles: {
+    superadmin: ["my_app:*"],
+    normaluser: ["my_app:dashboard:view"],
+  },
+});
+
+// 2. Mount MBKAuthe authentication routes (/mbkauthe/*)
 app.use(mbkauthe);
 
-// 2. Public route
+// 3. Public route
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to our application!" });
 });
 
-// 3. Protected user route
+// 4. Protected user route (Session or Bearer token)
 app.get("/dashboard", sessVal, (req, res) => {
   res.json({
     message: `Hello, ${req.session.user.username}!`,
     user: req.session.user,
+    auth: (req as any).auth,
   });
 });
 
-// 4. Role-protected admin route
-app.get("/admin", sessVal, roleChk("superadmin"), (req, res) => {
+// 5. Role-protected admin route
+app.get("/admin", sessRole("superadmin"), (req, res) => {
   res.json({ message: "Welcome to the Superadmin Control Center" });
 });
 
-app.listen(3000, () => {
-  console.log("Server listening on http://localhost:3000");
+// 6. Permission-protected route
+app.get("/admin/config", sessPerm(AppPermissions.admin.manage), (req, res) => {
+  res.json({ config: { maintenanceMode: false } });
+});
+
+// 7. Start Server and Sync Permissions
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+  await syncAppPermissions(AppPermissions);
+  console.log(`Server listening on http://localhost:${PORT}`);
 });
 ```
 
@@ -106,17 +130,17 @@ app.listen(3000, () => {
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                   HTTP / Middleware Layer                │
-│  sessVal │ roleChk │ sessPerm │ securityHeaders │ CORS   │
+│  sessVal │ sessRole │ sessPerm │ roleChk │ permChk │ CORS│
 └────────────────────────────┬─────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────┐
 │                       Domain Services                    │
-│  AuthService │ ApiTokenService │ CliAuthService │ OAuth   │
+│  AuthService │ AuthorizationService │ ApiToken │ OAuth   │
 └────────────────────────────┬─────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────┐
 │                    Core Engine & Security                │
-│  TokenEngine │ RoleRegistry │ Manifests │ Event Emitter  │
+│  AuthContext │ TokenEngine │ RoleRegistry │ authEvents   │
 └────────────────────────────┬─────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────┐
@@ -125,9 +149,11 @@ app.listen(3000, () => {
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **Modular Repositories**: Pure data access models (`UserRepository`, `SessionRepository`, `AuthRepository`, `PermissionRepository`, etc.) with built-in SQL dialect safety.
+- **Modular Repositories**: Pure data access models (`UserRepository`, `SessionRepository`, `AuthRepository`, `PermissionRepository`, `ApiTokenRepository`, `OAuthAccountRepository`) with built-in SQL dialect safety.
+- **Provider-Neutral OAuth & OIDC**: Modern social login architecture supporting Google, GitHub, Microsoft, Discord, Apple, and Custom OIDC with PKCE and token encryption.
 - **Dynamic Manifest Permissions**: Define `app:service:action` permission scopes with `definePermissions` and sync them automatically with `syncAppPermissions`.
-- **Cryptographic TokenEngine**: Prefixed Bearer tokens (`mbk_pat_`, `mbk_cli_`) with constant-time SHA-256 verification.
+- **Decoupled Authorization**: Evaluate roles, permissions, and custom policies cleanly using `authorizationService` and `AuthContext`.
+- **Cryptographic TokenEngine**: Prefixed Bearer tokens (`mbk_pat_`, `mbk_cli_`, `mbk_dev_`, `mbk_sess_`) with constant-time SHA-256 verification.
 - **Observability & Health**: Listen to domain events via `authEvents` and inspect runtime status using `getAuthHealthReport()`.
 
 ---
@@ -136,4 +162,5 @@ app.listen(3000, () => {
 
 - Explore [Environment Configuration](configuration.md) for full configuration options.
 - Learn about [Dual-Database Setup](database.md).
+- Integrate [Provider-Neutral OAuth & OIDC](oauth.md).
 - Implement [Dynamic Permission Catalogs](permissions.md).

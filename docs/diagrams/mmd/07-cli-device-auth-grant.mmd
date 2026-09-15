@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor Developer as Developer / Terminal CLI
+    participant CliService as CliAuthService
+    participant TokenEngine as TokenEngine
+    participant CliRepo as CliAuthRepository
+    actor Browser as Developer Browser
+    participant Express as Web Approval Portal (/mbkauthe/device-approval)
+    participant SessService as Session / Auth Engine
+
+    Developer->>CliService: POST /auth/cli/device-code (client_id, scope)
+    CliService->>TokenEngine: generateDeviceCode() & generateUserCode(8-char)
+    CliService->>CliRepo: createDeviceSession({ deviceCode, userCode, status: 'pending', expiresAt })
+    CliService-->>Developer: { device_code, user_code: "ABCD-1234", verification_uri: "https://.../device-approval", interval: 5 }
+
+    Developer->>Developer: Display user_code & Open Browser URL
+    
+    par CLI Polling Loop
+        loop Every 5 Seconds (interval)
+            Developer->>CliService: POST /auth/cli/token (device_code)
+            CliService->>CliRepo: getSessionStatus(device_code)
+            alt Status: pending
+                CliService-->>Developer: 400 Bad Request ({ error: "authorization_pending" })
+            else Status: expired
+                CliService-->>Developer: 400 Bad Request ({ error: "expired_token" })
+            else Status: approved
+                CliService->>TokenEngine: generateCliToken("mbk_cli_...")
+                CliService->>CliRepo: markCompleted(device_code)
+                CliService-->>Developer: 200 OK ({ access_token: "mbk_cli_...", token_type: "Bearer" })
+            end
+        end
+    and User Browser Approval
+        Developer->>Browser: Open verification URI
+        Browser->>Express: GET /mbkauthe/device-approval
+        Express->>SessService: validateUserSession(cookie)
+        SessService-->>Express: User Authenticated (Alice)
+        Express-->>Browser: Render Approval Page (Input user_code: ABCD-1234)
+        Browser->>Express: POST /mbkauthe/device-approval/confirm (user_code: "ABCD-1234")
+        Express->>CliRepo: approveDeviceSession(userCode, aliceUserId)
+        CliRepo-->>Express: Approved
+        Express-->>Browser: Render "Device Approved Successfully! Return to CLI."
+    end
+
+    Developer->>Developer: Store mbk_cli_ token in ~/.mbk/credentials

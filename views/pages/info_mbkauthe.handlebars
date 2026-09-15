@@ -9,116 +9,120 @@
     <section class="login-container">
         {{> backgroundElements}}
 
-        <div class="glass-card info-box">
+        <div class="auth-card info-box">
             <div class="info-header">
-                <div class="info-icon-badge icon-primary" aria-hidden="true">
+                <div class="auth-icon-badge" aria-hidden="true">
                     <i class="fas fa-server"></i>
                 </div>
                 <div>
-                    <h1 class="info-title">System Information</h1>
-                    <p class="info-subtitle">Application runtime parameters, environment configuration, and version status.</p>
+                    <h1 class="login-title">System Diagnostic</h1>
+                    <p class="login-subtitle">Runtime parameters, active configuration, and version status.</p>
                 </div>
             </div>
 
             <!-- Quick Metrics Grid -->
             <div class="info-stats-grid">
-                <div class="info-stat-card">
-                    <div class="info-stat-icon icon-primary" aria-hidden="true"><i class="fas fa-code-branch"></i></div>
-                    <div class="info-stat-content">
-                        <span class="info-stat-label">mbkauthe Core</span>
-                        <div class="info-stat-value">v<span id="CurrentVersion">{{CurrentVersion}}</span></div>
-                        <div class="info-stat-badge-row">
-                            {{#if latestVersion}}
-                                {{#if (eq latestVersion CurrentVersion)}}
-                                <span class="version-status badge-success"><i class="fas fa-check-circle"></i> Up to date</span>
-                                {{else}}
-                                <span class="version-status badge-danger"><i class="fas fa-arrow-alt-circle-up"></i> Latest: v{{latestVersion}}</span>
-                                {{/if}}
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-label">MBKAuthe Core</span>
+                        <div class="stat-icon-wrap"><i class="fas fa-code-branch"></i></div>
+                    </div>
+                    <div class="stat-value">v<span id="CurrentVersion">{{CurrentVersion}}</span></div>
+                    <div class="stat-badge-row">
+                        {{#if latestVersion}}
+                            {{#if (eq latestVersion CurrentVersion)}}
+                            <span class="badge badge-success"><i class="fas fa-check-circle"></i> Up to date</span>
                             {{else}}
-                                <span class="version-status"><i class="fas fa-info-circle"></i> v{{CurrentVersion}}</span>
+                            <span class="badge badge-warning"><i class="fas fa-arrow-up"></i> Update: v{{latestVersion}}</span>
                             {{/if}}
-                        </div>
+                        {{else}}
+                            <span class="badge badge-neutral">v{{CurrentVersion}}</span>
+                        {{/if}}
                     </div>
                 </div>
 
-                <div class="info-stat-card">
-                    <div class="info-stat-icon icon-primary" aria-hidden="true"><i class="fas fa-cubes"></i></div>
-                    <div class="info-stat-content">
-                        <span class="info-stat-label">Host Application</span>
-                        <div class="info-stat-value">{{mbkautheVar.APP_NAME}}</div>
-                        <span class="info-stat-sub">Release: <code>v{{APP_VERSION}}</code></span>
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-label">Host Application</span>
+                        <div class="stat-icon-wrap"><i class="fas fa-cubes"></i></div>
                     </div>
+                    <div class="stat-value">{{mbkautheVar.APP_NAME}}</div>
+                    <div class="stat-sub-text">Release <code>v{{APP_VERSION}}</code></div>
                 </div>
 
-                <div class="info-stat-card">
-                    <div class="info-stat-icon icon-primary" aria-hidden="true"><i class="fas fa-cloud"></i></div>
-                    <div class="info-stat-content">
-                        <span class="info-stat-label">Environment</span>
-                        <div class="info-stat-value">
-                            {{#if (eq mbkautheVar.IS_DEPLOYED "true")}}
-                            <span class="status-pill badge-success"><i class="fas fa-circle"></i> Production</span>
-                            {{else}}
-                            <span class="status-pill badge-warning"><i class="fas fa-circle"></i> Development</span>
-                            {{/if}}
-                        </div>
-                        <span class="info-stat-sub">{{#if (eq mbkautheVar.IS_DEPLOYED "true")}}IS_DEPLOYED: true{{else}}Local Sandbox / Dev{{/if}}</span>
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-label">Environment</span>
+                        <div class="stat-icon-wrap"><i class="fas fa-cloud"></i></div>
                     </div>
+                    <div class="stat-value">
+                        {{#if (eq mbkautheVar.IS_DEPLOYED "true")}}
+                        <span class="badge badge-success"><i class="fas fa-circle-dot"></i> Production</span>
+                        {{else}}
+                        <span class="badge badge-warning"><i class="fas fa-circle-dot"></i> Development</span>
+                        {{/if}}
+                    </div>
+                    <div class="stat-sub-text">{{#if (eq mbkautheVar.IS_DEPLOYED "true")}}Live Cloud Deployment{{else}}Local Sandbox / Dev{{/if}}</div>
                 </div>
             </div>
 
             <!-- Configuration Parameters -->
             <div class="info-section">
                 <div class="info-section-header">
-                    <h2><i class="fas fa-sliders-h"></i> Configuration Parameters</h2>
-                    <span class="info-badge-count">Runtime Config</span>
+                    <h2><i class="fas fa-sliders"></i> Configuration Manifest</h2>
+                    <span class="badge badge-neutral">Read-only</span>
                 </div>
                 
-                <div class="info-table">
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-tag"></i> APP_NAME</div>
-                        <div class="info-value"><code>{{mbkautheVar.APP_NAME}}</code></div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-code-commit"></i> APP_VERSION</div>
-                        <div class="info-value"><code>{{APP_VERSION}}</code></div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-globe"></i> DOMAIN</div>
-                        <div class="info-value"><code>{{mbkautheVar.DOMAIN}}</code></div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-shield-alt"></i> IS_DEPLOYED</div>
-                        <div class="info-value">
-                            {{#if (eq mbkautheVar.IS_DEPLOYED "true")}}
-                            <span class="badge badge-success">true</span>
-                            {{else}}
-                            <span class="badge">{{mbkautheVar.IS_DEPLOYED}}</span>
+                <div class="info-table-wrap">
+                    <table class="info-table">
+                        <tbody>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-tag"></i> APP_NAME</td>
+                                <td class="prop-val"><code>{{mbkautheVar.APP_NAME}}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-code-commit"></i> APP_VERSION</td>
+                                <td class="prop-val"><code>{{APP_VERSION}}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-globe"></i> DOMAIN</td>
+                                <td class="prop-val"><code>{{mbkautheVar.DOMAIN}}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-shield-halved"></i> IS_DEPLOYED</td>
+                                <td class="prop-val">
+                                    {{#if (eq mbkautheVar.IS_DEPLOYED "true")}}
+                                    <span class="badge badge-success">true</span>
+                                    {{else}}
+                                    <span class="badge badge-neutral">{{mbkautheVar.IS_DEPLOYED}}</span>
+                                    {{/if}}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-location-arrow"></i> Login Redirect URL</td>
+                                <td class="prop-val"><code>{{mbkautheVar.login_redirect_url}}</code></td>
+                            </tr>
+                            {{#if authorized}}
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-mobile-screen"></i> Two-Factor Auth</td>
+                                <td class="prop-val"><code>{{mbkautheVar.MBKAUTH_TWO_FA_ENABLE}}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="prop-label"><i class="fas fa-cookie"></i> Cookie Expiration</td>
+                                <td class="prop-val"><code>{{mbkautheVar.COOKIE_EXPIRE_TIME}} Days</code></td>
+                            </tr>
                             {{/if}}
-                        </div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-location-arrow"></i> Login Redirect URL</div>
-                        <div class="info-value"><code>{{mbkautheVar.login_redirect_url}}</code></div>
-                    </div>
-                    {{#if authorized}}
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-mobile-alt"></i> Two-Factor Auth</div>
-                        <div class="info-value"><code>{{mbkautheVar.MBKAUTH_TWO_FA_ENABLE}}</code></div>
-                    </div>
-                    <div class="info-row">
-                        <div class="info-label"><i class="fas fa-cookie-bite"></i> Cookie Expiration</div>
-                        <div class="info-value"><code>{{mbkautheVar.COOKIE_EXPIRE_TIME}} Days</code></div>
-                    </div>
-                    {{/if}}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- Navigation Links -->
-            <div class="info-actions">
-                <a class="btn btn-outline" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i> Login</a>
-                <a class="btn btn-outline" href="/mbkauthe/test"><i class="fas fa-user-check"></i> Session Test</a>
-                <a class="btn btn-outline" href="/mbkauthe/ErrorCode"><i class="fas fa-book"></i> Error Codes</a>
-                <a class="btn btn-outline" href="https://github.com/MIbnEKhalid/mbkauthe" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
+            <div class="info-action-grid">
+                <a class="btn-outline" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i> Login Portal</a>
+                <a class="btn-outline" href="/mbkauthe/db"><i class="fas fa-database"></i> DB Monitor</a>
+                <a class="btn-outline" href="/mbkauthe/ErrorCode"><i class="fas fa-book"></i> Error Codes</a>
+                <a class="btn-outline" href="https://github.com/MIbnEKhalid/mbkauthe" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> Repository</a>
             </div>
         </div>
     </section>

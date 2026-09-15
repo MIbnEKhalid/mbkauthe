@@ -1,82 +1,334 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="Session Test" ogUrl="/mbkauthe/test"}}
+{{> head pageTitle="Session Diagnostic Portal" ogUrl="/mbkauthe/test"}}
 
 <body>
-    {{> header}}
-    <section class="login-container">
-        {{> backgroundElements}}
+  {{> header appName=appName}}
 
-        <div class="glass-card session-card" role="region" aria-label="User Session">
-            <div class="avatar-large" aria-hidden="true">
-                <img src="/mbkauthe/user/profilepic?u={{profile_pic_url}}"
-                    alt="Avatar for {{username}}" title="{{display_name}}" loading="lazy" decoding="async" width="96" height="96"
-                    class="avatar-img"
-                    onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex');" />
-                <div class="avatar-initials" aria-hidden="true">{{initial}}</div>
+  {{> showmessage}}
+
+  <section class="login-container">
+    {{> backgroundElements}}
+
+    <div class="auth-card session-box" role="region" aria-label="Authenticated Session">
+      <!-- Session Hero Header -->
+      <div class="session-hero">
+        <div class="session-hero-left">
+          <div class="session-avatar-wrap">
+            <img src="/mbkauthe/user/profilepic?u={{profile_pic_url}}"
+              alt="Avatar for {{username}}" title="{{display_name}}" loading="lazy" decoding="async" width="72" height="72"
+              class="session-avatar-img"
+              onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex');" />
+            <div class="session-avatar-initials" aria-hidden="true">{{initial}}</div>
+            <span class="session-online-dot" title="Session Active"></span>
+          </div>
+
+          <div class="session-identity">
+            <div class="session-status-badge">
+              <span class="pulse-dot"></span>
+              <span>Active Session</span>
             </div>
-
-            <div class="session-meta">
-                <div>
-                    <div class="session-status">✅ Authentication successful</div>
-                    <h3 class="session-title">{{username}} <span class="session-role">· {{role}}</span></h3>
-                    <p class="session-sub">UserId: {{user_id}} · Session: {{session_id_short}}…</p>
-                </div>
-
-                <div class="session-details" aria-live="polite">
-                    <div><span class="text-highlight">Full Name:</span> {{full_name}}</div>
-                    <div><span class="text-highlight">Allowed Apps:</span> {{allowed_apps}}</div>
-                    <div><span class="text-highlight">Allowed Permissions:</span> {{permissions.allows}}</div>
-                    <div><span class="text-highlight">Denied Permissions:</span> {{permissions.denies}}</div>
-                    <div><span class="text-highlight">Session Expires:</span> <span id="session-expiry-display">{{#if session_expiry}}{{session_expiry}}{{else}}N/A{{/if}}</span></div>
-                    {{#if session_expiry}}<div id="session-countdown"><span class="text-highlight">Time Remaining:</span> <span id="countdown-value">calculating…</span></div>{{/if}}
-                </div>
-
-                <div class="session-actions">
-                    <button class="btn btn-danger" onclick="mbkauthe.logout()" aria-label="Log out" type="button">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                    <a class="btn btn-outline" href="https://portal.mbktech.org/"><i class="fas fa-globe"></i> Web Portal</a>
-                    <a class="btn btn-outline" href="https://portal.mbktech.org/user/settings"><i class="fas fa-user-cog"></i> User Settings</a>
-                    <a class="btn btn-outline" href="/mbkauthe/info"><i class="fas fa-info-circle"></i> Info Page</a>
-                    <a class="btn btn-outline" href="/mbkauthe/login"><i class="fas fa-sign-in-alt"></i> Login Page</a>
-                    {{#if (eq role "superadmin")}}
-                    <a class="btn btn-outline" href="/mbkauthe/db"><i class="fas fa-database"></i> Database Logs</a>
-                    <a class="btn btn-outline" href="/mbkauthe/validate-superadmin"><i class="fas fa-user-shield"></i> Validate superadmin</a>
-                    {{/if}}
-                </div>
+            <h1 class="session-user-name">{{display_name}}</h1>
+            <div class="session-meta-tags">
+              <span class="session-handle font-mono">@{{username}}</span>
+              <span class="role-badge role-{{role}}">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i> {{role}}
+              </span>
+              {{#if appName}}
+              <span class="session-app-badge">
+                <i class="fas fa-cube" aria-hidden="true"></i> {{appName}}
+              </span>
+              {{/if}}
             </div>
+          </div>
         </div>
-    </section>
+
+        <div class="session-hero-right">
+          <button class="btn-logout-hero" onclick="mbkauthe.logout()" aria-label="Log out" type="button" title="Sign out of current session">
+            <i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i> Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Session Diagnostics KPI Grid -->
+      <div class="session-info-grid">
+        <div class="session-info-card">
+          <div class="session-info-header">
+            <span class="session-info-label"><i class="fas fa-id-badge" aria-hidden="true"></i> User Identifier</span>
+            <button class="btn-card-copy" type="button" onclick="copyValue('{{user_id}}', 'User ID')" title="Copy User ID">
+              <i class="fas fa-copy" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="session-info-val font-mono" id="user-id-val">{{user_id}}</div>
+        </div>
+
+        <div class="session-info-card">
+          <div class="session-info-header">
+            <span class="session-info-label"><i class="fas fa-key" aria-hidden="true"></i> Session Token</span>
+            <button class="btn-card-copy" type="button" onclick="copyValue('{{session_id}}', 'Session ID')" title="Copy Session ID">
+              <i class="fas fa-copy" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="session-info-val font-mono" title="{{session_id}}">
+            <span class="session-token-text">{{#if session_id_short}}{{session_id_short}}••••••••{{else}}{{session_id}}{{/if}}</span>
+          </div>
+        </div>
+
+        <div class="session-info-card">
+          <div class="session-info-header">
+            <span class="session-info-label"><i class="fas fa-cubes" aria-hidden="true"></i> Allowed Apps</span>
+          </div>
+          <div class="session-info-val session-apps-list">
+            {{#if allowed_apps}}
+              <span class="session-app-tag">{{allowed_apps}}</span>
+            {{else}}
+              <span class="text-muted font-mono">* (All Applications)</span>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="session-info-card">
+          <div class="session-info-header">
+            <span class="session-info-label"><i class="fas fa-clock" aria-hidden="true"></i> Session Lifetime</span>
+          </div>
+          <div class="session-info-val font-mono" id="session-expiry-display">
+            {{#if session_expiry}}{{session_expiry}}{{else}}Persistent Session{{/if}}
+          </div>
+        </div>
+      </div>
+
+      {{#if session_expiry}}
+      <!-- Live Session Countdown Banner -->
+      <div class="session-countdown-banner" id="countdownBanner">
+        <div class="countdown-left">
+          <div class="countdown-icon-wrap">
+            <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+          </div>
+          <div>
+            <div class="countdown-label">Session Time Remaining</div>
+            <div class="countdown-timer font-mono" id="countdown-value">Calculating…</div>
+          </div>
+        </div>
+        <div class="countdown-right">
+          <button class="btn-outline btn-sm" type="button" onclick="location.reload();">
+            <i class="fas fa-rotate" aria-hidden="true"></i> Refresh
+          </button>
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Permissions & Scopes Matrix -->
+      {{#if permissions}}
+      <div class="session-permissions-section">
+        <div class="permissions-section-header">
+          <div class="permissions-title-group">
+            <i class="fas fa-user-shield icon-primary" aria-hidden="true"></i>
+            <span class="permissions-title">Effective Security Scopes</span>
+          </div>
+          <input type="text" class="perm-filter-input" placeholder="Filter permissions..." oninput="filterPermissions(this.value)">
+        </div>
+
+        <div class="permissions-chips-wrap" id="permChipsWrap">
+          {{#if permissions.allows}}
+          <div class="perm-subgroup">
+            <span class="perm-type-label perm-allow-label"><i class="fas fa-circle-check"></i> Granted ({{#if permissions.allows.length}}{{permissions.allows.length}}{{else}}1{{/if}}):</span>
+            <div class="perm-tags">
+              {{#each permissions.allows}}
+              <span class="perm-tag allow" data-perm="{{this}}" onclick="copyValue('{{this}}', 'Permission')">
+                <i class="fas fa-check" aria-hidden="true"></i> {{this}}
+              </span>
+              {{else}}
+              <span class="perm-tag allow" data-perm="{{permissions.allows}}" onclick="copyValue('{{permissions.allows}}', 'Permission')">
+                <i class="fas fa-check" aria-hidden="true"></i> {{permissions.allows}}
+              </span>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+
+          {{#if permissions.denies}}
+          <div class="perm-subgroup">
+            <span class="perm-type-label perm-deny-label"><i class="fas fa-circle-xmark"></i> Restricted:</span>
+            <div class="perm-tags">
+              {{#each permissions.denies}}
+              <span class="perm-tag deny" data-perm="{{this}}" onclick="copyValue('{{this}}', 'Permission')">
+                <i class="fas fa-xmark" aria-hidden="true"></i> {{this}}
+              </span>
+              {{else}}
+              <span class="perm-tag deny" data-perm="{{permissions.denies}}" onclick="copyValue('{{permissions.denies}}', 'Permission')">
+                <i class="fas fa-xmark" aria-hidden="true"></i> {{permissions.denies}}
+              </span>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Interactive API Telemetry Check -->
+      <div class="session-api-check-box">
+        <div class="api-check-header">
+          <div class="api-check-title">
+            <i class="fas fa-terminal icon-primary" aria-hidden="true"></i>
+            <span>Session API Inspector</span>
+          </div>
+          <button type="button" class="btn-outline btn-sm" id="btnRunApiCheck" onclick="verifySessionApi()">
+            <i class="fas fa-bolt" aria-hidden="true"></i> Test /api/checkSession
+          </button>
+        </div>
+        <div class="api-check-result" id="apiCheckResult" style="display: none;">
+          <pre class="api-result-code font-mono" id="apiResultCode"></pre>
+        </div>
+      </div>
+
+      <!-- Quick Action Navigation Deck -->
+      <div class="session-actions-section">
+        <div class="session-actions-header">
+          <i class="fas fa-compass" aria-hidden="true"></i> Connected Portals & Tools
+        </div>
+        <div class="session-actions-deck">
+          <a class="session-action-card" href="https://portal.mbktech.org/" target="_blank" rel="noopener">
+            <div class="action-card-icon"><i class="fas fa-globe" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">Web Portal</span>
+              <span class="action-card-desc">Main control console</span>
+            </div>
+          </a>
+
+          <a class="session-action-card" href="https://portal.mbktech.org/user/settings" target="_blank" rel="noopener">
+            <div class="action-card-icon"><i class="fas fa-user-gear" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">User Settings</span>
+              <span class="action-card-desc">Profile & security</span>
+            </div>
+          </a>
+
+          <a class="session-action-card" href="/mbkauthe/info">
+            <div class="action-card-icon"><i class="fas fa-circle-info" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">System Info</span>
+              <span class="action-card-desc">Runtime diagnostics</span>
+            </div>
+          </a>
+
+          <a class="session-action-card" href="/mbkauthe/ErrorCode">
+            <div class="action-card-icon"><i class="fas fa-book-bookmark" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">Error Catalog</span>
+              <span class="action-card-desc">Auth reference</span>
+            </div>
+          </a>
+
+          {{#if (eq role "superadmin")}}
+          <a class="session-action-card action-card-admin" href="/mbkauthe/db">
+            <div class="action-card-icon"><i class="fas fa-database" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">DB Monitor</span>
+              <span class="action-card-desc">Live SQL telemetry</span>
+            </div>
+          </a>
+
+          <a class="session-action-card action-card-admin" href="/mbkauthe/validate-superadmin">
+            <div class="action-card-icon"><i class="fas fa-shield-halved" aria-hidden="true"></i></div>
+            <div class="action-card-text">
+              <span class="action-card-title">Validate Admin</span>
+              <span class="action-card-desc">Re-verify credentials</span>
+            </div>
+          </a>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Feedback Toast -->
+  <div class="cli-copy-toast" id="sessionToast" aria-live="polite"></div>
+
+  {{> versionInfo}}
+
+  <script>
+    function copyValue(val, label) {
+      if (!val) return;
+      navigator.clipboard.writeText(val).then(() => {
+        showToast((label || 'Value') + ' copied to clipboard!');
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('sessionToast');
+      if (!toast) return;
+      toast.innerHTML = '<i class="fas fa-check-circle"></i> ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function filterPermissions(query) {
+      const q = (query || '').toLowerCase().trim();
+      const tags = document.querySelectorAll('.perm-tag');
+      tags.forEach(t => {
+        const perm = (t.getAttribute('data-perm') || t.innerText).toLowerCase();
+        t.style.display = !q || perm.includes(q) ? 'inline-flex' : 'none';
+      });
+    }
+
+    async function verifySessionApi() {
+      const btn = document.getElementById('btnRunApiCheck');
+      const box = document.getElementById('apiCheckResult');
+      const code = document.getElementById('apiResultCode');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="cli-device-spinner"></span> Checking...';
+      }
+      try {
+        const res = await fetch('/mbkauthe/api/checkSession');
+        const data = await res.json();
+        if (box && code) {
+          box.style.display = 'block';
+          code.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        if (box && code) {
+          box.style.display = 'block';
+          code.textContent = 'Error calling API: ' + err.message;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-bolt" aria-hidden="true"></i> Test /api/checkSession';
+        }
+      }
+    }
 
     {{#if session_expiry}}
-    <script>
-        (() => {
-            const expiry = new Date('{{session_expiry}}');
-            const display = document.getElementById('session-expiry-display');
-            const countdown = document.getElementById('countdown-value');
-            if (display) display.textContent = expiry.toLocaleString();
+    (() => {
+      const expiry = new Date('{{session_expiry}}');
+      const display = document.getElementById('session-expiry-display');
+      const countdown = document.getElementById('countdown-value');
+      if (display && !isNaN(expiry.getTime())) {
+        display.textContent = expiry.toLocaleString();
+      }
 
-            function updateCountdown() {
-                const diff = expiry - new Date();
-                if (!countdown) return;
-                if (diff <= 0) {
-                    countdown.textContent = 'Expired';
-                    countdown.style.color = 'var(--danger)';
-                    return;
-                }
-                const h = Math.floor(diff / 36e5);
-                const m = Math.floor((diff % 36e5) / 6e4);
-                const s = Math.floor((diff % 6e4) / 1e3);
-                countdown.textContent = `${h ? `${h}h ` : ''}${h || m ? `${m}m ` : ''}${s}s`;
-                countdown.style.color = diff < 3e5 ? 'var(--warning)' : 'var(--success)';
-            }
+      function updateCountdown() {
+        const diff = expiry.getTime() - Date.now();
+        if (!countdown) return;
+        if (diff <= 0) {
+          countdown.textContent = 'Session Expired';
+          countdown.style.color = 'var(--danger)';
+          return;
+        }
+        const h = Math.floor(diff / 36e5);
+        const m = Math.floor((diff % 36e5) / 6e4);
+        const s = Math.floor((diff % 6e4) / 1e3);
+        countdown.textContent = `${h ? `${h}h ` : ''}${h || m ? `${m}m ` : ''}${s}s remaining`;
+        countdown.style.color = diff < 3e5 ? 'var(--warning)' : 'var(--primary-700)';
+      }
 
-            updateCountdown();
-            setInterval(updateCountdown, 1000);
-        })();
-    </script>
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    })();
     {{/if}}
+  </script>
 </body>
 </html>

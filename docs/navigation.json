@@ -14,9 +14,17 @@
       "items": [
         { "slug": "authentication", "title": "Session Engine & Multi-Session", "description": "Encrypted session cookies, session restoration middleware, auto-pruning, and multi-device accounts." },
         { "slug": "rbac", "title": "Role-Based Access Control (RBAC)", "description": "Role hierarchies, RoleRegistry, default roles (superadmin, admin, normaluser, guest), and role checking middleware." },
-        { "slug": "permissions", "title": "Dynamic Permission Catalogs", "description": "Manifest-driven app:service:action permissions, definePermissions, syncAppPermissions, and sessPerm." },
-        { "slug": "oauth", "title": "Social OAuth (GitHub & Google)", "description": "GitHub App and Google OAuth2 social login workflows, callback handling, and unified account linking." },
+        { "slug": "permissions", "title": "Dynamic Permission Catalogs", "description": "Manifest-driven app:service:action permissions, definePermissions, syncAppPermissions, AuthorizationService, and sessPerm." },
+        { "slug": "oauth", "title": "Provider-Neutral OAuth & OIDC", "description": "Multi-provider social login (Google, GitHub, Microsoft, Discord, Apple, Custom OIDC), account linking, and token encryption." },
         { "slug": "2fa", "title": "Two-Factor Authentication (TOTP)", "description": "RFC 6238 Time-based One-Time Passwords with speakeasy, QR codes, and device trust tokens." }
+      ]
+    },
+    {
+      "title": "OAuth Architecture & Identity",
+      "items": [
+        { "slug": "oauth-architecture", "title": "OAuth Core Architecture", "description": "Framework-agnostic OAuth flow service, PKCE default-on, jose JWKS verification, and AES token encryption." },
+        { "slug": "oauth-custom-oidc", "title": "Custom OIDC Providers", "description": "Configure Keycloak, Auth0, Okta, and enterprise OpenID Connect identity providers." },
+        { "slug": "oauth-migration", "title": "OAuth Migration Guide", "description": "Migrating from Passport.js, legacy auth routes, and environment variables to MBKAuthe v6." }
       ]
     },
     {
@@ -32,7 +40,7 @@
       "items": [
         { "slug": "api-reference", "title": "API Overview", "description": "Complete REST API endpoints catalog, schemas, rate limits, and authentication headers." },
         { "slug": "endpoints", "title": "REST Endpoints Catalog", "description": "Detailed specification of all authentication, session, token, admin, OAuth, and diagnostic endpoints." },
-        { "slug": "middleware", "title": "Middleware Reference", "description": "Comprehensive reference for sessVal, roleChk, sessRole, sessPerm, permChk, reloadSessionUser, and security middleware." },
+        { "slug": "middleware", "title": "Middleware Reference", "description": "Comprehensive reference for sessVal, roleChk, sessRole, sessPerm, permChk, authenticate, and security middleware." },
         { "slug": "operations", "title": "Events, Health & Diagnostics", "description": "Domain event streaming with authEvents, real-time health checks (getAuthHealthReport), and query logging." },
         { "slug": "error-codes", "title": "Error Codes Directory", "description": "Centralized error codes directory with exact codes, messages, causes, and recovery hints." },
         { "slug": "examples", "title": "Code Examples & Recipes", "description": "Full TypeScript Express servers, custom repository extension, event listeners, and CLI integration." }
@@ -41,6 +49,7 @@
     {
       "title": "Architecture & Guidelines",
       "items": [
+        { "slug": "architecture", "title": "System Architecture & Flows", "description": "Complete architectural specifications, subsystem relationships, and sequence flows with Mermaid diagrams." },
         { "slug": "database-schema", "title": "Database Schema & DDL", "description": "Complete PostgreSQL and SQLite DDL schema tables, indexes, and constraints." },
         { "slug": "style-guide", "title": "Documentation & Coding Guide", "description": "Writing standards, code block conventions, TypeScript patterns, and module architecture." },
         { "slug": "changelog", "title": "Changelog & Release Notes", "description": "Version history, major features, breaking changes, and the v6.0.0 architecture release." }

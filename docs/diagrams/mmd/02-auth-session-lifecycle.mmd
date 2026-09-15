@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant Express as Express / HTTP Layer
+    participant AuthService as AuthService
+    participant Hasher as PasswordHasher (Argon2id/PBKDF2)
+    participant TokenEngine as TokenEngine
+    participant Cipher as AES-256-GCM Encryptor
+    participant UserRepo as UserRepository
+    participant SessRepo as SessionRepository
+    participant EventBus as authEvents
+
+    User->>Express: POST /mbkauthe/login (username, password, fingerprint)
+    Express->>AuthService: login(username, password, clientMeta)
+    AuthService->>UserRepo: findByUsernameOrEmail(username)
+    UserRepo-->>AuthService: UserRecord (hash, salt, role, is_active)
+
+    alt User Inactive or Not Found
+        AuthService-->>Express: Error: AUTH_INVALID_CREDENTIALS
+        Express-->>User: 401 Unauthorized
+    end
+
+    AuthService->>Hasher: verifyPassword(password, userRecord.password_hash)
+    Hasher-->>AuthService: Boolean (isValid)
+
+    alt Password Mismatch
+        AuthService-->>Express: Error: AUTH_INVALID_CREDENTIALS
+        Express-->>User: 401 Unauthorized
+    end
+
+    AuthService->>TokenEngine: generateSessionToken()
+    TokenEngine-->>AuthService: sessionToken ("mbk_sess_...")
+
+    AuthService->>SessRepo: countActiveUserSessions(userId)
+    SessRepo-->>AuthService: sessionCount
+
+    opt sessionCount >= MAX_SESSIONS_PER_USER
+        AuthService->>SessRepo: pruneOldestSessions(userId, keepCount)
+    end
+
+    AuthService->>SessRepo: createSession({ id: sessionToken, userId, fingerprint, expiresAt, ip, userAgent })
+    SessRepo-->>AuthService: SessionRecord
+
+    AuthService->>Cipher: encryptSessionId(sessionToken, secretKey)
+    Cipher-->>AuthService: encryptedCookieValue
+
+    AuthService->>EventBus: emit("auth:login:success", { userId, sessionToken, ip })
+
+    AuthService-->>Express: { user, sessionToken, encryptedCookieValue }
+    Express->>User: 200 OK + Set-Cookie (HttpOnly, Secure, SameSite=Lax)

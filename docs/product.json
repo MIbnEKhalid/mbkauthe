@@ -1,7 +1,7 @@
 {
   "name": "MBKAuthe",
   "tagline": "Modern, developer-first authentication & authorization engine for Node.js and Express",
-  "description": "MBKAuthe is an enterprise-grade authentication and authorization framework for Node.js and Express, built with TypeScript ESM. Features dual-database persistence (PostgreSQL & SQLite), encrypted multi-session management, dynamic manifest-driven RBAC & permissions, cryptographic TokenEngine, RFC 8628 CLI device login, OAuth social authentication, domain event streaming, and resilient database retries.",
+  "description": "MBKAuthe is an enterprise-grade authentication and authorization framework for Node.js and Express, built with TypeScript ESM. Features dual-database persistence (PostgreSQL & SQLite), encrypted multi-session management, provider-neutral OAuth 2.0 & OIDC, dynamic manifest-driven RBAC & permissions, cryptographic TokenEngine, RFC 8628 CLI device login, domain event streaming, and resilient database retries.",
   "version": "6.0.0",
   "license": "MIT",
   "nodeVersion": ">=18.0.0",
@@ -18,7 +18,7 @@
     "license": "MIT",
     "node": ">=18.0.0",
     "databases": "PostgreSQL & SQLite",
-    "security": "Argon2id / PBKDF2 + AES-GCM + TOTP"
+    "security": "Argon2id / PBKDF2 + AES-256-GCM + TOTP"
   },
   "keyFeatures": [
     {
@@ -36,11 +36,18 @@
       "description": "Encrypted session cookies, automatic database validation, session restoration middleware, multi-account device tracking, and automatic concurrent session pruning (MAX_SESSIONS_PER_USER)."
     },
     {
+      "id": "oauth-oidc",
+      "icon": "lni-network",
+      "title": "Provider-Neutral OAuth & OIDC",
+      "badge": "PKCE + AES-256-GCM",
+      "description": "Framework-agnostic OAuth 2.0 & OpenID Connect engine with jose JWKS validation, automatic discovery, PKCE (RFC 7636) default-on, token encryption at rest, and presets for Google, GitHub, Microsoft, Discord, Apple, and Custom OIDC."
+    },
+    {
       "id": "dynamic-permissions",
       "icon": "lni-lock",
       "title": "Dynamic Manifest-Driven RBAC",
       "badge": "app:service:action",
-      "description": "Fine-grained permissions defined via declarative manifests (definePermissions, syncAppPermissions). Features RoleRegistry, wildcard matching, and drop-in middleware (sessVal, sessRole, sessPerm, roleChk, permChk)."
+      "description": "Fine-grained permissions defined via declarative manifests (definePermissions, syncAppPermissions). Features AuthorizationService, RoleRegistry, wildcard matching, and drop-in middleware (sessVal, sessRole, sessPerm, roleChk, permChk)."
     },
     {
       "id": "token-engine",
@@ -68,6 +75,10 @@
     {
       "title": "Salt + Pepper Password Hashing",
       "description": "Cryptographically secure password hashing using Node.js crypto PBKDF2/Argon2id hybrid mechanics with unique per-user salts and global server pepper."
+    },
+    {
+      "title": "AES-256-GCM Token Encryption",
+      "description": "OAuth access tokens, refresh tokens, and ID tokens are encrypted at rest using AES-256-GCM before database storage."
     },
     {
       "title": "Constant-Time Token Verification",

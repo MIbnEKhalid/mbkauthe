@@ -10,23 +10,24 @@
     <section class="login-container account-switch">
         {{> backgroundElements}}
 
-        <div class="glass-card login-box login-box-split">
+        <div class="auth-card login-box login-box-split">
             <div class="login-box-inner">
+                <!-- Left Sidebar -->
                 <div class="login-sidebar">
                     <div class="sidebar-content">
                         <div class="brand-section">
-                            <div class="logo logo-centered">
-                                <img src="/icon.svg" alt="Logo" class="logo-image">
-                                <span class="logo-text">BK <span>Tech</span></span>
+                            <div class="logo logo-sidebar">
+                                <img src="/icon.svg" alt="MBK Tech Logo" class="logo-image">
+                                <span class="logo-text">BK<span>Tech</span></span>
                             </div>
-                            <h2 class="brand-title">Welcome to MBKAuthe</h2>
-                            <p class="brand-description">Secure authentication for MBKTech.org services</p>
+                            <h2 class="brand-title">Account Switcher</h2>
+                            <p class="brand-description">Quickly navigate between multiple active user sessions on this browser.</p>
                         </div>
 
                         <div class="sidebar-actions">
-                            <a href="/mbkauthe/login" id="useAnother" class="btn-social btn-switch-side">
-                                <i class="fas fa-sign-in-alt"></i>
-                                <span>Log in to another account</span>
+                            <a href="/mbkauthe/login" id="useAnother" class="btn-action-link full-width">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Add another account</span>
                             </a>
                         </div>
 
@@ -35,47 +36,49 @@
                                 <i class="fas fa-key"></i> Forgot Password?
                             </a>
                             <a href="https://mbktech.org/Support" target="_blank" class="sidebar-link">
-                                <i class="fas fa-life-ring"></i> Need Help?
+                                <i class="fas fa-headset"></i> Need Help?
                             </a>
                         </div>
                     </div>
                 </div>
 
+                <!-- Right Main Panel -->
                 <div class="login-main">
-                    <h1 class="login-title title-underline">Choose an account</h1>
-                    <p class="subtitle">to continue to <span class="text-highlight">{{appName}}</span></p>
+                    <div class="login-main-header">
+                        <h1 class="login-title">Choose an Account</h1>
+                        <p class="login-subtitle">Continue to <span class="app-pill">{{appName}}</span></p>
+                    </div>
 
                     <div id="accountList" class="account-list" aria-live="polite">
-                        <div class="loading-spinner"><div class="spinner"></div></div>
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Loading accounts...</p>
+                        </div>
                     </div>
 
                     <div id="emptyState" class="empty-state hidden-by-default">
-                        <p>No signed-in accounts found.</p>
-                        <a href="/mbkauthe/login" class="btn btn-primary btn-login-inline">Go to Login</a>
+                        <div class="empty-state-icon"><i class="fas fa-users-slash"></i></div>
+                        <h3>No Active Sessions</h3>
+                        <p>No signed-in accounts were found on this browser.</p>
+                        <a href="/mbkauthe/login" class="btn-primary btn-submit">Sign In to an Account</a>
                     </div>
 
-                    <div class="switch-footer">
-                        <button class="btn btn-outline btn-logout" id="logoutAll" type="button">
+                    <div class="switch-footer-actions">
+                        <button class="btn-outline btn-logout-all" id="logoutAll" type="button">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sign out of all accounts</span>
                         </button>
                     </div>
 
-                    <div class="mobile-actions">
-                        <a href="/mbkauthe/login" class="btn btn-outline mobile-switch-btn">
-                            <i class="fas fa-sign-in-alt"></i>
-                            <span>Log in to another account</span>
+                    <div class="mobile-switch-links">
+                        <a href="/mbkauthe/login" class="btn-action-link mobile-switch-btn full-width">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Add another account</span>
                         </a>
-
-                        <button class="btn btn-outline mobile-logout-btn" type="button">
+                        <button class="btn-outline mobile-logout-btn full-width" type="button">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sign out of all accounts</span>
                         </button>
-
-                        <div class="login-links">
-                            <a href="https://portal.mbktech.org/forgot-password" class="login-link">Forgot Password?</a>
-                            <a href="https://mbktech.org/Support" target="_blank" class="login-link">Need Help?</a>
-                        </div>
                     </div>
                 </div>
             </div>

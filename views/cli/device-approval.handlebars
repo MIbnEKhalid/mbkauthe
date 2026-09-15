@@ -11,90 +11,274 @@
     <section class="login-container">
         {{> backgroundElements}}
 
-        <div class="glass-card login-box login-box-single cli-device-box">
+        <div class="auth-card login-box login-box-single cli-device-box">
             {{#if (eq status 'notfound')}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-danger"><i class="fas fa-exclamation-triangle"></i></div>
-                    <h1 class="cli-device-title title-underline">Request Not Found</h1>
-                    <p class="cli-device-subtitle">{{#if error}}{{error}}{{else}}This login request could not be found or has already been processed.{{/if}}</p>
-                    <p class="cli-device-message">Please start the CLI login again to get a fresh verification code.</p>
+                    <div class="status-icon-circle icon-danger"><i class="fas fa-triangle-exclamation"></i></div>
+                    <h1 class="login-title">Request Not Found</h1>
+                    <p class="login-subtitle">{{#if error}}{{error}}{{else}}This device authorization request could not be found or has expired.{{/if}}</p>
+                    <p class="cli-help-text">Please restart the login flow from your terminal CLI.</p>
                 </div>
             {{else if (eq status 'pending')}}
-                <div class="cli-device-icon icon-pending"><i class="fas fa-terminal"></i></div>
-                <h1 class="cli-device-title title-underline">Approve CLI Login</h1>
-                <p class="cli-device-subtitle">
-                    <span class="cli-client-name">{{client_name}}</span> is requesting an API token for CLI access.
-                </p>
+                <div class="auth-card-header">
+                    <div class="auth-icon-badge terminal-badge" aria-hidden="true">
+                        <i class="fas fa-terminal"></i>
+                    </div>
+                    <h1 class="login-title">Authorize CLI Client</h1>
+                    <p class="login-subtitle">
+                        <strong class="cli-client-name">{{client_name}}</strong> is requesting access to your MBKTech account.
+                    </p>
+                </div>
 
-                <div class="cli-user-code">{{user_code}}</div>
+                <div class="cli-code-display" id="userCodeCard" onclick="copyUserCode()" title="Click to copy verification code" role="button" tabindex="0">
+                    <span class="cli-code-label"><i class="fas fa-key"></i> Verification Code</span>
+                    <div class="cli-user-code" id="userCodeDisplay">{{user_code}}</div>
+                    <span class="cli-code-hint"><i class="fas fa-copy"></i> Click to copy</span>
+                </div>
 
                 {{#if profile}}
-                <div class="cli-profile-box">
-                    <div class="row"><span class="label">Token profile</span><span class="value">{{profile.name}}</span></div>
-                    <div class="row">
-                        <span class="label">Permissions</span>
-                        <span class="value">
+                <div class="cli-details-card">
+                    <div class="cli-detail-row">
+                        <span class="detail-label"><i class="fas fa-id-badge"></i> Token Profile</span>
+                        <span class="detail-value font-medium">{{profile.name}}</span>
+                    </div>
+                    <div class="cli-detail-row">
+                        <span class="detail-label"><i class="fas fa-user"></i> Requested For</span>
+                        <span class="detail-value font-mono">@{{username}}</span>
+                    </div>
+                    <div class="cli-detail-row">
+                        <span class="detail-label"><i class="fas fa-hourglass-half"></i> Token Lifetime</span>
+                        <span class="detail-value">{{#if profile.expires_in_days}}{{profile.expires_in_days}} day(s){{else}}No Expiration{{/if}}</span>
+                    </div>
+
+                    <!-- Scopes / Permissions Section with Search, Counter & Expand -->
+                    <div class="cli-scopes-section">
+                        <div class="cli-scopes-header">
+                            <div class="cli-scopes-title-group">
+                                <span class="detail-label"><i class="fas fa-shield-halved"></i> Permissions & Scopes</span>
+                                <span class="cli-scopes-badge" id="scopesCountBadge">
+                                    {{#if profile.permissions}}{{profile.permissions.length}}{{else}}0{{/if}} scopes
+                                </span>
+                            </div>
                             {{#if profile.permissions}}
-                                {{#each profile.permissions}}<span class="cli-app-chip">{{this}}</span>{{/each}}
-                            {{else}}
-                                None
+                            <div class="cli-scopes-actions">
+                                <button type="button" class="cli-scope-action-btn" id="btnCopyScopes" onclick="copyAllScopes()" title="Copy all scopes to clipboard">
+                                    <i class="fas fa-copy"></i> Copy All
+                                </button>
+                                <button type="button" class="cli-scope-action-btn" id="btnToggleExpand" onclick="toggleScopesExpand()" title="Toggle expanded view">
+                                    <i class="fas fa-up-right-and-down-left-from-center" id="expandIcon"></i> <span id="expandText">Expand</span>
+                                </button>
+                            </div>
                             {{/if}}
-                        </span>
+                        </div>
+
+                        {{#if profile.permissions}}
+                            <!-- Real-time Filter Bar -->
+                            <div class="cli-scopes-filter-bar">
+                                <div class="cli-scopes-search-wrap">
+                                    <i class="fas fa-search cli-search-icon"></i>
+                                    <input type="text" id="scopesSearchInput" class="cli-scopes-search-input" placeholder="Filter scopes (e.g. read, write, deploy)..." oninput="filterScopes(this.value)">
+                                    <button type="button" class="cli-search-clear-btn" id="scopesClearBtn" onclick="clearScopeSearch()" style="display: none;" title="Clear search">
+                                        <i class="fas fa-xmark"></i>
+                                    </button>
+                                </div>
+                                <span class="cli-filter-count" id="filteredCount" style="display: none;"></span>
+                            </div>
+
+                            <!-- Scrollable chip box -->
+                            <div class="cli-scopes-viewport" id="scopesViewport">
+                                <div class="cli-scopes-list" id="scopesList">
+                                    {{#each profile.permissions}}
+                                        <button type="button" class="permission-chip" data-scope="{{this}}" title="Click to copy: {{this}}" onclick="copySingleScope(event, '{{this}}')">
+                                            <span class="chip-prefix-dot"></span>
+                                            <span class="chip-text">{{this}}</span>
+                                        </button>
+                                    {{/each}}
+                                </div>
+                                <div class="cli-scopes-empty-state" id="scopesEmptySearch" style="display: none;">
+                                    <i class="fas fa-filter-circle-xmark"></i>
+                                    <span>No scopes match your search</span>
+                                </div>
+                            </div>
+                        {{else}}
+                            <div class="cli-scopes-empty-state">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <span>Default standard access granted</span>
+                            </div>
+                        {{/if}}
                     </div>
-                    <div class="row">
-                        <span class="label">Expiration</span>
-                        <span class="value">{{#if profile.expires_in_days}}{{profile.expires_in_days}} day(s){{else}}Never{{/if}}</span>
-                    </div>
-                    <div class="row"><span class="label">Requested by</span><span class="value">{{username}}</span></div>
                 </div>
                 {{/if}}
 
-                <div class="cli-device-actions">
-                    <button class="btn-deny" id="btnDeny" onclick="submitApproval('deny')" type="button"><i class="fas fa-times"></i> Deny</button>
-                    <button class="btn-approve" id="btnApprove" onclick="submitApproval('approve')" type="button"><i class="fas fa-check"></i> Approve</button>
+                <div class="cli-action-buttons">
+                    <button class="btn-outline btn-deny" id="btnDeny" onclick="submitApproval('deny')" type="button">
+                        <i class="fas fa-xmark"></i> Deny
+                    </button>
+                    <button class="btn-primary btn-approve" id="btnApprove" onclick="submitApproval('approve')" type="button">
+                        <i class="fas fa-check"></i> Authorize Device
+                    </button>
                 </div>
-                <p class="cli-device-message">
-                    {{#if expires_in_seconds}}This request expires in <strong>{{expires_in_seconds}} seconds</strong>.{{else}}This request is about to expire.{{/if}}
+
+                <p class="cli-expiry-notice" id="expiryNoticeWrap">
+                    <i class="fas fa-clock"></i>
+                    <span id="expiryCountdown">
+                        {{#if expires_in_seconds}}Expires in <strong id="timerSecs">{{expires_in_seconds}}</strong> seconds{{else}}Request is expiring soon{{/if}}
+                    </span>
                 </p>
             {{else if (eq status 'approved')}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-success"><i class="fas fa-check"></i></div>
-                    <h1 class="cli-device-title">Login Approved</h1>
-                    <p class="cli-device-subtitle">The CLI has been authorized successfully. Return to your terminal — it will receive the token momentarily.</p>
+                    <div class="status-icon-circle icon-success"><i class="fas fa-check"></i></div>
+                    <h1 class="login-title">Device Authorized</h1>
+                    <p class="login-subtitle">Authorization granted successfully. You can return to your terminal.</p>
                 </div>
             {{else if (eq status 'completed')}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-success"><i class="fas fa-check-circle"></i></div>
-                    <h1 class="cli-device-title">Token Delivered</h1>
-                    <p class="cli-device-subtitle">The API token has been securely handed to the CLI. You can close this page now.</p>
+                    <div class="status-icon-circle icon-success"><i class="fas fa-circle-check"></i></div>
+                    <h1 class="login-title">Token Delivered</h1>
+                    <p class="login-subtitle">The API token has been securely transmitted. You may safely close this tab.</p>
                 </div>
             {{else if (eq status 'denied')}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-danger"><i class="fas fa-ban"></i></div>
-                    <h1 class="cli-device-title">Login Denied</h1>
-                    <p class="cli-device-subtitle">You denied this CLI login request. The CLI will not receive a token.</p>
+                    <div class="status-icon-circle icon-danger"><i class="fas fa-ban"></i></div>
+                    <h1 class="login-title">Access Denied</h1>
+                    <p class="login-subtitle">This device authorization request was denied. No token was issued.</p>
                 </div>
             {{else if (eq status 'expired')}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-muted"><i class="fas fa-hourglass-end"></i></div>
-                    <h1 class="cli-device-title">Request Expired</h1>
-                    <p class="cli-device-subtitle">This login request expired before it was approved. Please start the CLI login process again.</p>
+                    <div class="status-icon-circle icon-muted"><i class="fas fa-hourglass-end"></i></div>
+                    <h1 class="login-title">Request Expired</h1>
+                    <p class="login-subtitle">This authorization code has expired. Please run the CLI command again.</p>
                 </div>
             {{else}}
                 <div class="cli-status-card">
-                    <div class="cli-device-icon icon-muted"><i class="fas fa-circle-info"></i></div>
-                    <h1 class="cli-device-title">Unknown Request</h1>
-                    <p class="cli-device-subtitle">The status of this request could not be determined. Please start the CLI login again.</p>
+                    <div class="status-icon-circle icon-muted"><i class="fas fa-circle-info"></i></div>
+                    <h1 class="login-title">Unknown Request</h1>
+                    <p class="login-subtitle">Unable to determine the status of this request.</p>
                 </div>
             {{/if}}
         </div>
     </section>
 
+    <!-- Floating Copy Toast -->
+    <div class="cli-copy-toast" id="cliCopyToast" aria-live="polite"></div>
+
     {{> versionInfo}}
 
     <script>
         const user_code = {{#if user_code}}"{{user_code}}"{{else}}null{{/if}};
+        let countdownSeconds = {{#if expires_in_seconds}}{{expires_in_seconds}}{{else}}null{{/if}};
 
+        // Countdown timer ticker
+        if (countdownSeconds && countdownSeconds > 0) {
+            const timerSecsEl = document.getElementById('timerSecs');
+            const countdownInterval = setInterval(() => {
+                countdownSeconds--;
+                if (timerSecsEl) timerSecsEl.textContent = countdownSeconds;
+                if (countdownSeconds <= 30) {
+                    const noticeEl = document.getElementById('expiryNoticeWrap');
+                    if (noticeEl) noticeEl.classList.add('cli-expiry-urgent');
+                }
+                if (countdownSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    const countdownEl = document.getElementById('expiryCountdown');
+                    if (countdownEl) countdownEl.innerHTML = '<strong>Request expired</strong>';
+                    const approveBtn = document.getElementById('btnApprove');
+                    if (approveBtn) approveBtn.disabled = true;
+                }
+            }, 1000);
+        }
+
+        // Copy feedback toast
+        function showToast(msg) {
+            const toast = document.getElementById('cliCopyToast');
+            if (!toast) return;
+            toast.innerHTML = '<i class="fas fa-check-circle"></i> ' + msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2200);
+        }
+
+        // Copy user code
+        function copyUserCode() {
+            if (!user_code) return;
+            navigator.clipboard.writeText(user_code).then(() => {
+                showToast('Verification code copied to clipboard!');
+            }).catch(() => {
+                showToast('Code: ' + user_code);
+            });
+        }
+
+        // Copy single scope
+        function copySingleScope(e, scope) {
+            if (e) e.stopPropagation();
+            navigator.clipboard.writeText(scope).then(() => {
+                showToast('Copied: ' + scope);
+            });
+        }
+
+        // Copy all scopes
+        function copyAllScopes() {
+            const chips = document.querySelectorAll('.permission-chip');
+            if (!chips || chips.length === 0) return;
+            const scopes = Array.from(chips).map(c => c.getAttribute('data-scope') || c.innerText.trim());
+            const textToCopy = scopes.join('\\n');
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast('Copied ' + scopes.length + ' scopes to clipboard!');
+            });
+        }
+
+        // Expand/Collapse scopes viewport
+        function toggleScopesExpand() {
+            const vp = document.getElementById('scopesViewport');
+            const icon = document.getElementById('expandIcon');
+            const text = document.getElementById('expandText');
+            if (!vp) return;
+            vp.classList.toggle('is-expanded');
+            const isExp = vp.classList.contains('is-expanded');
+            if (icon) icon.className = isExp ? 'fas fa-down-left-and-up-right-to-center' : 'fas fa-up-right-and-down-left-from-center';
+            if (text) text.textContent = isExp ? 'Compact' : 'Expand';
+        }
+
+        // Filter scopes in real time
+        function filterScopes(query) {
+            const clearBtn = document.getElementById('scopesClearBtn');
+            const countEl = document.getElementById('filteredCount');
+            const emptyEl = document.getElementById('scopesEmptySearch');
+            const chips = document.querySelectorAll('.permission-chip');
+            
+            const q = (query || '').trim().toLowerCase();
+            if (clearBtn) clearBtn.style.display = q ? 'inline-flex' : 'none';
+
+            let visibleCount = 0;
+            chips.forEach(chip => {
+                const scope = (chip.getAttribute('data-scope') || chip.innerText).toLowerCase();
+                const match = !q || scope.includes(q);
+                chip.style.display = match ? 'inline-flex' : 'none';
+                if (match) visibleCount++;
+            });
+
+            if (emptyEl) emptyEl.style.display = (visibleCount === 0 && chips.length > 0) ? 'flex' : 'none';
+            if (countEl) {
+                if (q) {
+                    countEl.textContent = `${visibleCount} of ${chips.length}`;
+                    countEl.style.display = 'inline-block';
+                } else {
+                    countEl.style.display = 'none';
+                }
+            }
+        }
+
+        function clearScopeSearch() {
+            const input = document.getElementById('scopesSearchInput');
+            if (input) {
+                input.value = '';
+                filterScopes('');
+                input.focus();
+            }
+        }
+
+        // Approval API submission
         window.submitApproval = async function (action) {
             const approveBtn = document.getElementById('btnApprove');
             const denyBtn = document.getElementById('btnDeny');
@@ -114,7 +298,7 @@
                 console.error(err);
                 showMessage('Failed to process your request. Please try again.', 'Approval Failed');
             } finally {
-                if (approveBtn) { approveBtn.disabled = false; approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve'; }
+                if (approveBtn) { approveBtn.disabled = false; approveBtn.innerHTML = '<i class="fas fa-check"></i> Authorize Device'; }
                 if (denyBtn) denyBtn.disabled = false;
             }
         };

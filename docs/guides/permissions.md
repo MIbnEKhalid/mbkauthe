@@ -1,6 +1,6 @@
-# Dynamic Permission Catalogs in MBKAuthe v6
+# Dynamic Permission Catalogs & Authorization in MBKAuthe v6
 
-MBKAuthe v6 features a dynamic, manifest-driven permission catalog structured around `app:service:action` identifiers. Permissions can be declared in manifests, synced to the database, evaluated with wildcards, and enforced via Express middleware.
+MBKAuthe v6 features a dynamic, manifest-driven permission catalog structured around `app:service:action` identifiers, combined with a decoupled `AuthorizationService` for pure role, permission, and policy evaluation.
 
 ---
 
@@ -37,8 +37,8 @@ export const CorePermissions = definePermissions({
 });
 
 // Generated type-safe permission strings:
-console.log(CorePermissions.users.read);   // "portal:users:read"
-console.log(CorePermissions.users.write);  // "portal:users:write"
+console.log(CorePermissions.users.read);     // "portal:users:read"
+console.log(CorePermissions.users.write);    // "portal:users:write"
 console.log(CorePermissions.billing.charge); // "portal:billing:charge"
 ```
 
@@ -62,7 +62,41 @@ boot();
 
 ---
 
-## 3. Enforcing Permissions with `permChk` and `sessPerm`
+## 3. Dedicated `AuthorizationService`
+
+The `authorizationService` provides pure, in-memory authorization logic without coupling to HTTP transports or databases:
+
+```typescript
+import { authorizationService, AuthContext } from "mbkauthe/core";
+
+const context = new AuthContext({
+  isAuthenticated: true,
+  principal: {
+    username: "alice",
+    role: "normaluser",
+    permissions: ["portal:users:read", "portal:billing:view"],
+    allowed_apps: ["portal"],
+  },
+});
+
+// Check permissions
+const canRead = authorizationService.hasPermission(context, "portal:users:read");
+console.log("Can read users:", canRead); // true
+
+// Check app access
+const canAccess = authorizationService.canAccessApp(context, "portal");
+console.log("Can access portal:", canAccess); // true
+
+// Evaluate custom dynamic policy
+const isAllowedTime = await authorizationService.evaluatePolicy(context, (ctx) => {
+  const hour = new Date().getHours();
+  return hour >= 9 && hour <= 18; // Business hours only
+});
+```
+
+---
+
+## 4. Enforcing Permissions in Express (`permChk` and `sessPerm`)
 
 ### Using `permChk` (Permission Check)
 
@@ -102,7 +136,7 @@ app.delete(
 
 ---
 
-## 4. Wildcard Matching & Direct Checks
+## 5. Wildcard Matching & Direct Checks
 
 Evaluate permissions programmatically using `hasPermission`:
 
@@ -122,3 +156,4 @@ const user = {
 console.log(hasPermission(user, "portal:users:read"));   // true
 console.log(hasPermission(user, "portal:users:delete")); // false (Deny overrides Allow)
 ```
+

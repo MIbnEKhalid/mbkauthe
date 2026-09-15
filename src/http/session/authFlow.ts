@@ -104,6 +104,7 @@ export async function completeLoginProcess(
       full_name: userFullName,
       role: user.role,
       allowed_apps: user.allowed_apps,
+      image: userImage || undefined,
     };
 
     clearProfilePicCache(req, username);
@@ -122,8 +123,6 @@ export async function completeLoginProcess(
       if (encryptedSessionId) res.cookie("session_id", encryptedSessionId, cachedCookieOptions);
 
       res.cookie("full_name", (req as any).session.user.full_name || username, { ...cachedCookieOptions, httpOnly: false });
-      res.cookie("profile_image_url", userImage?.trim() ? userImage : "default", { ...cachedCookieOptions, httpOnly: false });
-      res.cookie("profile_image_user", username, { ...cachedCookieOptions, httpOnly: false });
 
       if (typeof method === "string") {
         try { res.cookie("last_login_method", method, { ...cachedCookieOptions, httpOnly: false }); } catch {}

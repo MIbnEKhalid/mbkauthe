@@ -3,16 +3,21 @@ import { mbkautheVar } from "../../config/env.js";
 import { hashApiToken } from "../../config/security.js";
 import { renderError } from "../response/formatters.js";
 import { isJsonRequest } from "../response/contentNegotiation.js";
-import { clearSessionCookies, upsertAccountListCookie } from "../session/accountCookies.js";
+import { clearSessionCookies } from "../session/accountCookies.js";
 import { cachedCookieOptions, encryptSessionId } from "../../config/cookies.js";
 import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
 import { extractAuthorizationToken, timingSafeTokenMatch } from "../../core/tokens/index.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
-import { defaultRoleRegistry, GlobalPermissions, hasPermission, resolvePermission } from "../../core/permissions/index.js";
+import { defaultRoleRegistry, GlobalPermissions, resolvePermission } from "../../core/permissions/index.js";
+import { authorizationService } from "../../core/permissions/AuthorizationService.js";
+import { AuthContext, createSessionAuthContext, createTokenAuthContext, createAnonymousContext, principalFromUser } from "../../core/context/AuthContext.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
 import { createLogger } from "../../utils/logger.js";
-import { AuthUser } from "../../core/types/user.types.js";
+import type { AuthUser } from "../../core/types/user.types.js";
+
+// Re-export AuthContext for backwards compatibility
+export { AuthContext };
 
 const IS_DEV = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV === "development";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,12 +28,6 @@ const apiTokenLastUsedCache = new Map<string | number, number>();
 const logAuth = createLogger("auth");
 const DEFAULT_PERMISSION = GlobalPermissions.basic.access;
 
-export interface AuthContext {
-  type: "session" | "api-token";
-  user: AuthUser;
-  permissions?: any;
-}
-
 function describeRequirement(values: unknown, label: string): string {
   const items = (Array.isArray(values) ? values : [values])
     .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
@@ -38,7 +37,7 @@ function describeRequirement(values: unknown, label: string): string {
 
 function pruneApiTokenLastUsedCache(now: number): void {
   if (apiTokenLastUsedCache.size < 10000) return;
-  const staleBefore = now - (API_TOKEN_LAST_USED_INTERVAL_MS * 2);
+  const staleBefore = now - API_TOKEN_LAST_USED_INTERVAL_MS * 2;
   for (const [tokenId, lastTouchedAt] of apiTokenLastUsedCache) {
     if (lastTouchedAt < staleBefore) apiTokenLastUsedCache.delete(tokenId);
   }
@@ -69,78 +68,115 @@ function parseTokenPermissionList(raw: unknown): string[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) list = parsed;
       else if (parsed && Array.isArray(parsed.permissions)) list = parsed.permissions;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   return [...new Set(list.map((p) => (typeof p === "string" ? p.trim().toLowerCase() : "")).filter(Boolean))];
 }
 
-async function validateTokenAuthentication(req: Request) {
+/**
+ * Derives an AuthContext from the Express Request object if not already attached.
+ */
+export function getOrDeriveAuthContext(req: Request): AuthContext {
+  if ((req as any).authContext instanceof AuthContext) {
+    return (req as any).authContext;
+  }
+  if ((req as any).auth instanceof AuthContext) {
+    return (req as any).auth;
+  }
+
+  const rawUser = (req as any).auth?.user || (req as any).session?.user || (req as any).user;
+  if (rawUser && rawUser.username) {
+    const isToken = (req as any).auth?.type === "api-token";
+    return isToken ? createTokenAuthContext(rawUser) : createSessionAuthContext(rawUser);
+  }
+
+  return createAnonymousContext(mbkautheVar.APP_NAME);
+}
+
+interface AuthenticateTokenResult {
+  ok: boolean;
+  context?: AuthContext;
+  errorCode?: number;
+  statusCode?: number;
+}
+
+/**
+ * Authenticates an API token from Authorization Header.
+ * Pure Authentication: resolves token to an AuthContext without evaluating role/route authorization.
+ */
+async function authenticateToken(req: Request): Promise<AuthenticateTokenResult> {
   const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
+  if (!authHeader) return { ok: false, errorCode: ErrorCodes.INVALID_AUTH_TOKEN, statusCode: 401 };
 
   const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") return null;
+  if (parts.length !== 2 || parts[0] !== "Bearer") {
+    return { ok: false, errorCode: ErrorCodes.INVALID_AUTH_TOKEN, statusCode: 401 };
+  }
   const token = parts[1];
 
-  if (!token.startsWith("mbk_")) return null;
-  if (token.length > MAX_API_TOKEN_LENGTH) return { error: "INVALID_TOKEN" };
+  if (!token.startsWith("mbk_")) {
+    return { ok: false, errorCode: ErrorCodes.INVALID_AUTH_TOKEN, statusCode: 401 };
+  }
+  if (token.length > MAX_API_TOKEN_LENGTH) {
+    return { ok: false, errorCode: ErrorCodes.INVALID_AUTH_TOKEN, statusCode: 401 };
+  }
 
   const row = await authRepository.getApiTokenByHash(hashApiToken(token));
-  if (!row) return { error: "INVALID_TOKEN" };
-  if (row.expires_at && new Date(row.expires_at) <= new Date()) return { error: "TOKEN_EXPIRED" };
+  if (!row) {
+    return { ok: false, errorCode: ErrorCodes.INVALID_AUTH_TOKEN, statusCode: 401 };
+  }
+  if (row.expires_at && new Date(row.expires_at) <= new Date()) {
+    return { ok: false, errorCode: ErrorCodes.API_TOKEN_EXPIRED, statusCode: 401 };
+  }
+  if (row.is_active === false) {
+    return { ok: false, errorCode: ErrorCodes.ACCOUNT_INACTIVE, statusCode: 401 };
+  }
 
   const token_permissions = parseTokenPermissionList(row.permissions);
   updateApiTokenLastUsedThrottled(row.id);
 
-  return {
+  const hasExplicitPermissions = token_permissions.length > 0;
+  const effectiveRole = hasExplicitPermissions ? null : row.role;
+
+  const principal = principalFromUser({
     user_id: row.user_id || undefined,
     username: row.username,
     full_name: row.full_name,
-    role: row.role,
+    role: effectiveRole,
     owner_role: row.role,
     session_id: "api-token-session",
     is_active: row.is_active,
-    token_permissions,
-  };
+    ...(hasExplicitPermissions ? { overrides: { allows: token_permissions, denies: [] }, permissions: { allows: token_permissions, denies: [] } } : {}),
+  });
+
+  const context = new AuthContext({
+    isAuthenticated: true,
+    authMethod: "api-token",
+    principal,
+    token: {
+      id: row.id,
+      name: row.name,
+      scopes: token_permissions,
+      expiresAt: row.expires_at,
+    },
+    permissions: hasExplicitPermissions ? principal.overrides : null,
+  });
+
+  return { ok: true, context };
 }
 
-function attachApiTokenUser(req: Request, _res: Response, tokenUser: any) {
-  const hasExplicitPermissions = Array.isArray(tokenUser.token_permissions) && tokenUser.token_permissions.length > 0;
-  const effectiveRole = hasExplicitPermissions ? null : tokenUser.role;
+function attachAuthContextToRequest(req: Request, context: AuthContext): void {
+  (req as any).authContext = context;
+  (req as any).auth = context;
+  (req as any).user = context.principal;
+  (req as any).userRole = context.principal?.role || (context.principal as any)?.owner_role || "";
 
-  const user: any = {
-    user_id: tokenUser.user_id,
-    username: tokenUser.username,
-    full_name: tokenUser.full_name,
-    owner_role: tokenUser.owner_role || tokenUser.role,
-    role: effectiveRole,
-    session_id: tokenUser.session_id,
-  };
-
-  if (hasExplicitPermissions) {
-    user.overrides = { allows: tokenUser.token_permissions, denies: [] };
-    user.permissions = user.overrides;
+  if ((req as any).session && !(req as any).session.user && context.principal) {
+    (req as any).session.user = context.principal;
   }
-
-  (req as any).auth = {
-    type: "api-token",
-    user,
-    permissions: hasExplicitPermissions ? user.overrides : null,
-  };
-
-  (req as any).user = user;
-  (req as any).userRole = tokenUser.role;
-
-  if ((req as any).session && !(req as any).session.user) {
-    (req as any).session.user = user;
-  }
-
-  return user;
 }
-
-const hasAppAccess = (role?: string | null, allowedApps?: string[] | null) =>
-  role === "superadmin" ||
-  (Array.isArray(allowedApps) && allowedApps.length > 0 && allowedApps.some((app) => app?.toLowerCase() === mbkautheVar.APP_NAME));
 
 function destroySessionCookies(req: Request, res: Response) {
   (req as any).session?.destroy?.(() => {});
@@ -153,6 +189,9 @@ function respondSessionFailure(req: Request, res: Response, { prefersJson, code,
   return renderError(res, req, { code, error, message, pagename, page });
 }
 
+/**
+ * Validates cookie session authentication.
+ */
 async function validateCookieSession(req: Request, res: Response, next: NextFunction, { prefersJson }: { prefersJson: boolean }) {
   if (!(req as any).session?.user) {
     if (IS_DEV) {
@@ -170,8 +209,12 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     if (!session_id || !isUuid(session_id)) {
       console.warn(`[mbkauthe] Missing session_id for user "${username}"`);
       return respondSessionFailure(req, res, {
-        prefersJson, code: 401, errorCode: ErrorCodes.SESSION_EXPIRED,
-        error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+        prefersJson,
+        code: 401,
+        errorCode: ErrorCodes.SESSION_EXPIRED,
+        error: "Session Expired",
+        message: "Your Session Has Expired. Please Log In Again.",
+        page: loginRedirect,
       });
     }
 
@@ -180,8 +223,12 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     if (!sessionRow) {
       logAuth(`Session not found for user "${username}"`);
       return respondSessionFailure(req, res, {
-        prefersJson, code: 401, errorCode: prefersJson ? ErrorCodes.SESSION_INVALID : ErrorCodes.SESSION_EXPIRED,
-        error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+        prefersJson,
+        code: 401,
+        errorCode: prefersJson ? ErrorCodes.SESSION_INVALID : ErrorCodes.SESSION_EXPIRED,
+        error: "Session Expired",
+        message: "Your Session Has Expired. Please Log In Again.",
+        page: loginRedirect,
       });
     }
 
@@ -190,8 +237,12 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       if (!Number.isNaN(expiresMs) && expiresMs <= Date.now()) {
         logAuth(`Session invalidated (expired) for user "${sessionRow.username || username}"`);
         return respondSessionFailure(req, res, {
-          prefersJson, code: 401, errorCode: ErrorCodes.SESSION_EXPIRED,
-          error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+          prefersJson,
+          code: 401,
+          errorCode: ErrorCodes.SESSION_EXPIRED,
+          error: "Session Expired",
+          message: "Your Session Has Expired. Please Log In Again.",
+          page: loginRedirect,
         });
       }
     }
@@ -199,28 +250,47 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     if (!sessionRow.is_active) {
       logAuth(`Account is inactive for user "${sessionRow.username || username}"`);
       return respondSessionFailure(req, res, {
-        prefersJson, code: 401, errorCode: ErrorCodes.ACCOUNT_INACTIVE,
-        error: "Account Inactive", message: "Your Account Is Inactive. Please Contact Support.",
-        pagename: "Support", page: "https://mbktech.org/Support",
+        prefersJson,
+        code: 401,
+        errorCode: ErrorCodes.ACCOUNT_INACTIVE,
+        error: "Account Inactive",
+        message: "Your Account Is Inactive. Please Contact Support.",
+        pagename: "Support",
+        page: "https://mbktech.org/Support",
       });
     }
 
-    if (!hasAppAccess(sessionRow.role, sessionRow.allowed_apps)) {
+    // Build unified AuthContext with fresh DB session data taking precedence
+    const context = createSessionAuthContext(
+      {
+        ...(req as any).session.user,
+        user_id: sessionRow.user_id,
+        username: sessionRow.username || username,
+        role: sessionRow.role,
+        allowed_apps: sessionRow.allowed_apps,
+      },
+      {
+        id: session_id,
+        expiresAt: sessionRow.expires_at,
+        appKey: mbkautheVar.APP_NAME,
+      }
+    );
+
+    // Authorization check: App boundary access
+    if (!authorizationService.canAccessApp(context)) {
       console.warn(`[mbkauthe] User "${sessionRow.username || username}" is not authorized to use the application "${mbkautheVar.APP_NAME}"`);
       return respondSessionFailure(req, res, {
-        prefersJson, code: 401, errorCode: ErrorCodes.APP_NOT_AUTHORIZED,
-        error: "Unauthorized", message: `You Are Not Authorized To Use The Application "${mbkautheVar.APP_NAME}"`,
-        pagename: "Home", page: mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard",
+        prefersJson,
+        code: 401,
+        errorCode: ErrorCodes.APP_NOT_AUTHORIZED,
+        error: "Unauthorized",
+        message: `You Are Not Authorized To Use The Application "${mbkautheVar.APP_NAME}"`,
+        pagename: "Home",
+        page: mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard",
       });
     }
 
-    (req as any).userRole = sessionRow.role;
-    (req as any).user = (req as any).session.user;
-    (req as any).auth = {
-      type: "session",
-      user: (req as any).session.user,
-      permissions: (req as any).session.user?.permissions || null,
-    };
+    attachAuthContextToRequest(req, context);
 
     if (defaultRoleRegistry.roles.size === 0) {
       await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
@@ -232,25 +302,31 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
   }
 }
 
+/**
+ * Validates request authentication (Session or Token).
+ */
 export async function validateSession(req: Request, res: Response, next: NextFunction, strictTokenValidation: boolean = false): Promise<any> {
   if (req.headers.authorization) {
     if (strictTokenValidation) {
-      return res.status(401).json(createErrorResponse(401, ErrorCodes.INVALID_AUTH_TOKEN, {
-        message: "Token-based authentication not allowed for this endpoint",
-        hint: "Use session-based authentication (cookies) instead",
-      }));
+      return res.status(401).json(
+        createErrorResponse(401, ErrorCodes.INVALID_AUTH_TOKEN, {
+          message: "Token-based authentication not allowed for this endpoint",
+          hint: "Use session-based authentication (cookies) instead",
+        })
+      );
     }
 
     try {
-      const tokenUser = await validateTokenAuthentication(req);
-      if (tokenUser && !("error" in tokenUser)) {
-        if (!tokenUser.is_active) {
-          return res.status(401).json(createErrorResponse(401, ErrorCodes.ACCOUNT_INACTIVE));
-        }
-        attachApiTokenUser(req, res, tokenUser);
-        return next();
+      const result = await authenticateToken(req);
+      if (!result.ok) {
+        const statusCode = result.statusCode || 401;
+        const errorCode = result.errorCode || ErrorCodes.INVALID_AUTH_TOKEN;
+        return res.status(statusCode).json(createErrorResponse(statusCode, errorCode));
       }
-      return res.status(401).json(createErrorResponse(401, (tokenUser as any)?.error === "TOKEN_EXPIRED" ? ErrorCodes.API_TOKEN_EXPIRED : ErrorCodes.INVALID_AUTH_TOKEN));
+      if (result.context) {
+        attachAuthContextToRequest(req, result.context);
+      }
+      return next();
     } catch (err) {
       console.error(`[mbkauthe] Token validation error:`, err);
       return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
@@ -279,7 +355,7 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
       return false;
     }
 
-    if (!hasAppAccess(row.role, row.allowed_apps)) {
+    if (!authorizationService.canAccessApp(row, mbkautheVar.APP_NAME)) {
       destroySessionCookies(req, res);
       return false;
     }
@@ -313,51 +389,74 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
   }
 }
 
-export const checkRolePermission = (requiredRoles: string | string[], notAllowed?: string | null) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+/**
+ * Pure Authorization Middleware: checks role requirements against the AuthContext.
+ */
+export const checkRolePermission = (requiredRoles: string | string[], notAllowed?: string | null) => async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
   try {
-    const authUser = (req as any).auth?.user || (req as any).session?.user || (req as any).user;
-    if (!authUser?.username) {
+    const authContext = getOrDeriveAuthContext(req);
+    if (!authContext.isAuthenticated || !authContext.username) {
       logAuth(`User not authenticated`);
       if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
       return renderError(res, req, {
-        code: 401, error: "Not Logged In", message: "You Are Not Logged In. Please Log In To Continue.",
-        pagename: "Login", page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
+        code: 401,
+        error: "Not Logged In",
+        message: "You Are Not Logged In. Please Log In To Continue.",
+        pagename: "Login",
+        page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
       });
     }
 
-    const userRole = ((req as any).userRole || authUser.role || "").toLowerCase();
-    if (userRole === "superadmin") return next();
+    if (authorizationService.isSuperadmin(authContext)) return next();
 
     const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
-    const notAllowedNorm = typeof notAllowed === "string" ? notAllowed.toLowerCase() : null;
 
-    if (notAllowedNorm && userRole === notAllowedNorm) {
-      const requirement = `Not permitted role: ${notAllowedNorm}`;
-      if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.ROLE_NOT_ALLOWED, {
-        notAllowedRole: notAllowedNorm,
-        message: `You are not allowed to access this resource. ${requirement}`,
-      }));
+    if (notAllowed && authorizationService.isRoleDenied(authContext, notAllowed)) {
+      const requirement = `Not permitted role: ${notAllowed.toLowerCase()}`;
+      if (isJsonRequest(req)) {
+        return res.status(403).json(
+          createErrorResponse(403, ErrorCodes.ROLE_NOT_ALLOWED, {
+            notAllowedRole: notAllowed.toLowerCase(),
+            message: `You are not allowed to access this resource. ${requirement}`,
+          })
+        );
+      }
       return renderError(res, req, {
-        code: 403, error: "Access Denied", message: `You are not allowed to access this resource. ${requirement}`,
-        pagename: "Home", page: homeRedirect,
+        code: 403,
+        error: "Access Denied",
+        message: `You are not allowed to access this resource. ${requirement}`,
+        pagename: "Home",
+        page: homeRedirect,
       });
     }
 
-    const rolesArray = (Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles]).map((r) => (typeof r === "string" ? r.toLowerCase() : r));
-    if (rolesArray.includes("any") || rolesArray.includes("*") || rolesArray.includes(userRole)) {
+    if (authorizationService.hasAnyRole(authContext, requiredRoles)) {
       return next();
     }
 
+    const rolesArray = (Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles]).map((r) => (typeof r === "string" ? r.toLowerCase() : r));
     const requiredRoleNames = rolesArray.filter((r) => typeof r === "string" && r !== "any" && r !== "*");
     const requirement = describeRequirement(requiredRoleNames, "role");
-    if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
-      requiredRole: requiredRoleNames.length === 1 ? requiredRoleNames[0] : requiredRoleNames,
-      message: `You do not have permission to access this resource${requirement ? `. ${requirement}` : ""}`,
-    }));
+
+    if (isJsonRequest(req)) {
+      return res.status(403).json(
+        createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+          requiredRole: requiredRoleNames.length === 1 ? requiredRoleNames[0] : requiredRoleNames,
+          message: `You do not have permission to access this resource${requirement ? `. ${requirement}` : ""}`,
+        })
+      );
+    }
+
     return renderError(res, req, {
-      code: 403, error: "Access Denied",
+      code: 403,
+      error: "Access Denied",
       message: `You do not have permission to access this resource${requirement ? `. ${requirement}` : ""}`,
-      pagename: "Home", page: homeRedirect,
+      pagename: "Home",
+      page: homeRedirect,
     });
   } catch (err) {
     console.error(`[mbkauthe] Permission check error:`, err);
@@ -365,15 +464,21 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
   }
 };
 
+/**
+ * Pure Authorization Middleware: checks permission requirements against the AuthContext.
+ */
 export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const authUser = (req as any).auth?.user || (req as any).session?.user || (req as any).user;
-    if (!authUser?.username) {
+    const authContext = getOrDeriveAuthContext(req);
+    if (!authContext.isAuthenticated || !authContext.username) {
       logAuth(`User not authenticated`);
       if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
       return renderError(res, req, {
-        code: 401, error: "Not Logged In", message: "You Are Not Logged In. Please Log In To Continue.",
-        pagename: "Login", page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
+        code: 401,
+        error: "Not Logged In",
+        message: "You Are Not Logged In. Please Log In To Continue.",
+        pagename: "Login",
+        page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
       });
     }
 
@@ -382,17 +487,25 @@ export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (
     }
 
     const resolvedPermission = resolvePermission(permission);
-    if (hasPermission(authUser, resolvedPermission)) return next();
+    if (authorizationService.hasPermission(authContext, resolvedPermission)) {
+      return next();
+    }
 
     const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
-    if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
-      requiredPermission: resolvedPermission,
-      message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
-    }));
+    if (isJsonRequest(req)) {
+      return res.status(403).json(
+        createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+          requiredPermission: resolvedPermission,
+          message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
+        })
+      );
+    }
     return renderError(res, req, {
-      code: 403, error: "Access Denied",
+      code: 403,
+      error: "Access Denied",
       message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
-      pagename: "Home", page: homeRedirect,
+      pagename: "Home",
+      page: homeRedirect,
     });
   } catch (err) {
     console.error(`[mbkauthe] Permission check error:`, err);
@@ -400,16 +513,40 @@ export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (
   }
 };
 
-export const validateSessionAndPermission = (permission: any = DEFAULT_PERMISSION, strictTokenValidation: boolean = false) => async (req: Request, res: Response, next: NextFunction) => {
-  await validateSession(req, res, async () => {
-    await checkPermission(permission)(req, res, next);
-  }, strictTokenValidation);
+/**
+ * Pipeline: Authenticate Session -> Authorize Permission
+ */
+export const validateSessionAndPermission = (permission: any = DEFAULT_PERMISSION, strictTokenValidation: boolean = false) => async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  await validateSession(
+    req,
+    res,
+    async () => {
+      await checkPermission(permission)(req, res, next);
+    },
+    strictTokenValidation
+  );
 };
 
-export const validateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null, strictTokenValidation: boolean = false) => async (req: Request, res: Response, next: NextFunction) => {
-  await validateSession(req, res, async () => {
-    await checkRolePermission(requiredRole, notAllowed)(req, res, next);
-  }, strictTokenValidation);
+/**
+ * Pipeline: Authenticate Session -> Authorize Role
+ */
+export const validateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null, strictTokenValidation: boolean = false) => async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  await validateSession(
+    req,
+    res,
+    async () => {
+      await checkRolePermission(requiredRole, notAllowed)(req, res, next);
+    },
+    strictTokenValidation
+  );
 };
 
 export const authenticate = (authentication: string) => (req: Request, res: Response, next: NextFunction) => {
@@ -424,7 +561,8 @@ export const authenticate = (authentication: string) => (req: Request, res: Resp
 };
 
 export const strictValidateSession = (req: Request, res: Response, next: NextFunction) => validateSession(req, res, next, true);
-export const strictValidateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null) => validateSessionAndRole(requiredRole, notAllowed, true);
+export const strictValidateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null) =>
+  validateSessionAndRole(requiredRole, notAllowed, true);
 
 export const sessVal = validateSession;
 export const sessRole = validateSessionAndRole;

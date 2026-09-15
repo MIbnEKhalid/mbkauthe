@@ -1,12 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  googleProvider,
-  githubProvider,
-  microsoftProvider,
-  discordProvider,
-  appleProvider,
-  customOIDCProvider,
-} from "../../../src/oauth/providers/index.js";
+import { googleProvider, githubProvider, microsoftProvider, discordProvider, appleProvider, customOIDCProvider } from "../../../src/oauth/providers/index.js";
 
 describe("OAuth & OIDC Presets Normalization", () => {
   it("googleProvider generates normalized profile", async () => {

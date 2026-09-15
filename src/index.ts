@@ -129,7 +129,7 @@ export { createAuth, MbkAuthInstance, type AuthConfig, type OAuthConfig, type Au
 // 6. Diagnostics & Observability
 export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";
 
-// 7. Permissions, Roles & Manifest
+// 7. Permissions, Roles, Authorization & Manifest
 export {
   normalizePermission,
   resolvePermission,
@@ -148,6 +148,24 @@ export {
   GLOBAL_APP_KEY,
   GlobalRoles,
 } from "./core/permissions/roleRegistry.js";
+export {
+  AuthorizationService,
+  authorizationService,
+  type PolicyFn,
+} from "./core/permissions/AuthorizationService.js";
+export {
+  AuthContext,
+  createAuthContext,
+  createAnonymousContext,
+  createSessionAuthContext,
+  createTokenAuthContext,
+  principalFromUser,
+  type AuthPrincipal,
+  type AuthSessionInfo,
+  type AuthTokenInfo,
+  type AuthMethod,
+  type AuthContextOptions,
+} from "./core/context/AuthContext.js";
 export {
   definePermissions,
   defineGlobalPermissions,
@@ -215,7 +233,6 @@ export {
   strictSessRole,
   permChk,
   sessPerm,
-  AuthContext,
 } from "./http/middleware/authMiddleware.js";
 
 // 12. Express Routers & App Factory

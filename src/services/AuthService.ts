@@ -1,7 +1,8 @@
 import speakeasy from "speakeasy";
 import { AuthRepository, authRepository } from "../db/repositories/AuthRepository.js";
 import { verifyPassword } from "../core/security/password.js";
-import { isUserAuthorizedForApp } from "../http/utils/appAccess.js";
+import { authorizationService } from "../core/permissions/AuthorizationService.js";
+import { AuthContext, createSessionAuthContext } from "../core/context/AuthContext.js";
 import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
 import { emitAuthEvent } from "../core/events/index.js";
@@ -25,6 +26,7 @@ export interface LoginOptions {
 export interface LoginResult {
   requires2FA: boolean;
   user?: AuthUser;
+  authContext?: AuthContext;
   appSessionId?: string;
   expiresAt?: Date;
   tempToken?: string;
@@ -68,7 +70,7 @@ export class AuthService {
       throw new MbkAuthError(ErrorCodes.ACCOUNT_INACTIVE, 403, "User account is inactive");
     }
 
-    if (!isUserAuthorizedForApp(user, appKey)) {
+    if (!authorizationService.canAccessApp(user, appKey)) {
       emitAuthEvent("auth:login:failed", { username, reason: "APP_NOT_AUTHORIZED", ip, userAgent, appKey });
       throw new MbkAuthError(ErrorCodes.APP_NOT_AUTHORIZED, 403, "User not authorized for this application");
     }
@@ -83,6 +85,7 @@ export class AuthService {
       return {
         requires2FA: true,
         user,
+        authContext: createSessionAuthContext(user),
       };
     }
 
@@ -106,9 +109,18 @@ export class AuthService {
       authMethod: "password",
     });
 
+    const authContext = createSessionAuthContext(user, {
+      id: sessionRow.id,
+      expiresAt,
+      ip,
+      userAgent,
+      appKey,
+    });
+
     return {
       requires2FA: false,
       user,
+      authContext,
       appSessionId: sessionRow.id,
       expiresAt,
       trustedDeviceUser,
@@ -197,7 +209,7 @@ export class AuthService {
       const deviceUser = await this.repo.touchTrustedDevice(hashed, username);
       if (!deviceUser || !deviceUser.is_active) return null;
 
-      if (!isUserAuthorizedForApp(deviceUser, appKey)) return null;
+      if (!authorizationService.canAccessApp(deviceUser, appKey)) return null;
 
       return deviceUser;
     } catch (err) {

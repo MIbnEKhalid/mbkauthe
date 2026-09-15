@@ -1,13 +1,4 @@
-export {
-  setPasswordPepper,
-  getPasswordPepper,
-  getPasswordSalt,
-  derivePasswordHash,
-  derivePasswordHashSync,
-  timingSafeHashEqual,
-  hashPassword,
-  verifyPassword,
-} from "../core/security/password.js";
+export { setPasswordPepper, getPasswordPepper, getPasswordSalt, derivePasswordHash, derivePasswordHashSync, timingSafeHashEqual, hashPassword, verifyPassword } from "../core/security/password.js";
 
 import { TokenEngine } from "../core/tokens/TokenEngine.js";
 

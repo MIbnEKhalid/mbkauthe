@@ -151,18 +151,19 @@ export function buildEffectivePermissions({
 export function intersectPermissions(held: any, requested: any, roleRegistry: RoleRegistry = defaultRoleRegistry): { allows: string[]; denies: string[] } {
   let heldAllows: string[] = [];
   let heldDenies: string[] = [];
+  const targetHeld = held?.principal || held;
 
-  if (held && typeof held === "object" && (held.role || held.roles || held.overrides)) {
+  if (targetHeld && typeof targetHeld === "object" && (targetHeld.role || targetHeld.roles || targetHeld.overrides)) {
     const effective = buildEffectivePermissions({
-      roles: [held.role, ...(held.roles || [])].filter(Boolean),
-      allows: held.overrides?.allows || [],
-      denies: held.overrides?.denies || [],
+      roles: [targetHeld.role, ...(targetHeld.roles || [])].filter(Boolean),
+      allows: targetHeld.overrides?.allows || [],
+      denies: targetHeld.overrides?.denies || [],
       roleRegistry,
     });
     heldAllows = effective.allows;
     heldDenies = effective.denies;
   } else {
-    const norm = normalizePermissions(held);
+    const norm = normalizePermissions(targetHeld);
     heldAllows = norm.allows;
     heldDenies = norm.denies;
   }
@@ -183,21 +184,22 @@ export function intersectPermissions(held: any, requested: any, roleRegistry: Ro
 
 export function hasPermission(user: any, required: string, roleRegistry: RoleRegistry = defaultRoleRegistry): boolean {
   if (!user) return false;
+  const targetUser = user.principal || user;
 
-  const primaryRole = (typeof user.role === "string" ? user.role : "").toLowerCase();
-  if (primaryRole === SUPERADMIN_ROLE || (Array.isArray(user.roles) && user.roles.some((r: any) => String(r).toLowerCase() === SUPERADMIN_ROLE))) {
+  const primaryRole = (typeof targetUser.role === "string" ? targetUser.role : "").toLowerCase();
+  if (primaryRole === SUPERADMIN_ROLE || (Array.isArray(targetUser.roles) && targetUser.roles.some((r: any) => String(r).toLowerCase() === SUPERADMIN_ROLE))) {
     return true;
   }
 
   const resolvedRequired = resolvePermission(required);
   if (!resolvedRequired) return false;
 
-  const userDenies = (user.overrides?.denies || user.permissions?.denies || []).map(normalizePermission).filter(Boolean);
+  const userDenies = (targetUser.overrides?.denies || targetUser.permissions?.denies || []).map(normalizePermission).filter(Boolean);
   if (userDenies.some((deny: string) => permissionMatches(deny, resolvedRequired))) return false;
 
   const userRoles = new Set(primaryRole ? [primaryRole] : []);
-  if (Array.isArray(user.roles)) {
-    for (const r of user.roles) {
+  if (Array.isArray(targetUser.roles)) {
+    for (const r of targetUser.roles) {
       const cleanR = normalizePermission(r);
       if (cleanR) userRoles.add(cleanR);
     }
@@ -207,6 +209,6 @@ export function hasPermission(user: any, required: string, roleRegistry: RoleReg
     if (roleRegistry.checkRoleHasPermission(roleName, resolvedRequired)) return true;
   }
 
-  const userAllows = (user.overrides?.allows || user.permissions?.allows || []).map(normalizePermission).filter(Boolean);
+  const userAllows = (targetUser.overrides?.allows || targetUser.permissions?.allows || (Array.isArray(targetUser.permissions) ? targetUser.permissions : [])).map(normalizePermission).filter(Boolean);
   return userAllows.some((allow: string) => permissionMatches(allow, resolvedRequired));
 }

@@ -25,7 +25,7 @@ import { oAuthAccountRepository } from "../db/repositories/OAuthAccountRepositor
 import { authRepository, type AuthRepository } from "../db/repositories/AuthRepository.js";
 import { userRepository, type UserRepository } from "../db/repositories/UserRepository.js";
 import { emitAuthEvent } from "../core/events/index.js";
-import { isUserAuthorizedForApp } from "../http/utils/appAccess.js";
+import { authorizationService } from "../core/permissions/AuthorizationService.js";
 
 import { loadOAuthProvidersFromConfig } from "./providers/loader.js";
 
@@ -378,7 +378,7 @@ export class OAuthFlowService {
     }
 
     // 7. Check allowed apps
-    if (!isUserAuthorizedForApp(user, this.appName)) {
+    if (!authorizationService.canAccessApp(user, this.appName)) {
       this.emitEvent("oauth.callback.failure", {
         provider: provider.id,
         reason: `User ${user.username} is not authorized for app ${this.appName}`,

@@ -2,7 +2,7 @@ import { AuthRepository, authRepository } from "../db/repositories/AuthRepositor
 import { OAuthAccountRepository, oAuthAccountRepository } from "../db/repositories/OAuthAccountRepository.js";
 import { UserRepository, userRepository } from "../db/repositories/UserRepository.js";
 import { mbkautheVar } from "../config/index.js";
-import { isUserAuthorizedForApp } from "../http/utils/appAccess.js";
+import { authorizationService } from "../core/permissions/AuthorizationService.js";
 import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
 import { createLogger } from "../utils/logger.js";
@@ -67,7 +67,7 @@ export class OAuthService {
       throw error;
     }
 
-    if (!isUserAuthorizedForApp(user, mbkautheVar.APP_NAME)) {
+    if (!authorizationService.canAccessApp(user, mbkautheVar.APP_NAME)) {
       debug("OAuth user %s is not authorized for app %s", user.username, mbkautheVar.APP_NAME);
       const error: any = new Error(`Not authorized to use ${mbkautheVar.APP_NAME}`);
       error.code = "NOT_AUTHORIZED";

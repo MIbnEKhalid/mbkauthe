@@ -14,26 +14,26 @@ process.env.dbLogs = 'true';
 process.env.dbLogsCallsite = 'false';
 delete process.env.mbkauthShared;
 
-const { default: router } = await import('../../lib/main.js');
-const { packageJson, mbkautheVar } = await import('../../lib/config/index.js');
 const {
+  default: router,
+  packageJson,
+  mbkautheVar,
   resolveCookieDomain,
   isAllowedOriginHostname,
   getCookieDomain,
-  cachedCookieOptions
-} = await import('../../lib/config/cookies.js');
-const { dblogin } = await import('../../lib/pool.js');
-const {
+  cachedCookieOptions,
+  dblogin,
   attachDevQueryLogger,
   resetQueryCount,
   resetQueryLog,
-  runWithRequestContext
-} = await import('../../lib/utils/dbQueryLogger.js');
-
-const { isSafeRelativeRedirect, sanitizeRelativeRedirect } = await import('../../lib/utils/redirect.js');
-const { isSafeFetchUrl } = await import('../../lib/utils/urlSafety.js');
-const { hashPassword, verifyPassword } = await import('../../lib/config/index.js');
-const { hashDeviceToken } = await import('../../lib/config/cookies.js');
+  runWithRequestContext,
+  isSafeRelativeRedirect,
+  sanitizeRelativeRedirect,
+  isSafeFetchUrl,
+  hashPassword,
+  verifyPassword,
+  hashDeviceToken,
+} = await import('../../dist/index.js');
 
 const viewsPath = path.join(__dirname, '../../views');
 

@@ -1,22 +1,5 @@
-// Pure permission core — no database required.
-
-process.env.APP_NAME = process.env.APP_NAME || "testblog";
-
-const {
-  definePermissions,
-  hasPermission,
-  permissionMatches,
-  normalizePermissions,
-  buildEffectivePermissions,
-  collectPermissions,
-  collectRoles,
-  intersectPermissions,
-  defineGlobalPermissions,
-  GlobalPermissions,
-  resolvePermission,
-  RoleRegistry,
-  defaultRoleRegistry,
-} = await import("../../lib/permissions.js");
+import { describe, it, expect } from "vitest";
+import { definePermissions, hasPermission, permissionMatches, normalizePermissions, buildEffectivePermissions, collectPermissions, collectRoles, intersectPermissions, defineGlobalPermissions, GlobalPermissions, resolvePermission, RoleRegistry, defaultRoleRegistry, mbkautheVar } from "../../dist/index.js";
 
 describe("definePermissions", () => {
   it("resolves nested service/action access to app:service:action strings", () => {
@@ -36,7 +19,7 @@ describe("definePermissions", () => {
 
   it("auto-prefixes with the configured app key (mbkautheVar.APP_NAME)", () => {
     const Permissions = definePermissions({ posts: { delete: "Delete posts" } });
-    const app = (process.env.APP_NAME || "").toLowerCase();
+    const app = (mbkautheVar.APP_NAME || process.env.APP_NAME || "").toLowerCase();
     expect(Permissions.posts.delete).toBe(`${app}:posts:delete`);
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { commonHandlebarsHelpers, handlebarsHelpers } from "../../lib/utils/handlebarsHelpers.js";
+import { commonHandlebarsHelpers, handlebarsHelpers } from "../../dist/index.js";
 
 describe("MBKAuthe Shared Handlebars Helpers", () => {
   it("exports commonHandlebarsHelpers and handlebarsHelpers as equivalent", () => {

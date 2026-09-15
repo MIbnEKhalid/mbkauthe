@@ -1,6 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { isJsonRequest, sendSuccess, sendError, sanitizeErrorDetails } from "../../lib/utils/response.js";
-import { createErrorResponse, ErrorCodes } from "../../lib/utils/errors.js";
+import { isJsonRequest, sendSuccess, sendError, sanitizeErrorDetails, createErrorResponse, ErrorCodes } from "../../dist/index.js";
 
 describe("Standardized Response & Error Envelope Unit Tests", () => {
   describe("isJsonRequest content negotiation", () => {

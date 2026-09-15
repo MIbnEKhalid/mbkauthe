@@ -1,4 +1,5 @@
-import { validateConfiguration, findValue } from '../../lib/config/index.js';
+import { validateConfiguration, findValue } from '../../dist/config/index.js';
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 
 describe('Config Resolution and Validation', () => {
   const originalEnv = { ...process.env };

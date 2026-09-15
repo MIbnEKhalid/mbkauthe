@@ -32,12 +32,16 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { default: router } = await import('../../lib/main.js');
-const { packageJson, mbkautheVar, hashPassword } = await import('../../lib/config/index.js');
-const { hashApiToken } = await import('../../lib/config/security.js');
-const { dblogin } = await import('../../lib/pool.js');
-const { default: cliAuthRouter } = await import('../../lib/routes/cliAuth.js');
-const { default: apiTokensRouter } = await import('../../lib/routes/apiTokens.js');
+const {
+  default: router,
+  packageJson,
+  mbkautheVar,
+  hashPassword,
+  hashApiToken,
+  dblogin,
+  cliAuthRouter,
+  apiTokensRouter,
+} = await import('../../dist/index.js');
 
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
 const viewsPath = path.join(__dirname, '../../views');

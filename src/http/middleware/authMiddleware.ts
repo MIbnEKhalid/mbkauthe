@@ -1,0 +1,445 @@
+import type { Request, Response, NextFunction } from "express";
+import { mbkautheVar } from "../../config/env.js";
+import { hashApiToken } from "../../config/security.js";
+import { renderError } from "../../ui/response/formatters.js";
+import { isJsonRequest } from "../../ui/response/contentNegotiation.js";
+import { clearSessionCookies, cachedCookieOptions, encryptSessionId } from "../../config/cookies.js";
+import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
+import { extractAuthorizationToken, timingSafeTokenMatch } from "../../ui/utils/timingSafeToken.js";
+import { authRepository } from "../../db/repositories/AuthRepository.js";
+import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
+import { defaultRoleRegistry, GlobalPermissions, hasPermission, resolvePermission } from "../../core/permissions/index.js";
+import { attachSessionPermissions } from "../../core/permissions/session.js";
+import { createLogger } from "../../ui/utils/logger.js";
+
+const IS_DEV = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV === "development";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (val: unknown): val is string => typeof val === "string" && UUID_RE.test(val);
+const MAX_API_TOKEN_LENGTH = 4096;
+const API_TOKEN_LAST_USED_INTERVAL_MS = 15 * 60 * 1000;
+const API_TOKEN_SESSION_RESTORE = Symbol("mbkauthe.apiTokenSessionRestore");
+const apiTokenLastUsedCache = new Map<string | number, number>();
+const logAuth = createLogger("auth");
+const DEFAULT_PERMISSION = GlobalPermissions.basic.access;
+
+function describeRequirement(values: unknown, label: string): string {
+  const items = (Array.isArray(values) ? values : [values])
+    .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
+    .map(String);
+  return items.length ? `Required ${label}: ${items.join(" or ")}` : "";
+}
+
+function pruneApiTokenLastUsedCache(now: number): void {
+  if (apiTokenLastUsedCache.size < 10000) return;
+  const staleBefore = now - (API_TOKEN_LAST_USED_INTERVAL_MS * 2);
+  for (const [tokenId, lastTouchedAt] of apiTokenLastUsedCache) {
+    if (lastTouchedAt < staleBefore) apiTokenLastUsedCache.delete(tokenId);
+  }
+}
+
+function updateApiTokenLastUsedThrottled(tokenId: string | number): void {
+  if (!tokenId) return;
+  const now = Date.now();
+  const lastTouchedAt = apiTokenLastUsedCache.get(tokenId) || 0;
+  if (now - lastTouchedAt < API_TOKEN_LAST_USED_INTERVAL_MS) return;
+
+  pruneApiTokenLastUsedCache(now);
+  apiTokenLastUsedCache.set(tokenId, now);
+  authRepository.updateApiTokenLastUsed(tokenId).catch((e: any) => {
+    apiTokenLastUsedCache.delete(tokenId);
+    console.error(`[mbkauthe] Failed to update token usage:`, e);
+  });
+}
+
+function parseTokenPermissionList(raw: unknown): string[] {
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === "object") {
+    list = Array.isArray((raw as any).permissions) ? (raw as any).permissions : [];
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+      else if (parsed && Array.isArray(parsed.permissions)) list = parsed.permissions;
+    } catch { /* ignore */ }
+  }
+  return [...new Set(list.map((p) => (typeof p === "string" ? p.trim().toLowerCase() : "")).filter(Boolean))];
+}
+
+async function validateTokenAuthentication(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0] !== "Bearer") return null;
+  const token = parts[1];
+
+  if (!token.startsWith("mbk_")) return null;
+  if (token.length > MAX_API_TOKEN_LENGTH) return { error: "INVALID_TOKEN" };
+
+  const row = await authRepository.getApiTokenByHash(hashApiToken(token));
+  if (!row) return { error: "INVALID_TOKEN" };
+  if (row.expires_at && new Date(row.expires_at) <= new Date()) return { error: "TOKEN_EXPIRED" };
+
+  const token_permissions = parseTokenPermissionList(row.permissions);
+  updateApiTokenLastUsedThrottled(row.id);
+
+  return {
+    user_id: row.user_id || undefined,
+    username: row.username,
+    full_name: row.full_name,
+    role: row.role,
+    owner_role: row.role,
+    session_id: "api-token-session",
+    is_active: row.is_active,
+    token_permissions,
+  };
+}
+
+function attachApiTokenUser(req: Request, res: Response, tokenUser: any) {
+  const hasExplicitPermissions = Array.isArray(tokenUser.token_permissions) && tokenUser.token_permissions.length > 0;
+  const effectiveRole = hasExplicitPermissions ? null : tokenUser.role;
+
+  const user: any = {
+    user_id: tokenUser.user_id,
+    username: tokenUser.username,
+    full_name: tokenUser.full_name,
+    owner_role: tokenUser.owner_role || tokenUser.role,
+    role: effectiveRole,
+    session_id: tokenUser.session_id,
+  };
+
+  if (hasExplicitPermissions) {
+    user.overrides = { allows: tokenUser.token_permissions, denies: [] };
+    user.permissions = user.overrides;
+  }
+
+  (req as any).auth = {
+    type: "api-token",
+    user,
+    permissions: hasExplicitPermissions ? user.overrides : null,
+  };
+
+  if ((req as any).session) {
+    const originalDescriptor = Object.getOwnPropertyDescriptor((req as any).session, "user");
+    Object.defineProperty((req as any).session, "user", {
+      value: user,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+
+    if (res && !(req as any).session[API_TOKEN_SESSION_RESTORE]) {
+      (req as any).session[API_TOKEN_SESSION_RESTORE] = true;
+      const originalEnd = res.end;
+      let restored = false;
+
+      res.end = function apiTokenSessionEnd(this: any, ...args: any[]) {
+        if (!restored) {
+          restored = true;
+          if (originalDescriptor) {
+            Object.defineProperty((req as any).session, "user", originalDescriptor);
+          } else {
+            delete (req as any).session.user;
+          }
+          delete (req as any).session[API_TOKEN_SESSION_RESTORE];
+        }
+        return (originalEnd as any).apply(this, args);
+      } as any;
+    }
+  }
+
+  (req as any).user = user;
+  (req as any).userRole = tokenUser.role;
+  return user;
+}
+
+const hasAppAccess = (role?: string | null, allowedApps?: string[] | null) =>
+  role === "superadmin" ||
+  (Array.isArray(allowedApps) && allowedApps.length > 0 && allowedApps.some((app) => app?.toLowerCase() === mbkautheVar.APP_NAME));
+
+function destroySessionCookies(req: Request, res: Response) {
+  (req as any).session?.destroy?.(() => {});
+  clearSessionCookies(res);
+}
+
+function respondSessionFailure(req: Request, res: Response, { prefersJson, code, errorCode, error, message, page, pagename = "Login" }: any) {
+  destroySessionCookies(req, res);
+  if (prefersJson) return res.status(code).json(createErrorResponse(code, errorCode));
+  return renderError(res, req, { code, error, message, pagename, page });
+}
+
+async function validateCookieSession(req: Request, res: Response, next: NextFunction, { prefersJson }: { prefersJson: boolean }) {
+  if (!(req as any).session?.user) {
+    if (IS_DEV) {
+      logAuth(`User not authenticated`);
+      logAuth(`req.session.user: %O`, (req as any).session?.user);
+    }
+    if (prefersJson) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
+    return res.redirect(302, `/mbkauthe/login?${new URLSearchParams({ redirect: req.originalUrl, reason: "logged_out" }).toString()}`);
+  }
+
+  try {
+    const { session_id, username } = (req as any).session.user;
+    const loginRedirect = `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`;
+
+    if (!session_id || !isUuid(session_id)) {
+      console.warn(`[mbkauthe] Missing session_id for user "${username}"`);
+      return respondSessionFailure(req, res, {
+        prefersJson, code: 401, errorCode: ErrorCodes.SESSION_EXPIRED,
+        error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+      });
+    }
+
+    const sessionRow = await authRepository.getSessionAuthData(session_id, prefersJson ? "validate-app-session-for-api" : "validate-app-session");
+
+    if (!sessionRow) {
+      logAuth(`Session not found for user "${username}"`);
+      return respondSessionFailure(req, res, {
+        prefersJson, code: 401, errorCode: prefersJson ? ErrorCodes.SESSION_INVALID : ErrorCodes.SESSION_EXPIRED,
+        error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+      });
+    }
+
+    if (sessionRow.expires_at) {
+      const expiresMs = sessionRow.expires_at instanceof Date ? sessionRow.expires_at.getTime() : Date.parse(String(sessionRow.expires_at));
+      if (!Number.isNaN(expiresMs) && expiresMs <= Date.now()) {
+        logAuth(`Session invalidated (expired) for user "${sessionRow.username || username}"`);
+        return respondSessionFailure(req, res, {
+          prefersJson, code: 401, errorCode: ErrorCodes.SESSION_EXPIRED,
+          error: "Session Expired", message: "Your Session Has Expired. Please Log In Again.", page: loginRedirect,
+        });
+      }
+    }
+
+    if (!sessionRow.is_active) {
+      logAuth(`Account is inactive for user "${sessionRow.username || username}"`);
+      return respondSessionFailure(req, res, {
+        prefersJson, code: 401, errorCode: ErrorCodes.ACCOUNT_INACTIVE,
+        error: "Account Inactive", message: "Your Account Is Inactive. Please Contact Support.",
+        pagename: "Support", page: "https://mbktech.org/Support",
+      });
+    }
+
+    if (!hasAppAccess(sessionRow.role, sessionRow.allowed_apps)) {
+      console.warn(`[mbkauthe] User "${sessionRow.username || username}" is not authorized to use the application "${mbkautheVar.APP_NAME}"`);
+      return respondSessionFailure(req, res, {
+        prefersJson, code: 401, errorCode: ErrorCodes.APP_NOT_AUTHORIZED,
+        error: "Unauthorized", message: `You Are Not Authorized To Use The Application "${mbkautheVar.APP_NAME}"`,
+        pagename: "Home", page: mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard",
+      });
+    }
+
+    (req as any).userRole = sessionRow.role;
+    if (defaultRoleRegistry.roles.size === 0) {
+      await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
+    }
+    return next();
+  } catch (err) {
+    console.error(`[mbkauthe] Session validation error:`, err);
+    return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
+  }
+}
+
+export async function validateSession(req: Request, res: Response, next: NextFunction, strictTokenValidation: boolean = false): Promise<any> {
+  if (req.headers.authorization) {
+    if (strictTokenValidation) {
+      return res.status(401).json(createErrorResponse(401, ErrorCodes.INVALID_AUTH_TOKEN, {
+        message: "Token-based authentication not allowed for this endpoint",
+        hint: "Use session-based authentication (cookies) instead",
+      }));
+    }
+
+    try {
+      const tokenUser = await validateTokenAuthentication(req);
+      if (tokenUser && !("error" in tokenUser)) {
+        if (!tokenUser.is_active) {
+          return res.status(401).json(createErrorResponse(401, ErrorCodes.ACCOUNT_INACTIVE));
+        }
+        attachApiTokenUser(req, res, tokenUser);
+        return next();
+      }
+      return res.status(401).json(createErrorResponse(401, (tokenUser as any)?.error === "TOKEN_EXPIRED" ? ErrorCodes.API_TOKEN_EXPIRED : ErrorCodes.INVALID_AUTH_TOKEN));
+    } catch (err) {
+      console.error(`[mbkauthe] Token validation error:`, err);
+      return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
+    }
+  }
+
+  return validateCookieSession(req, res, next, { prefersJson: isJsonRequest(req) });
+}
+
+export async function validateApiSession(req: Request, res: Response, next: NextFunction): Promise<any> {
+  return req.headers.authorization ? validateSession(req, res, next) : validateCookieSession(req, res, next, { prefersJson: true });
+}
+
+export async function reloadSessionUser(req: Request, res: Response): Promise<boolean> {
+  if (!(req as any).session?.user?.username) return false;
+  try {
+    const { session_id } = (req as any).session.user;
+    if (!session_id) {
+      destroySessionCookies(req, res);
+      return false;
+    }
+
+    const row = await authRepository.getSessionWithUserForReload(String(session_id), "reload-session-user");
+    if (!row || (row.expires_at && new Date(row.expires_at) <= new Date()) || !row.is_active) {
+      destroySessionCookies(req, res);
+      return false;
+    }
+
+    if (!hasAppAccess(row.role, row.allowed_apps)) {
+      destroySessionCookies(req, res);
+      return false;
+    }
+
+    (req as any).session.user.username = row.username;
+    (req as any).session.user.role = row.role;
+    (req as any).session.user.allowed_apps = row.allowed_apps;
+    (req as any).session.user.user_id = row.user_id || undefined;
+
+    if (typeof row.full_name === "string" && row.full_name.trim() !== "") {
+      (req as any).session.user.full_name = row.full_name;
+    } else if (typeof (req as any).cookies?.full_name === "string") {
+      (req as any).session.user.full_name = (req as any).cookies.full_name;
+    }
+
+    await attachSessionPermissions((req as any).session.user, row.username);
+    await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => (err ? reject(err) : resolve())));
+
+    try {
+      res.cookie("full_name", (req as any).session.user.full_name || (req as any).session.user.username, { ...cachedCookieOptions, httpOnly: false });
+      const encryptedSid = encryptSessionId((req as any).session.user.session_id);
+      if (encryptedSid) res.cookie("session_id", encryptedSid, cachedCookieOptions);
+    } catch (cookieErr) {
+      console.error(`[mbkauthe] Error syncing cookies during reload:`, cookieErr);
+    }
+
+    return true;
+  } catch (err) {
+    console.error(`[mbkauthe] reloadSessionUser error:`, err);
+    return false;
+  }
+}
+
+export const checkRolePermission = (requiredRoles: string | string[], notAllowed?: string | null) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const authUser = (req as any).auth?.user || (req as any).session?.user;
+    if (!authUser?.username) {
+      logAuth(`User not authenticated`);
+      if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
+      return renderError(res, req, {
+        code: 401, error: "Not Logged In", message: "You Are Not Logged In. Please Log In To Continue.",
+        pagename: "Login", page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
+      });
+    }
+
+    const userRole = ((req as any).userRole || authUser.role || "").toLowerCase();
+    if (userRole === "superadmin") return next();
+
+    const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
+    const notAllowedNorm = typeof notAllowed === "string" ? notAllowed.toLowerCase() : null;
+
+    if (notAllowedNorm && userRole === notAllowedNorm) {
+      const requirement = `Not permitted role: ${notAllowedNorm}`;
+      if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.ROLE_NOT_ALLOWED, {
+        notAllowedRole: notAllowedNorm,
+        message: `You are not allowed to access this resource. ${requirement}`,
+      }));
+      return renderError(res, req, {
+        code: 403, error: "Access Denied", message: `You are not allowed to access this resource. ${requirement}`,
+        pagename: "Home", page: homeRedirect,
+      });
+    }
+
+    const rolesArray = (Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles]).map((r) => (typeof r === "string" ? r.toLowerCase() : r));
+    if (rolesArray.includes("any") || rolesArray.includes("*") || rolesArray.includes(userRole)) {
+      return next();
+    }
+
+    const requiredRoleNames = rolesArray.filter((r) => typeof r === "string" && r !== "any" && r !== "*");
+    const requirement = describeRequirement(requiredRoleNames, "role");
+    if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+      requiredRole: requiredRoleNames.length === 1 ? requiredRoleNames[0] : requiredRoleNames,
+      message: `You do not have permission to access this resource${requirement ? `. ${requirement}` : ""}`,
+    }));
+    return renderError(res, req, {
+      code: 403, error: "Access Denied",
+      message: `You do not have permission to access this resource${requirement ? `. ${requirement}` : ""}`,
+      pagename: "Home", page: homeRedirect,
+    });
+  } catch (err) {
+    console.error(`[mbkauthe] Permission check error:`, err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const authUser = (req as any).auth?.user || (req as any).session?.user;
+    if (!authUser?.username) {
+      logAuth(`User not authenticated`);
+      if (isJsonRequest(req)) return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND));
+      return renderError(res, req, {
+        code: 401, error: "Not Logged In", message: "You Are Not Logged In. Please Log In To Continue.",
+        pagename: "Login", page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
+      });
+    }
+
+    if (defaultRoleRegistry.roles.size === 0) {
+      await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
+    }
+
+    const resolvedPermission = resolvePermission(permission);
+    if (hasPermission(authUser, resolvedPermission)) return next();
+
+    const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
+    if (isJsonRequest(req)) return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+      requiredPermission: resolvedPermission,
+      message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
+    }));
+    return renderError(res, req, {
+      code: 403, error: "Access Denied",
+      message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
+      pagename: "Home", page: homeRedirect,
+    });
+  } catch (err) {
+    console.error(`[mbkauthe] Permission check error:`, err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const validateSessionAndPermission = (permission: any = DEFAULT_PERMISSION, strictTokenValidation: boolean = false) => async (req: Request, res: Response, next: NextFunction) => {
+  await validateSession(req, res, async () => {
+    await checkPermission(permission)(req, res, next);
+  }, strictTokenValidation);
+};
+
+export const validateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null, strictTokenValidation: boolean = false) => async (req: Request, res: Response, next: NextFunction) => {
+  await validateSession(req, res, async () => {
+    await checkRolePermission(requiredRole, notAllowed)(req, res, next);
+  }, strictTokenValidation);
+};
+
+export const authenticate = (authentication: string) => (req: Request, res: Response, next: NextFunction) => {
+  const token = extractAuthorizationToken(req.headers?.authorization ?? (req.headers as any)?.["authorization"]);
+  if (timingSafeTokenMatch(token, authentication)) {
+    logAuth(`Authentication successful`);
+    next();
+  } else {
+    logAuth(`Authentication failed`);
+    res.status(401).send("Unauthorized");
+  }
+};
+
+export const strictValidateSession = (req: Request, res: Response, next: NextFunction) => validateSession(req, res, next, true);
+export const strictValidateSessionAndRole = (requiredRole: string | string[], notAllowed?: string | null) => validateSessionAndRole(requiredRole, notAllowed, true);
+
+export const sessVal = validateSession;
+export const sessRole = validateSessionAndRole;
+export const roleChk = checkRolePermission;
+export const strictSessVal = strictValidateSession;
+export const strictSessRole = strictValidateSessionAndRole;
+export const permChk = checkPermission;
+export const sessPerm = validateSessionAndPermission;

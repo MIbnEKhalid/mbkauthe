@@ -3,9 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, beforeAll, it, expect } from "vitest";
 
-import { SqlitePool } from "../../lib/db/sqlitePool.js";
-import { PermissionRepository } from "../../lib/repositories/PermissionRepository.js";
-import { definePermissions, collectPermissions } from "../../lib/permissions.js";
+import { SqlitePool, PermissionRepository, definePermissions, collectPermissions, syncAppPermissions } from "../../dist/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, "../../docs/schema/db.sqlite.sql");
@@ -172,7 +170,6 @@ describe("PermissionRepository — effective permissions for a user", () => {
 describe("syncAppPermissions integration", () => {
   it("does not allow an app sync to manage global permissions", async () => {
     const { repo } = createRepo();
-    const { syncAppPermissions } = await import("../../lib/permissionRegistry.js");
     const Global = definePermissions({ basic: { access: "Basic global access" } }, { appKey: "global" });
 
     await expect(syncAppPermissions(Global, { repository: repo, appKey: "global" }))
@@ -186,7 +183,6 @@ describe("syncAppPermissions integration", () => {
 
   it("registers definePermissions() output with roles and deactivates removed ones", async () => {
     const { repo } = createRepo();
-    const { syncAppPermissions } = await import("../../lib/permissionRegistry.js");
 
     const Permissions = definePermissions(
       {

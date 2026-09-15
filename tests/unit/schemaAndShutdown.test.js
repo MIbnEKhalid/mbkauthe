@@ -1,10 +1,8 @@
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { applySchema } from "../../lib/db/applySchema.js";
-import { registerGracefulShutdown, closeAllConnections } from "../../lib/db/gracefulShutdown.js";
-import { SqliteAdapter } from "../../lib/db/sqlitePool.js";
+import { applySchema, registerGracefulShutdown, closeAllConnections, SqliteAdapter } from "../../dist/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

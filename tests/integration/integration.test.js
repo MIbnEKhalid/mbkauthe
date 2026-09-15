@@ -34,12 +34,18 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { default: router } = await import('../../lib/main.js');
-const { packageJson, mbkautheVar, hashPassword, hashApiToken } = await import('../../lib/config/index.js');
-const { encryptSessionId } = await import('../../lib/config/cookies.js');
-const { dblogin } = await import('../../lib/pool.js');
-const { checkRolePermission, strictValidateSession } = await import('../../lib/middleware/auth.js');
-const { ErrorCodes } = await import('../../lib/utils/errors.js');
+const {
+  default: router,
+  packageJson,
+  mbkautheVar,
+  hashPassword,
+  hashApiToken,
+  encryptSessionId,
+  dblogin,
+  checkRolePermission,
+  strictValidateSession,
+  ErrorCodes,
+} = await import('../../dist/index.js');
 
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
 

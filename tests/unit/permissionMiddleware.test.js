@@ -2,7 +2,7 @@
 // These middleware are pure-ish (no DB) once a session user is present, so they
 // are exercised with fake req/res objects.
 import { describe, it, expect } from "vitest";
-import { checkPermission, checkRolePermission } from "../../lib/middleware/auth.js";
+import { checkPermission, checkRolePermission } from "../../dist/index.js";
 
 function callMiddleware(mw, req) {
   const res = { statusCode: null, body: null, rendered: null };

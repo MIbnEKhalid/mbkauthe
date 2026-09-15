@@ -20,11 +20,14 @@ process.env.mbkautheVar = JSON.stringify({
   MAX_SESSIONS_PER_USER: 5
 });
 
-const { dblogin } = await import('../../lib/pool.js');
-const { sqliteDialect } = await import('../../lib/db/dialects/sqlite.js');
-const { ApiTokenRepository } = await import('../../lib/repositories/ApiTokenRepository.js');
-const { hashApiToken, generatePrefixedToken } = await import('../../lib/config/security.js');
-const { default: apiTokensRouter } = await import('../../lib/routes/apiTokens.js');
+const {
+  dblogin,
+  sqliteDialect,
+  ApiTokenRepository,
+  hashApiToken,
+  generatePrefixedToken,
+  apiTokensRouter,
+} = await import('../../dist/index.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');

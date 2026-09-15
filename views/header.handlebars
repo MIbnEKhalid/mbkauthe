@@ -1,11 +1,15 @@
 <header class="top-nav">
     <div class="header-container">
-        <a class="logo" aria-label="MBK Tech Portal Home">
-            <img src="/icon.svg" alt="MBK Tech Logo" class="logo-image" />
-            <span class="logo-text">BK<span>Tech</span></span>
-            <span class="logo-comp">{{#if appName}}{{appName}}{{else}}{{#if app}}{{app}}{{else}}mbkauthe{{/if}}{{/if}}</span>
-        </a>
+        <div class="header-brand-group">
+            <a href="{{#if customURL}}{{customURL}}{{else}}/mbkauthe/{{/if}}" class="logo" aria-label="MBK Tech Portal Home">
+                <img src="/icon.svg" alt="MBK Tech Logo" class="logo-image" />
+                <span class="logo-text">BK<span>Authe</span></span>
+            </a>
+            <span class="logo-comp">{{#if appName}}{{appName}}{{else}}{{#if app}}{{app}}{{else}}portal{{/if}}{{/if}}</span>
+        </div>
 
-        {{> profilemenu}}
+        <div class="header-actions">
+            {{> profilemenu}}
+        </div>
     </div>
 </header>

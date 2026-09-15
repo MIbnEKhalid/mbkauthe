@@ -130,20 +130,20 @@
 
 <style>
 /* ==========================================================================
-   ShowMessage Component Self-Contained Styles
+   ShowMessage Component — MBKTech.org Design System Edition
    ========================================================================== */
 .showMessageOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 99999;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
 }
 
@@ -167,16 +167,18 @@ body.blur-active {
 }
 
 .messageModal {
-    background: #ffffff;
-    border: 1px solid var(--border-color, #e2e8f0);
-    border-radius: var(--radius-2xl, 1rem);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(15, 118, 110, 0.2);
+    border-radius: 16px;
     width: 90%;
     max-width: 420px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 40px -12px rgba(15, 42, 42, 0.2), 0 0 0 1px rgba(15, 118, 110, 0.08);
     transform: scale(0.95) translateY(10px);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-sans, "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
 }
 
 .showMessageOverlay.active .messageModal {
@@ -184,7 +186,7 @@ body.blur-active {
 }
 
 .messageHeader {
-    padding: 1.5rem 1.5rem 0.5rem;
+    padding: 1.75rem 1.5rem 0.5rem;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -192,55 +194,56 @@ body.blur-active {
 }
 
 .messageIcon {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
     border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
     flex-shrink: 0;
 }
 
 .messageIcon.is-info {
-    background: var(--primary-50, #f0fdfa);
-    color: var(--primary-600, #0d9488);
-    border: 1px solid rgba(13, 148, 136, 0.2);
+    background: #f0fdfa;
+    color: #0f766e;
+    border: 1px solid rgba(15, 118, 110, 0.25);
 }
 
 .messageIcon.is-error {
-    background: var(--danger-bg, #fff1f2);
-    color: var(--danger, #e11d48);
-    border: 1px solid var(--danger-border, #fecdd3);
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
 }
 
 .messageIcon.is-success {
-    background: var(--success-bg, #ecfdf5);
-    color: var(--success, #059669);
-    border: 1px solid var(--success-border, #a7f3d0);
+    background: #ecfdf5;
+    color: #16a34a;
+    border: 1px solid #a7f3d0;
 }
 
 .messageIcon.is-warning {
-    background: var(--warning-bg, #fffbeb);
-    color: var(--warning, #d97706);
-    border: 1px solid var(--warning-border, #fde68a);
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
 }
 
 .messageHeader h2 {
-    font-family: inherit;
+    font-family: var(--font-headings, "Sora", sans-serif);
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--slate-900, #0f172a);
+    letter-spacing: -0.02em;
+    color: #0b4f4a;
     margin: 0;
 }
 
 .messageBody {
     padding: 0.5rem 1.75rem 1.25rem;
     text-align: center;
-    color: var(--slate-600, #475569);
+    color: #4a5c5a;
     font-size: 0.92rem;
-    line-height: 1.5;
+    line-height: 1.55;
 }
 
 .messageBody p {
@@ -252,21 +255,23 @@ body.blur-active {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: var(--primary-50, #f0fdfa);
-    padding: 0.3rem 0.65rem;
+    background: #f0fdfa;
+    padding: 0.35rem 0.75rem;
     border-radius: 9999px;
-    font-size: 0.75rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    color: var(--primary-800, #115e59) !important;
+    font-size: 0.78rem;
+    font-family: var(--font-mono, "JetBrains Mono", monospace);
+    color: #0f766e !important;
     text-decoration: none !important;
-    border: 1px solid rgba(13, 148, 136, 0.25);
-    margin-top: 0.75rem;
+    border: 1px solid rgba(15, 118, 110, 0.25);
+    margin-top: 0.85rem;
+    font-weight: 600;
     transition: all 0.15s ease;
 }
 
 .errorCodeBadge:hover {
-    background: var(--primary-100, #ccfbf1);
-    color: var(--primary-900, #134e4a) !important;
+    background: #d7f4ee;
+    border-color: #0f766e;
+    color: #0b4f4a !important;
 }
 
 .errorCodeBadge.is-hidden {
@@ -280,26 +285,27 @@ body.blur-active {
 
 .btn-message-action {
     width: 100%;
-    background: var(--primary-600, #0d9488);
+    background: #0f766e;
     color: #ffffff;
-    border: none;
+    border: 1px solid transparent;
     padding: 0.75rem 1rem;
-    border-radius: var(--radius, 0.5rem);
+    border-radius: 8px;
     font-family: inherit;
     font-size: 0.92rem;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(15, 118, 110, 0.2);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-message-action:hover {
-    background: var(--primary-700, #0f766e);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: #0d635c;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
+    transform: translateY(-1px);
 }
 
 .btn-message-action:focus-visible {
-    outline: 2px solid var(--primary-600, #0d9488);
+    outline: 2px solid #0f766e;
     outline-offset: 2px;
 }
 </style>

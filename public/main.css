@@ -23,23 +23,49 @@
   --primary-900: #083330;
   --primary-950: #04201e;
 
-  /* Secondary & Accent */
+  /* Secondary Teal & Warm Orange Accent */
+  --secondary-50: #f0fdf9;
+  --secondary-100: #ccfbf0;
+  --secondary-200: #99f6e0;
+  --secondary-300: #5eeac5;
+  --secondary-400: #2dd4a7;
   --secondary-500: #1f8f84;
   --secondary-600: #177269;
   --secondary-700: #125650;
+  --secondary-800: #0e3f3b;
+  --secondary-900: #0a2b28;
+
+  --accent-50: #fff7ed;
+  --accent-100: #ffedd5;
+  --accent-200: #fed7aa;
+  --accent-300: #fdba74;
+  --accent-400: #fb923c;
   --accent-500: #f97316;
   --accent-600: #ea580c;
+  --accent-700: #c2410c;
 
   /* Semantic Brand Aliases */
-  --primary: var(--primary-600);
-  --primary-hover: var(--primary-700);
-  --primary-active: var(--primary-800);
+  --primary-color-ml: #0f766e;
+  --primary-light-color-ml: #d7f4ee;
+  --primary-dark-color-ml: #0b4f4a;
+  --secondary-color-ml: #1f8f84;
+  --dark-color-ml: #1f2a2a;
+  --light-color-ml: #f4f7f3;
+  --gray-color-ml: #667c79;
+  --gray-light-color-ml: #dce8e3;
+  --danger-color-ml: #dc2626;
+  --warning-color-ml: #d97706;
+  --success-color-ml: #16a34a;
+  --info-color-ml: #3b82f6;
+
+  --primary: var(--primary-color-ml);
+  --primary-hover: #0d635c;
+  --primary-active: #0b4f4a;
   --primary-light: var(--primary-50);
   --primary-soft: var(--primary-100);
-  --primary-ring: rgba(15, 118, 110, 0.18);
-  --primary-color-ml: var(--primary-600);
-  --primary-light-color-ml: var(--primary-100);
-  --primary-dark-color-ml: var(--primary-800);
+  --primary-lt: var(--primary-light-color-ml);
+  --primary-dk: var(--primary-dark-color-ml);
+  --primary-ring: rgba(15, 118, 110, 0.2);
 
   /* Slate Neutrals */
   --slate-50: #f8fafc;
@@ -54,34 +80,33 @@
   --slate-900: #0f172a;
 
   /* Surfaces & Backgrounds */
-  --body-bg: #f8fafc;
-  --bg-surface: #ffffff;
-  --bg-surface-secondary: #f8fafc;
-  --bg-surface-tertiary: #f1f5f9;
-  --surface-soft: rgba(15, 118, 110, 0.04);
+  --body-bg: var(--light-color-ml);
+  --bg-surface: rgba(255, 255, 255, 0.88);
+  --bg-surface-secondary: rgba(244, 247, 243, 0.7);
+  --bg-surface-tertiary: #e9f2ee;
+  --surface-soft: rgba(15, 118, 110, 0.05);
   --surface-muted: #f8fafc;
 
   /* Typography Colors */
-  --text-main: var(--slate-900);
-  --text-body: var(--slate-700);
-  --text-muted: var(--slate-500);
-  --text-subtle: var(--slate-400);
-  --text: var(--text-main);
-  --text-secondary: var(--text-body);
+  --text: var(--dark-color-ml);
+  --text-main: var(--dark-color-ml);
+  --text-secondary: #4a5c5a;
+  --text-body: #4a5c5a;
+  --text-muted: var(--gray-color-ml);
+  --text-disabled: #a0b2af;
   --text-light: var(--text-muted);
-  --dark-color-ml: var(--slate-900);
 
   /* Borders (Matching mbktech.org border-primary-600/15) */
-  --border-color: rgba(15, 118, 110, 0.14);
+  --border-color: rgba(15, 118, 110, 0.15);
   --border-color-light: rgba(15, 118, 110, 0.08);
-  --border-strong: rgba(15, 118, 110, 0.25);
+  --border-strong: rgba(15, 118, 110, 0.28);
   --border-focus: var(--primary-600);
   --muted-border: var(--border-color);
 
   /* Status & Feedback */
-  --success: #059669;
-  --success-bg: #ecfdf5;
-  --success-border: #a7f3d0;
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
   --success-color-ml: var(--success);
 
   --warning: #d97706;
@@ -100,18 +125,19 @@
   --info-color-ml: var(--info);
 
   /* Typography Stacks (Direct from mbktech.org) */
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-headings: 'Sora', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-family-headings: 'Sora', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-family);
+  --font-headings: var(--font-family-headings);
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-family: var(--font-sans);
-  --font-family-headings: var(--font-headings);
 
   /* Shadows (Matching mbktech.org theme) */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 10px 15px -3px rgba(15, 118, 110, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 20px 25px -5px rgba(15, 118, 110, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 12px 28px -6px rgba(15, 118, 110, 0.08), 0 0 0 1px rgba(15, 118, 110, 0.12);
+  --shadow-card: 0 4px 20px rgba(15, 118, 110, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
   --shadow-dropdown: 0 12px 30px rgba(15, 42, 42, 0.14), 0 4px 10px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 25px rgba(15, 118, 110, 0.25);
 
   /* Corner Radii (Matching mbktech.org) */
   --radius-xs: 4px;
@@ -142,6 +168,7 @@
 html {
   font-size: 16px;
   line-height: 1.5;
+  scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -149,21 +176,54 @@ html {
 }
 
 body {
+  font-family: var(--font-family);
+  background:
+    radial-gradient(circle at 12% 14%, rgba(16, 185, 129, 0.12), transparent 44%),
+    radial-gradient(circle at 86% 8%, rgba(244, 114, 38, 0.12), transparent 40%),
+    linear-gradient(160deg, #eef7f2 0%, #f8fbf7 52%, #eaf2ef 100%);
+  background-attachment: fixed;
+  color: var(--text);
   min-height: 100vh;
-  background-color: var(--body-bg);
-  color: var(--text-body);
-  font-family: var(--font-sans);
+  line-height: 1.6;
+  font-size: 15px;
   display: flex;
   flex-direction: column;
   position: relative;
+  isolation: isolate;
   overflow-x: hidden;
+}
+
+/* Ambient glowing floating blobs (matching mbktech.org) */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  width: 320px;
+  height: 320px;
+  left: -80px;
+  top: 15vh;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.18) 0%, rgba(15, 118, 110, 0) 70%);
+}
+
+body::after {
+  width: 360px;
+  height: 360px;
+  right: -100px;
+  bottom: 12vh;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.16) 0%, rgba(251, 146, 60, 0) 72%);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-headings);
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--text-main);
+  color: var(--dark-color-ml);
 }
 
 code, pre, kbd {
@@ -187,17 +247,17 @@ code, pre, kbd {
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 1px 1px, rgba(15, 118, 110, 0.07) 1px, transparent 0);
+    radial-gradient(circle at 1px 1px, rgba(15, 118, 110, 0.08) 1px, transparent 0);
   background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 50%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 50%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 50%, transparent 100%);
 }
 
 .auth-bg-glow {
   position: absolute;
   border-radius: 9999px;
   filter: blur(110px);
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .auth-bg-glow.glow-1 {
@@ -225,7 +285,7 @@ code, pre, kbd {
   position: sticky;
   top: 0;
   width: 100%;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(15, 118, 110, 0.12);
@@ -234,18 +294,25 @@ code, pre, kbd {
 }
 
 .header-container {
-  max-width: 1280px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.5rem;
   text-decoration: none;
   color: var(--text-main);
   transition: var(--transition-fast);
@@ -256,15 +323,15 @@ code, pre, kbd {
 }
 
 .logo-image {
-  width: 28px;
   height: 28px;
+  width: auto;
   object-fit: contain;
 }
 
 .logo-text {
   font-family: var(--font-headings);
   font-weight: 800;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   letter-spacing: -0.025em;
   color: var(--slate-900);
 }
@@ -274,17 +341,18 @@ code, pre, kbd {
 }
 
 .logo-comp {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.6rem;
   font-size: 0.72rem;
   font-weight: 700;
-  font-family: var(--font-headings);
+  font-family: var(--font-mono);
   color: var(--primary-700);
   background: var(--primary-50);
-  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(15, 118, 110, 0.2);
   border-radius: var(--radius-full);
-  border: 1px solid rgba(15, 118, 110, 0.18);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-left: 0.35rem;
 }
 
 /* ==========================================================================
@@ -302,18 +370,24 @@ code, pre, kbd {
 }
 
 .auth-card {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-2xl);
+  border-radius: 16px;
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
   transition: var(--transition);
 }
 
+.auth-card:hover {
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
 .login-box-split {
   width: 100%;
-  max-width: 900px;
+  max-width: 920px;
 }
 
 .login-box-single {
@@ -330,7 +404,7 @@ code, pre, kbd {
 
 /* Split Sidebar (Brand & Social) */
 .login-sidebar {
-  background: #fafcfb;
+  background: linear-gradient(180deg, rgba(240, 253, 250, 0.85) 0%, rgba(255, 255, 255, 0.65) 100%);
   border-right: 1px solid var(--border-color);
   padding: 2.5rem 2rem;
   display: flex;
@@ -760,9 +834,9 @@ code, pre, kbd {
   gap: 0.6rem;
   width: 100%;
   height: 46px;
-  background: var(--surface);
-  color: var(--text-primary);
-  border: 1.5px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--slate-800);
+  border: 1px solid var(--border-color);
   padding: 0.75rem 1.4rem;
   border-radius: var(--radius);
   font-family: var(--font-headings);
@@ -777,7 +851,7 @@ code, pre, kbd {
 
 .btn-passkey:hover:not(:disabled) {
   background: var(--primary-50);
-  border-color: var(--primary-500);
+  border-color: rgba(15, 118, 110, 0.35);
   color: var(--primary-700);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);

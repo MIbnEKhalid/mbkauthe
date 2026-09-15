@@ -78,11 +78,11 @@ app.use(
 app.listen(port, () => {
   console.log(`\n==================================================`);
   console.log(`🚀 [MBKAuthe DevServer] Running at: http://localhost:${port}`);
-  console.log(`🔑 Login page:      http://localhost:${port}/mbkauthe/login`);
+  console.log(`🔑 Login page:       http://localhost:${port}/mbkauthe/login`);
   console.log(`ℹ️  Info page:       http://localhost:${port}/mbkauthe/info`);
-  console.log(`🩺 Health check:    http://localhost:${port}/mbkauthe/api/health`);
-  console.log(`📊 DB logs:        http://localhost:${port}/mbkauthe/db`);
-  console.log(`🧪 Test page:       http://localhost:${port}/mbkauthe/test`);
+  console.log(`🩺 Health check:     http://localhost:${port}/mbkauthe/api/health`);
+  console.log(`📊 DB logs:          http://localhost:${port}/mbkauthe/db`);
+  console.log(`🧪 Test page:        http://localhost:${port}/mbkauthe/test`);
   console.log(`🛠️  Dev 2FA preview: http://localhost:${port}/dev/2fa`);
   console.log(`🛠️  Dev CLI preview: http://localhost:${port}/dev/device-approval`);
   console.log(`🛠️  Dev 500 error:   http://localhost:${port}/dev/500`);

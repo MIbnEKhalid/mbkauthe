@@ -221,6 +221,8 @@ describe('Config Resolution and Validation', () => {
 
   describe('3-Tier Source Precedence and Lowercase Normalization', () => {
     it('allows access via lowercase, uppercase, and camelCase properties', () => {
+      delete process.env.mbkautheVar;
+      delete process.env.mbkauthShared;
       process.env.app_name = 'mycoolapp';
       process.env.main_secret_token = 'secret-tok-123';
       process.env.session_secret_key = 'session-key-32-chars-long-valid!';
@@ -229,6 +231,7 @@ describe('Config Resolution and Validation', () => {
       process.env.domain = 'example.com';
       process.env.db_type = 'sqlite';
       process.env.sqlite_path = './test.sqlite';
+      process.env.login_redirect_url = '/dashboard';
 
       const config = validateConfiguration();
       // Lowercase
@@ -329,4 +332,66 @@ describe('Config Resolution and Validation', () => {
       expect(config.sqlite_path).toBe('./test.sqlite');
     });
   });
+
+  describe('OAuth Providers Configuration Extraction', () => {
+    it('extracts top-level provider objects like { GITHUB: { LOGIN_ENABLED: "true", CLIENT_ID: "..." } } from mbkautheVar', () => {
+      delete process.env.mbkauthShared;
+      process.env.mbkautheVar = JSON.stringify({
+        APP_NAME: 'oauth-app',
+        MAIN_SECRET_TOKEN: 'secret-123',
+        SESSION_SECRET_KEY: 'session-secret-32-chars-long-ok',
+        IS_DEPLOYED: 'false',
+        MBKAUTH_TWO_FA_ENABLE: 'false',
+        DOMAIN: 'localhost',
+        DB_TYPE: 'sqlite',
+        SQLITE_PATH: './test.sqlite',
+        GITHUB: {
+          LOGIN_ENABLED: 'true',
+          CLIENT_ID: 'gh-id-123',
+          CLIENT_SECRET: 'gh-sec-456',
+        },
+        GOOGLE: {
+          LOGIN_ENABLED: 'true',
+          CLIENT_ID: 'gg-id-123',
+          CLIENT_SECRET: 'gg-sec-456',
+        },
+      });
+
+      const config = validateConfiguration();
+      expect(config.OAUTH_PROVIDERS).toBeDefined();
+      expect(config.OAUTH_PROVIDERS.github).toBeDefined();
+      expect(config.OAUTH_PROVIDERS.github.CLIENT_ID || config.OAUTH_PROVIDERS.github.client_id).toBe('gh-id-123');
+      expect(config.OAUTH_PROVIDERS.google).toBeDefined();
+      expect(config.OAUTH_PROVIDERS.google.CLIENT_ID || config.OAUTH_PROVIDERS.google.client_id).toBe('gg-id-123');
+    });
+
+    it('extracts nested OAUTH_PROVIDERS JSON from standalone process.env.OAUTH_PROVIDERS', () => {
+      delete process.env.mbkautheVar;
+      delete process.env.mbkauthShared;
+
+      process.env.APP_NAME = 'oauth-app-2';
+      process.env.MAIN_SECRET_TOKEN = 'secret-123';
+      process.env.SESSION_SECRET_KEY = 'session-secret-32-chars-long-ok';
+      process.env.IS_DEPLOYED = 'false';
+      process.env.MBKAUTH_TWO_FA_ENABLE = 'false';
+      process.env.DOMAIN = 'localhost';
+      process.env.DB_TYPE = 'sqlite';
+      process.env.SQLITE_PATH = './test.sqlite';
+
+      process.env.OAUTH_PROVIDERS = JSON.stringify({
+        microsoft: {
+          login_enabled: true,
+          client_id: 'ms-id',
+          client_secret: 'ms-secret',
+          tenant: 'common',
+        },
+      });
+
+      const config = validateConfiguration();
+      expect(config.OAUTH_PROVIDERS).toBeDefined();
+      expect(config.OAUTH_PROVIDERS.microsoft).toBeDefined();
+      expect(config.OAUTH_PROVIDERS.microsoft.client_id).toBe('ms-id');
+    });
+  });
 });
+

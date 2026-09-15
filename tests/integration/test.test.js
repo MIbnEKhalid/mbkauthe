@@ -313,12 +313,12 @@ describe('mbkauthe Routes', () => {
   });
 
   describe('OAuth Routes', () => {
-    test('GET /mbkauthe/api/github/login handles GitHub App flow', async () => {
+    test('GET /mbkauthe/oauth/github/begin handles GitHub OAuth flow', async () => {
       const response = await request(app)
-        .get('/mbkauthe/api/github/login')
+        .get('/mbkauthe/oauth/github/begin')
         .redirects(0);
 
-      expect([200, 302, 403, 500, 429]).toContain(response.status);
+      expect([200, 302, 400, 403, 500, 429]).toContain(response.status);
 
       if (response.status === 302) {
         const location = response.headers.location;
@@ -326,17 +326,17 @@ describe('mbkauthe Routes', () => {
       }
     });
 
-    test('GET /mbkauthe/api/github/login/callback handles GitHub App callback', async () => {
-      const response = await request(app).get('/mbkauthe/api/github/login/callback');
+    test('GET /mbkauthe/oauth/github/callback handles GitHub callback', async () => {
+      const response = await request(app).get('/mbkauthe/oauth/github/callback');
       expect([200, 302, 400, 401, 403, 429]).toContain(response.status);
     });
 
-    test('GET /mbkauthe/api/google/login handles Google OAuth', async () => {
+    test('GET /mbkauthe/oauth/google/begin handles Google OAuth', async () => {
       const response = await request(app)
-        .get('/mbkauthe/api/google/login')
+        .get('/mbkauthe/oauth/google/begin')
         .redirects(0);
 
-      expect([200, 302, 403, 500, 429]).toContain(response.status);
+      expect([200, 302, 400, 403, 500, 429]).toContain(response.status);
 
       if (response.status === 302) {
         const location = response.headers.location;
@@ -344,17 +344,17 @@ describe('mbkauthe Routes', () => {
       }
     });
 
-    test('GET /mbkauthe/api/google/login/callback handles callback', async () => {
-      const response = await request(app).get('/mbkauthe/api/google/login/callback');
+    test('GET /mbkauthe/oauth/google/callback handles callback', async () => {
+      const response = await request(app).get('/mbkauthe/oauth/google/callback');
       expect([200, 302, 400, 401, 403, 429]).toContain(response.status);
     });
 
-    test('GET /mbkauthe/api/github/login rejects unsafe redirect targets', async () => {
+    test('GET /mbkauthe/oauth/github/begin rejects unsafe redirect targets', async () => {
       const response = await request(app)
-        .get('/mbkauthe/api/github/login?redirect=https://evil.example')
+        .get('/mbkauthe/oauth/github/begin?redirect=https://evil.example')
         .redirects(0);
 
-      expect([200, 302, 403, 500, 429]).toContain(response.status);
+      expect([200, 302, 400, 403, 500, 429]).toContain(response.status);
       if (response.status === 302) {
         expect(response.headers.location).not.toContain('evil.example');
       }

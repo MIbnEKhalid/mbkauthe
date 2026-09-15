@@ -39,10 +39,10 @@ export {
 } from "./http/session/accountCookies.js";
 
 // 2. Database Adapters, Dialects, Pools, and Schema
-export { IDatabaseAdapter, QueryResult } from "./db/adapters/IDatabaseAdapter.js";
-export { SqliteAdapter, SqliteAdapterOptions, SqlitePool } from "./db/adapters/SqliteAdapter.js";
+export { type IDatabaseAdapter, type QueryResult } from "./db/adapters/IDatabaseAdapter.js";
+export { SqliteAdapter, type SqliteAdapterOptions, SqlitePool } from "./db/adapters/SqliteAdapter.js";
 export { PostgresAdapter } from "./db/adapters/PostgresAdapter.js";
-export { IDialect } from "./db/dialects/IDialect.js";
+export { type IDialect } from "./db/dialects/IDialect.js";
 export { postgresDialect } from "./db/dialects/PostgresDialect.js";
 export { sqliteDialect } from "./db/dialects/SqliteDialect.js";
 export { applySchema } from "./db/schema/applySchema.js";
@@ -53,7 +53,7 @@ export { dblogin, dialect, dbType, runWithRequestContext, getRequestContext } fr
 export { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog, attachDevQueryLogger } from "./db/dbQueryLogger.js";
 
 // 3. Database Repositories
-export { BaseRepository, BaseRepositoryOptions } from "./db/repositories/BaseRepository.js";
+export { BaseRepository, type BaseRepositoryOptions } from "./db/repositories/BaseRepository.js";
 export { UserRepository, userRepository } from "./db/repositories/UserRepository.js";
 export { SessionRepository, sessionRepository } from "./db/repositories/SessionRepository.js";
 export { DeviceTrustRepository, deviceTrustRepository } from "./db/repositories/DeviceTrustRepository.js";
@@ -61,62 +61,70 @@ export { AuthRepository, authRepository } from "./db/repositories/AuthRepository
 export { PermissionRepository, permissionRepository } from "./db/repositories/PermissionRepository.js";
 export { ApiTokenRepository, apiTokenRepository } from "./db/repositories/ApiTokenRepository.js";
 export { CliAuthSessionRepository, cliAuthSessionRepository } from "./db/repositories/CliAuthSessionRepository.js";
+export { OAuthAccountRepository, oAuthAccountRepository } from "./db/repositories/OAuthAccountRepository.js";
+
 
 // 4. Domain Events & Token Engine
 export {
   authEvents,
   AuthEventEmitter,
   emitAuthEvent,
-  AuthLoginSuccessEvent,
-  AuthLoginFailedEvent,
-  AuthLogoutEvent,
-  AuthTokenCreatedEvent,
-  AuthTokenRevokedEvent,
-  AuthAccountSwitchedEvent,
-  AuthCliApprovedEvent,
-  AuthCliDeniedEvent,
-  AuthEventMap,
-  AuthEventName,
-  AuthEventListener,
+  type AuthLoginSuccessEvent,
+  type AuthLoginFailedEvent,
+  type AuthLogoutEvent,
+  type AuthTokenCreatedEvent,
+  type AuthTokenRevokedEvent,
+  type AuthAccountSwitchedEvent,
+  type AuthCliApprovedEvent,
+  type AuthCliDeniedEvent,
+  type AuthEventMap,
+  type AuthEventName,
+  type AuthEventListener,
 } from "./core/events/index.js";
 export {
   TokenEngine,
   TOKEN_PREFIXES,
-  TokenType,
-  ParsedToken,
+  type TokenType,
+  type ParsedToken,
 } from "./core/tokens/index.js";
 export {
   validateLoginDto,
   validateTotpDto,
   validateCreateApiTokenDto,
   validateCliDeviceCodeDto,
-  LoginDto,
-  VerifyTotpDto,
-  CreateApiTokenDto,
-  CliDeviceCodeDto,
+  type LoginDto,
+  type VerifyTotpDto,
+  type CreateApiTokenDto,
+  type CliDeviceCodeDto,
 } from "./core/validation/index.js";
 
 // 5. Service Layer
 export {
   AuthService,
   authService,
-  LoginOptions,
-  LoginResult,
+  type LoginOptions,
+  type LoginResult,
   ApiTokenService,
   apiTokenService,
-  CreateTokenResult,
+  type CreateTokenResult,
   CliAuthService,
   cliAuthService,
-  InitiateCliAuthParams,
-  CliAuthInitiateResult,
-  PollCliAuthResult,
+  type InitiateCliAuthParams,
+  type CliAuthInitiateResult,
+  type PollCliAuthResult,
   OAuthService,
   oAuthService,
-  OAuthUserData,
+  type OAuthUserData,
   syncAppPermissions,
-  SyncAppPermissionsOptions,
-  SyncResult,
+  type SyncAppPermissionsOptions,
+  type SyncResult,
 } from "./services/index.js";
+
+
+// 5b. OAuth & OIDC Provider-Neutral Engine & createAuth DI Factory
+export * from "./oauth/index.js";
+export { createAuth, MbkAuthInstance, type AuthConfig, type OAuthConfig, type AuthRepositoriesConfig } from "./core/createAuth.js";
+
 
 // 6. Diagnostics & Observability
 export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";

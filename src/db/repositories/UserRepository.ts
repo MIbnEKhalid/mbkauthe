@@ -2,11 +2,6 @@ import { BaseRepository } from "./BaseRepository.js";
 import { AuthUser } from "../../core/types/user.types.js";
 import { dblogin, dialect as defaultDialect } from "../pool.js";
 
-const OAUTH_PROVIDERS: Record<string, { table: string; idColumn: string; queryName: string }> = {
-  github: { table: "mbkcore_user_github", idColumn: "github_id", queryName: "github-login-get-user" },
-  google: { table: "mbkcore_user_google", idColumn: "google_id", queryName: "google-login-get-user" }
-};
-
 export function normalizeUserRow(row: any): AuthUser | null {
   if (!row || typeof row !== "object") return row;
   let permissions = row.permissions;
@@ -29,18 +24,12 @@ export class UserRepository extends BaseRepository {
     super({ db: options.db || dblogin, dialect: options.dialect || defaultDialect });
   }
 
-  resolveOAuthProvider(provider: string) {
-    const config = OAUTH_PROVIDERS[String(provider || "").toLowerCase()];
-    if (!config) throw new Error(`Unsupported OAuth provider: ${provider}`);
-    return config;
-  }
-
   async getUserWithTwoFA(username: string): Promise<AuthUser | null> {
     const query = `
       SELECT u.user_id, u.username, u.password_hash, u.full_name, u.image,
              u.role, u.allowed_apps, u.is_active, tfa.is_enabled
       FROM mbkcore_users u
-      LEFT JOIN mbkcore_user_two_fa tfa ON u.username = tfa.username
+      LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
       WHERE u.username = $1
       LIMIT 1
     `;
@@ -75,24 +64,15 @@ export class UserRepository extends BaseRepository {
     return result.rows?.[0] || null;
   }
 
-  async getTwoFASecret(username: string): Promise<{ secret: string; is_enabled: boolean } | null> {
-    const query = `SELECT secret, is_enabled FROM mbkcore_user_two_fa WHERE username = $1 LIMIT 1`;
+  async getTwoFASecret(username: string): Promise<{ secret: string; two_fa_secret?: string; is_enabled: boolean } | null> {
+    const query = `SELECT two_fa_secret, is_enabled FROM mbkcore_two_factor WHERE username = $1 LIMIT 1`;
     const result = await this.executeRaw({ name: "get-user-2fa-secret", text: query, values: [username] });
-    return result.rows?.[0] || null;
-  }
-
-  async getOAuthUser(provider: string, profileId: string | number): Promise<AuthUser | null> {
-    const config = this.resolveOAuthProvider(provider);
-    const query = `
-      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, tfa.is_enabled
-      FROM ${config.table} p
-      JOIN mbkcore_users u ON p.username = u.username
-      LEFT JOIN mbkcore_user_two_fa tfa ON u.username = tfa.username
-      WHERE p.${config.idColumn} = $1
-      LIMIT 1
-    `;
-    const result = await this.executeRaw({ name: config.queryName, text: query, values: [profileId] });
-    return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
+    if (!result.rows?.[0]) return null;
+    return {
+      secret: result.rows[0].two_fa_secret,
+      two_fa_secret: result.rows[0].two_fa_secret,
+      is_enabled: result.rows[0].is_enabled,
+    };
   }
 }
 

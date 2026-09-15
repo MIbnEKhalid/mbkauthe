@@ -12,6 +12,7 @@ import { authService } from "../../services/AuthService.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
 import { completeLoginProcess, checkTrustedDevice, clearProfilePicCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
 import { createLogger } from "../../utils/logger.js";
+import { isOAuthProviderConfigured, getEnabledOAuthProvidersUI } from "../../oauth/providers/loader.js";
 
 const router = express.Router();
 const logAuth = createLogger("auth");
@@ -376,10 +377,17 @@ router.post("/api/logout-all", LoginLimit, async (req, res) => {
 
 router.get("/login", LoginLimit, csrfProtection, (req, res) => {
   const lastLogin = typeof (req as any).cookies?.last_login_method === "string" ? (req as any).cookies.last_login_method : null;
+  const oauthProviders = mbkautheVar.OAUTH_PROVIDERS || mbkautheVar.oauth_providers;
+  const githubEnabled = isOAuthProviderConfigured("github", oauthProviders) ? "true" : "false";
+  const googleEnabled = isOAuthProviderConfigured("google", oauthProviders) ? "true" : "false";
+  const enabledOAuthProviders = getEnabledOAuthProvidersUI(oauthProviders, lastLogin);
+
   return res.render("pages/loginmbkauthe.handlebars", {
     layout: false,
-    githubLoginEnabled: mbkautheVar.GITHUB_LOGIN_ENABLED,
-    googleLoginEnabled: mbkautheVar.GOOGLE_LOGIN_ENABLED,
+    githubLoginEnabled: githubEnabled,
+    googleLoginEnabled: googleEnabled,
+    enabledOAuthProviders,
+    hasOAuthProviders: enabledOAuthProviders.length > 0,
     customURL: mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard",
     cookieDomain: getCookieDomain() || "",
     userLoggedIn: Boolean((req as any).session?.user),

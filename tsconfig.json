@@ -19,5 +19,5 @@
     "allowJs": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "views", "public"]
+  "exclude": ["node_modules", "dist", "tests", "views", "public", "src/devServer.ts"]
 }

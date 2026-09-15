@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MBKAuthConfig } from "./types.js";
+import { MBKAuthConfig, OAuthProvidersConfig } from "./types.js";
 import { setPasswordPepper } from "../core/security/password.js";
 
 dotenv.config();
@@ -40,10 +40,8 @@ export function normalizeKey(key: string): string {
 const CANONICAL_KEYS = [
   "app_name", "device_trust_duration_days", "main_secret_token", "session_secret_key",
   "is_deployed", "db_type", "login_db", "sqlite_path", "mbkauth_two_fa_enable",
-  "cookie_expire_time", "domain", "login_redirect_url", "github_login_enabled",
-  "github_app_client_id", "github_app_client_secret", "github_client_id",
-  "github_client_secret", "google_login_enabled", "google_client_id",
-  "google_client_secret", "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled"
+  "cookie_expire_time", "domain", "login_redirect_url", "oauth_providers",
+  "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled"
 ].map((k) => ({ lower: k, upper: k.toUpperCase() }));
 
 const DEFAULT_CONFIG: Record<string, any> = {
@@ -56,17 +54,15 @@ const DEFAULT_CONFIG: Record<string, any> = {
   mbkauth_two_fa_enable: "false",
   cookie_expire_time: 2,
   login_redirect_url: "/dashboard",
-  github_login_enabled: "false",
-  google_login_enabled: "false",
+  oauth_providers: {},
   max_sessions_per_user: 5,
   cli_auth_enabled: "false",
 };
 
-const BOOLEAN_KEYS = new Set(["github_login_enabled", "google_login_enabled", "mbkauth_two_fa_enable", "is_deployed", "cli_auth_enabled"]);
+const BOOLEAN_KEYS = new Set(["mbkauth_two_fa_enable", "is_deployed", "cli_auth_enabled"]);
 const STRING_KEYS = new Set([
   "app_name", "main_secret_token", "session_secret_key", "db_type", "login_db", "sqlite_path",
-  "domain", "login_redirect_url", "github_app_client_id", "github_app_client_secret",
-  "github_client_id", "github_client_secret", "google_client_id", "google_client_secret", "cli_auth_base_url"
+  "domain", "login_redirect_url", "cli_auth_base_url"
 ]);
 const REQUIRED_KEYS = ["app_name", "main_secret_token", "session_secret_key", "is_deployed", "mbkauth_two_fa_enable", "domain"];
 
@@ -215,6 +211,78 @@ function createConfigProxy(target: any): MBKAuthConfig {
   });
 }
 
+const KNOWN_OAUTH_PROVIDERS = new Set(["github", "google", "microsoft", "azure", "discord", "apple", "oidc"]);
+
+/**
+ * Extracts and consolidates OAuth providers from JSON env, top-level objects, or legacy env keys.
+ */
+function extractOAuthProviders(
+  mbkautheVarSource: Record<string, any>,
+  mbkauthSharedSource: Record<string, any>
+): OAuthProvidersConfig {
+  const result: Record<string, any> = {};
+
+  // 1. Direct env variable OAUTH_PROVIDERS
+  const directJson = parseJsonEnv("OAUTH_PROVIDERS") || parseJsonEnv("oauth_providers");
+  if (directJson && typeof directJson === "object") {
+    Object.assign(result, directJson);
+  }
+
+  // 2. Nested in mbkauthShared
+  const sharedProviders = findValue(mbkauthSharedSource, "oauth_providers") || findValue(mbkauthSharedSource, "oauth");
+  if (sharedProviders && typeof sharedProviders === "object") {
+    Object.assign(result, sharedProviders);
+  }
+
+  // 3. Nested in mbkautheVar
+  const varProviders = findValue(mbkautheVarSource, "oauth_providers") || findValue(mbkautheVarSource, "oauth");
+  if (varProviders && typeof varProviders === "object") {
+    Object.assign(result, varProviders);
+  }
+
+  // 4. Top-level provider objects in mbkauthShared & mbkautheVar
+  // e.g. { "GITHUB": { "LOGIN_ENABLED": "true", "CLIENT_ID": "...", "CLIENT_SECRET": "..." } }
+  const scanTopLevel = (source: Record<string, any>) => {
+    for (const [key, val] of Object.entries(source)) {
+      if (!val || typeof val !== "object" || Array.isArray(val)) continue;
+      const lowerKey = key.toLowerCase();
+      const hasClientDetails = val.client_id !== undefined || val.clientId !== undefined || val.CLIENT_ID !== undefined;
+      const hasLoginEnabled = val.login_enabled !== undefined || val.loginEnabled !== undefined || val.LOGIN_ENABLED !== undefined;
+      if (KNOWN_OAUTH_PROVIDERS.has(lowerKey) || hasClientDetails || hasLoginEnabled) {
+        result[lowerKey] = { ...(result[lowerKey] || {}), ...val };
+      }
+    }
+  };
+
+  scanTopLevel(mbkauthSharedSource);
+  scanTopLevel(mbkautheVarSource);
+
+  // 5. Legacy flat fallback if still present
+  const legacyGithubId = getSimpleEnvValue("github_app_client_id") || getSimpleEnvValue("github_client_id");
+  const legacyGithubSecret = getSimpleEnvValue("github_app_client_secret") || getSimpleEnvValue("github_client_secret");
+  const legacyGithubEnabled = getSimpleEnvValue("github_login_enabled");
+  if (legacyGithubId && !result.github) {
+    result.github = {
+      client_id: legacyGithubId,
+      client_secret: legacyGithubSecret || "",
+      login_enabled: legacyGithubEnabled !== undefined ? legacyGithubEnabled : "true",
+    };
+  }
+
+  const legacyGoogleId = getSimpleEnvValue("google_client_id");
+  const legacyGoogleSecret = getSimpleEnvValue("google_client_secret");
+  const legacyGoogleEnabled = getSimpleEnvValue("google_login_enabled");
+  if (legacyGoogleId && !result.google) {
+    result.google = {
+      client_id: legacyGoogleId,
+      client_secret: legacyGoogleSecret || "",
+      login_enabled: legacyGoogleEnabled !== undefined ? legacyGoogleEnabled : "true",
+    };
+  }
+
+  return result;
+}
+
 function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<string, any>; errors: string[] } {
   const errors: string[] = [];
   const mbkautheVarSource = { ...(parseJsonEnv("mbkautheVar") || {}), ...getPrefixedEnvVars("mbkautheVar") };
@@ -222,6 +290,8 @@ function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<st
   const resolved: Record<string, any> = {};
 
   for (const { lower, upper } of CANONICAL_KEYS) {
+    if (lower === "oauth_providers") continue; // handled specially below
+
     const simpleVal = getSimpleEnvValue(lower);
     if (hasValue(simpleVal)) {
       setBoth(resolved, lower, upper, simpleVal);
@@ -242,6 +312,10 @@ function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<st
       setBoth(resolved, lower, upper, defVal);
     }
   }
+
+  // Extract unified OAuth providers
+  const oauthProviders = extractOAuthProviders(mbkautheVarSource, mbkauthSharedSource);
+  setBoth(resolved, "oauth_providers", "OAUTH_PROVIDERS", oauthProviders);
 
   const knownNorms = new Set(CANONICAL_KEYS.map((k) => normalizeKey(k.lower)));
   const resolveCustomKey = (k: string) => {

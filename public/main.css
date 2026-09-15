@@ -912,14 +912,49 @@ header,
 
 .btn-google-side i,
 .mobile-google-btn i,
+.btn-social[data-provider="google"] i,
 #googleLoginBtn i {
   color: #4285f4;
   font-size: 1.05rem;
 }
 
-.btn-switch-side i,
+.btn-github-side i,
 .mobile-github-btn i,
+.btn-social[data-provider="github"] i,
 #githubLoginBtn i {
+  font-size: 1.05rem;
+}
+
+.btn-microsoft-side i,
+.mobile-microsoft-btn i,
+.btn-social[data-provider="microsoft"] i {
+  color: #00a4ef;
+  font-size: 1.05rem;
+}
+
+.btn-discord-side i,
+.mobile-discord-btn i,
+.btn-social[data-provider="discord"] i {
+  color: #5865f2;
+  font-size: 1.05rem;
+}
+
+.btn-apple-side i,
+.mobile-apple-btn i,
+.btn-social[data-provider="apple"] i {
+  color: #111827;
+  font-size: 1.05rem;
+}
+
+[data-theme="dark"] .btn-apple-side i,
+[data-theme="dark"] .mobile-apple-btn i,
+[data-theme="dark"] .btn-social[data-provider="apple"] i {
+  color: #f9fafb;
+}
+
+.btn-generic-side i,
+.mobile-generic-btn i {
+  color: var(--primary-color-ml);
   font-size: 1.05rem;
 }
 

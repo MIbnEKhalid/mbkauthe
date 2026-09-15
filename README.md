@@ -15,7 +15,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x_ESM-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Website](https://img.shields.io/badge/website-mbkauthe.mbktech.org-0284c7.svg?style=flat-square)](https://mbkauthe.mbktech.org)
-[![Tests](https://img.shields.io/badge/tests-297_passed-success.svg?style=flat-square)](https://github.com/MIbnEKhalid/mbkauthe)
 [![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
 [![Check npm version](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml/badge.svg)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml)
 

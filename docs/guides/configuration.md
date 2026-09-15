@@ -8,7 +8,7 @@ MBKAuthe v6 features a configuration system that validates, normalizes, and prox
 
 MBKAuthe loads configuration values in the following order of precedence (highest to lowest):
 
-1. **Direct Environment Variables**: `APP_NAME`, `DOMAIN`, `SESSION_SECRET_KEY`, etc.
+1. **Direct Environment Variables**: `APP_NAME`, `DOMAIN`, `SESSION_SECRET_KEY`, `OAUTH_PROVIDERS`, etc.
 2. **JSON-Encoded Objects**: `process.env.mbkautheVar` or `process.env.mbkauthShared` (parsed as JSON).
 3. **Prefixed Environment Variables**: `mbkautheVar.APP_NAME`, `mbkautheVar_APP_NAME`, `mbkauthShared.DOMAIN`.
 4. **Built-in Defaults**: Fallback default values for optional settings.
@@ -34,14 +34,67 @@ MBKAuthe loads configuration values in the following order of precedence (highes
 | `MAX_SESSIONS_PER_USER` | `number` | `5` | Maximum active concurrent sessions allowed per user before oldest session eviction. |
 | `CLI_AUTH_ENABLED` | `boolean` | `"false"` | Enables the RFC 8628 CLI Device Login endpoints. |
 | `CLI_AUTH_BASE_URL` | `string` | `undefined` | Custom base verification URL displayed to CLI users. |
-| `GITHUB_LOGIN_ENABLED` | `boolean` | `"false"` | Enables GitHub OAuth / GitHub App login flow. |
-| `GITHUB_APP_CLIENT_ID` | `string` | `undefined` | GitHub App Client ID. |
-| `GITHUB_APP_CLIENT_SECRET` | `string` | `undefined` | GitHub App Client Secret. |
-| `GITHUB_CLIENT_ID` | `string` | `undefined` | Legacy GitHub OAuth Client ID (if not using GitHub App). |
-| `GITHUB_CLIENT_SECRET` | `string` | `undefined` | Legacy GitHub OAuth Client Secret. |
-| `GOOGLE_LOGIN_ENABLED` | `boolean` | `"false"` | Enables Google OAuth2 login flow. |
-| `GOOGLE_CLIENT_ID` | `string` | `undefined` | Google Cloud OAuth 2.0 Client ID. |
-| `GOOGLE_CLIENT_SECRET` | `string` | `undefined` | Google Cloud OAuth 2.0 Client Secret. |
+| `OAUTH_PROVIDERS` | `object` \| `JSON string` | `{}` | Unified OAuth/OIDC providers configuration (GitHub, Google, Microsoft, Discord, Apple, Custom OIDC). |
+
+---
+
+## Unified OAuth Configuration (`OAUTH_PROVIDERS`)
+
+MBKAuthe replaces scattered OAuth environment variables with a structured, provider-neutral configuration object.
+
+### Example in `mbkautheVar`:
+
+```json
+{
+  "APP_NAME": "portal",
+  "MAIN_SECRET_TOKEN": "...",
+  "SESSION_SECRET_KEY": "...",
+  "IS_DEPLOYED": "true",
+  "DOMAIN": "mbktech.org",
+  "GITHUB": {
+    "LOGIN_ENABLED": "true",
+    "CLIENT_ID": "gh-app-client-id",
+    "CLIENT_SECRET": "gh-app-client-secret"
+  },
+  "GOOGLE": {
+    "LOGIN_ENABLED": "true",
+    "CLIENT_ID": "google-client-id.apps.googleusercontent.com",
+    "CLIENT_SECRET": "google-client-secret"
+  },
+  "MICROSOFT": {
+    "LOGIN_ENABLED": "true",
+    "CLIENT_ID": "azure-client-id",
+    "CLIENT_SECRET": "azure-client-secret",
+    "TENANT": "common"
+  }
+}
+```
+
+Or nested under `OAUTH_PROVIDERS`:
+
+```json
+{
+  "OAUTH_PROVIDERS": {
+    "github": {
+      "login_enabled": true,
+      "client_id": "gh-id",
+      "client_secret": "gh-sec"
+    },
+    "google": {
+      "login_enabled": true,
+      "client_id": "gg-id",
+      "client_secret": "gg-sec"
+    },
+    "keycloak": {
+      "type": "oidc",
+      "name": "Enterprise SSO",
+      "issuer": "https://sso.example.com/realms/main",
+      "client_id": "portal-client",
+      "client_secret": "sso-secret"
+    }
+  }
+}
+```
 
 ---
 
@@ -62,7 +115,7 @@ LOGIN_REDIRECT_URL=/dashboard
 MAX_SESSIONS_PER_USER=5
 ```
 
-### Production with PostgreSQL & OAuth
+### Production with PostgreSQL & Unified OAuth Providers
 
 ```env
 APP_NAME=portal
@@ -77,12 +130,7 @@ DEVICE_TRUST_DURATION_DAYS=30
 LOGIN_REDIRECT_URL=/app/overview
 MAX_SESSIONS_PER_USER=10
 MBKAUTH_TWO_FA_ENABLE=true
-GITHUB_LOGIN_ENABLED=true
-GITHUB_APP_CLIENT_ID=Iv1.8392019384920192
-GITHUB_APP_CLIENT_SECRET=3891028394019283019283019283019283019283
-GOOGLE_LOGIN_ENABLED=true
-GOOGLE_CLIENT_ID=123456789012-abc123xyz.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-abc123xyz_example_secret
+OAUTH_PROVIDERS='{"github":{"login_enabled":true,"client_id":"gh_id","client_secret":"gh_secret"},"google":{"login_enabled":true,"client_id":"gg_id","client_secret":"gg_secret"}}'
 ```
 
 ---
@@ -97,6 +145,7 @@ import { mbkautheVar, validateConfiguration } from "mbkauthe/config";
 // Read case-insensitively via proxy
 console.log("App Name:", mbkautheVar.APP_NAME); // or mbkautheVar.app_name
 console.log("DB Type:", mbkautheVar.DB_TYPE);
+console.log("OAuth Providers:", mbkautheVar.OAUTH_PROVIDERS);
 
 // Strict validation (throws descriptive Error if required keys are missing)
 try {

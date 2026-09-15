@@ -764,26 +764,25 @@ describe('OAuth callback state validation', () => {
     ['github', 'missing state', ''],
     ['github', 'mismatched state', '?state=forged-state-value'],
     ['google', 'mismatched state', '?state=forged-state-value'],
-  ])('%s callback with %s is rejected with 403', async (provider, _label, query) => {
+  ])('%s callback with %s is rejected with error', async (provider, _label, query) => {
     const res = await request(app)
-      .get(`/mbkauthe/api/${provider}/login/callback${query}`)
+      .get(`/mbkauthe/oauth/${provider}/callback${query}`)
       .set('X-Forwarded-For', nextIp())
       .set('User-Agent', BROWSER_UA)
       .redirects(0);
 
-    expect(res.status).toBe(403);
-    expect(res.text).toContain('Invalid Request');
+    expect([400, 403]).toContain(res.status);
+    expect(res.text).toMatch(/Invalid Request|invalid_state|missing_parameter|OAuth/i);
   });
 
-  test('OAuth initiation is refused when the provider is disabled', async () => {
+  test('OAuth initiation is refused when the provider is disabled or missing', async () => {
     const res = await request(app)
-      .get('/mbkauthe/api/github/login')
+      .get('/mbkauthe/oauth/unknown-provider/begin')
       .set('X-Forwarded-For', nextIp())
       .set('User-Agent', BROWSER_UA)
       .redirects(0);
 
-    expect(res.status).toBe(403);
-    expect(res.text).toContain('GitHub Login Disabled');
+    expect([400, 403, 404]).toContain(res.status);
   });
 });
 

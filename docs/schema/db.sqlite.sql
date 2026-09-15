@@ -178,31 +178,6 @@ CREATE TABLE IF NOT EXISTS mbkcore_session (
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_expire ON mbkcore_session (expire);
 
--- Table: mbkcore_user_github
-CREATE TABLE IF NOT EXISTS mbkcore_user_github (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username VARCHAR(50) REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    github_id TEXT UNIQUE,
-    github_username VARCHAR(255),
-    access_token TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    installation_id INTEGER,
-    installation_target_type TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_user_github_username ON mbkcore_user_github (username);
-
--- Table: mbkcore_user_google
-CREATE TABLE IF NOT EXISTS mbkcore_user_google (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username VARCHAR(50) REFERENCES mbkcore_users(username),
-    google_id TEXT UNIQUE,
-    google_email TEXT,
-    access_token TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Table: mbkcore_permission_catalog
 CREATE TABLE IF NOT EXISTS mbkcore_permission_catalog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,6 +222,26 @@ CREATE TABLE IF NOT EXISTS mbkcore_user_permission_overrides (
     CONSTRAINT chk_user_perm_override_effect CHECK (effect IN ('allow', 'deny'))
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_username ON mbkcore_user_permission_overrides (username);
+
+-- Table: mbkcore_oauth_accounts
+CREATE TABLE IF NOT EXISTS mbkcore_oauth_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
+    provider_id VARCHAR(50) NOT NULL,
+    provider_user_id VARCHAR(255) NOT NULL,
+    profile TEXT DEFAULT '{}',
+    access_token TEXT,
+    refresh_token TEXT,
+    id_token TEXT,
+    token_expires_at TEXT,
+    scope TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_mbkcore_oauth_accounts_provider_user UNIQUE (provider_id, provider_user_id),
+    CONSTRAINT uq_mbkcore_oauth_accounts_user_provider UNIQUE (user_id, provider_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_oauth_accounts_user_id ON mbkcore_oauth_accounts (user_id);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_oauth_accounts_provider_user ON mbkcore_oauth_accounts (provider_id, provider_user_id);
 
 -- Seed user (hash-only)
 INSERT INTO mbkcore_users (username, password_hash, role, is_active, have_mail_account, full_name)

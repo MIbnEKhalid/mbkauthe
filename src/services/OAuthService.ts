@@ -1,10 +1,14 @@
 import { AuthRepository, authRepository } from "../db/repositories/AuthRepository.js";
+import { OAuthAccountRepository, oAuthAccountRepository } from "../db/repositories/OAuthAccountRepository.js";
+import { UserRepository, userRepository } from "../db/repositories/UserRepository.js";
 import { mbkautheVar } from "../config/index.js";
 import { isUserAuthorizedForApp } from "../http/utils/appAccess.js";
 import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
 import { createLogger } from "../utils/logger.js";
 import { emitAuthEvent } from "../core/events/index.js";
+import { loadOAuthProvidersFromConfig } from "../oauth/providers/loader.js";
+import type { OAuthTokens, OAuthUserProfile, OAuthAccountRecord } from "../oauth/types.js";
 
 const debug = createLogger("mbkauthe:oauth-service");
 
@@ -20,20 +24,38 @@ export interface OAuthUserData {
 }
 
 export class OAuthService {
-  constructor(private authRepo: AuthRepository = authRepository) {}
+  constructor(
+    private authRepo: AuthRepository = authRepository,
+    private oauthAccountRepo: OAuthAccountRepository = oAuthAccountRepository,
+    private userRepo: UserRepository = userRepository
+  ) {}
 
   /**
-   * Validates OAuth user against system database
+   * Validates OAuth user against system database.
+   * Strictly checks if an account link exists in mbkcore_oauth_accounts.
+   * If not linked, throws a descriptive NOT_LINKED error.
    */
   async validateOAuthProfile(provider: string, profileId: string, emailOrUser?: string): Promise<OAuthUserData> {
-    debug("Validating OAuth profile for provider %s, id: %s", provider, profileId);
+    const providerId = provider.toLowerCase().trim();
+    debug("Validating OAuth profile for provider %s, id: %s", providerId, profileId);
 
-    const user = await this.authRepo.getOAuthUserByProviderId(provider.toLowerCase(), profileId);
+    const account = await this.oauthAccountRepo.findByProvider(providerId, profileId);
+
+    if (!account) {
+      debug("OAuth profile not linked for %s (id: %s)", providerId, profileId);
+      const error: any = new Error(`Your ${provider} account is not linked to any user in our system.`);
+      error.code = `${providerId.toUpperCase()}_NOT_LINKED`;
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const user = await this.userRepo.getUserWithTwoFA(String(account.userId));
 
     if (!user) {
-      debug("OAuth profile not linked for %s (id: %s)", provider, profileId);
-      const error: any = new Error(`${provider} account not linked to any user`);
-      error.code = `${provider.toUpperCase()}_NOT_LINKED`;
+      debug("Linked user %s not found in system", account.userId);
+      const error: any = new Error(`User account linked to this ${provider} profile was not found.`);
+      error.code = "USER_NOT_FOUND";
+      error.statusCode = 403;
       throw error;
     }
 
@@ -41,6 +63,7 @@ export class OAuthService {
       debug("OAuth user %s is inactive", user.username);
       const error: any = new Error("Account is inactive");
       error.code = "ACCOUNT_INACTIVE";
+      error.statusCode = 403;
       throw error;
     }
 
@@ -48,6 +71,7 @@ export class OAuthService {
       debug("OAuth user %s is not authorized for app %s", user.username, mbkautheVar.APP_NAME);
       const error: any = new Error(`Not authorized to use ${mbkautheVar.APP_NAME}`);
       error.code = "NOT_AUTHORIZED";
+      error.statusCode = 403;
       throw error;
     }
 
@@ -59,9 +83,8 @@ export class OAuthService {
       is_enabled: Boolean(user.is_enabled),
       full_name: user.full_name,
       image: user.image,
-      ...(provider.toLowerCase() === "github"
-        ? { github_id: user.github_id, github_username: user.github_username }
-        : { google_id: user.google_id, google_email: user.google_email }),
+      provider: providerId,
+      provider_user_id: profileId,
     };
   }
 
@@ -69,19 +92,37 @@ export class OAuthService {
    * Returns list of enabled OAuth providers based on environment configuration
    */
   getEnabledProviders(): string[] {
-    const providers: string[] = [];
-    const githubClientId = mbkautheVar.GITHUB_APP_CLIENT_ID || mbkautheVar.GITHUB_CLIENT_ID;
-    const githubClientSecret = mbkautheVar.GITHUB_APP_CLIENT_SECRET || mbkautheVar.GITHUB_CLIENT_SECRET;
+    const providers = loadOAuthProvidersFromConfig(mbkautheVar.OAUTH_PROVIDERS || mbkautheVar.oauth_providers);
+    return providers.map((p) => p.name || p.id);
+  }
 
-    if (String(mbkautheVar.GITHUB_LOGIN_ENABLED || "").toLowerCase() === "true" && githubClientId && githubClientSecret) {
-      providers.push("GitHub App");
-    }
+  /**
+   * Retrieves all linked OAuth accounts for a user.
+   */
+  async getLinkedAccounts(userId: string | number): Promise<OAuthAccountRecord[]> {
+    return this.oauthAccountRepo.findByUserId(userId);
+  }
 
-    if (String(mbkautheVar.GOOGLE_LOGIN_ENABLED || "").toLowerCase() === "true" && mbkautheVar.GOOGLE_CLIENT_ID && mbkautheVar.GOOGLE_CLIENT_SECRET) {
-      providers.push("Google");
-    }
+  /**
+   * Checks if a user has a specific provider linked.
+   */
+  async isProviderLinked(userId: string | number, providerId: string): Promise<boolean> {
+    const account = await this.oauthAccountRepo.findByUserAndProvider(userId, providerId.toLowerCase());
+    return Boolean(account);
+  }
 
-    return providers;
+  /**
+   * Gets linked account details for a user and provider.
+   */
+  async getLinkedAccount(userId: string | number, providerId: string): Promise<OAuthAccountRecord | null> {
+    return this.oauthAccountRepo.findByUserAndProvider(userId, providerId.toLowerCase());
+  }
+
+  /**
+   * Unlinks an OAuth provider from a user.
+   */
+  async unlinkAccount(userId: string | number, providerId: string): Promise<boolean> {
+    return this.oauthAccountRepo.deleteByUserAndProvider(userId, providerId.toLowerCase());
   }
 }
 

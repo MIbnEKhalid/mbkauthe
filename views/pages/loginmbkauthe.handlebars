@@ -25,20 +25,13 @@
                         </div>
 
                         <div class="sidebar-actions">
-                            {{#if githubLoginEnabled }}
-                            <button type="button" id="githubLoginBtn" class="btn-social btn-switch-side last-used-parent">
-                                <i class="fab fa-github"></i>
-                                <span>Login with GitHub</span>
-                                {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                            {{#each enabledOAuthProviders}}
+                            <button type="button" id="{{id}}LoginBtn" data-provider="{{id}}" data-url="{{loginUrl}}" class="{{btnClass}} last-used-parent oauth-login-btn">
+                                <i class="{{iconClass}}"></i>
+                                <span>{{displayName}}</span>
+                                {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                             </button>
-                            {{/if}}
-                            {{#if googleLoginEnabled }}
-                            <button type="button" id="googleLoginBtn" class="btn-social btn-google-side last-used-parent">
-                                <i class="fab fa-google"></i>
-                                <span>Login with Google</span>
-                                {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
-                            </button>
-                            {{/if}}
+                            {{/each}}
                             <a href="/mbkauthe/accounts" id="switchacc" class="btn-social btn-switch-side">
                                 <i class="fa fa-user-group"></i>
                                 <span>Switch Account</span>
@@ -113,23 +106,19 @@
                         {{/if}}
 
                         <div class="mobile-actions">
-                            {{#if githubLoginEnabled }}
-                            {{#if googleLoginEnabled }}
+                            {{#if hasOAuthProviders}}
                             <div class="social-login">
                                 <div class="divider"><span>or</span></div>
                                 <div class="social-icons-row">
-                                    <button type="button" class="swi s mobile-github-btn last-used-parent" title="Login with GitHub" aria-label="Login with GitHub">
-                                        <i class="fab fa-github"></i>
-                                        {{#if lastLoginGithub}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
+                                    {{#each enabledOAuthProviders}}
+                                    <button type="button" class="swi s {{mobileBtnClass}} last-used-parent oauth-login-btn" data-provider="{{id}}" data-url="{{loginUrl}}" title="{{displayName}}" aria-label="{{displayName}}">
+                                        <i class="{{iconClass}}"></i>
+                                        {{#if isLastUsed}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
                                     </button>
-                                    <button type="button" class="swi s mobile-google-btn last-used-parent" title="Login with Google" aria-label="Login with Google">
-                                        <i class="fab fa-google"></i>
-                                        {{#if lastLoginGoogle}}<span class="last-used-badge" aria-hidden="true" title="Last used">Last</span>{{/if}}
-                                    </button>
+                                    {{/each}}
                                 </div>
                             </div>
                             <div class="divider"><span>or</span></div>
-                            {{/if}}
                             {{/if}}
 
                             <a href="/mbkauthe/accounts" class="swi btn-social btn-switch-side">
@@ -281,23 +270,14 @@
             else document.getElementById('loginPassword')?.focus();
         });
 
-        {{#if githubLoginEnabled }}
-        const startGithubLogin = () => {
-            const redirect = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
-            window.location.href = `/mbkauthe/api/github/login?redirect=${encodeURIComponent(redirect)}`;
-        };
-        document.getElementById('githubLoginBtn')?.addEventListener('click', startGithubLogin);
-        document.querySelector('.mobile-github-btn')?.addEventListener('click', startGithubLogin);
-        {{/if}}
-
-        {{#if googleLoginEnabled }}
-        const startGoogleLogin = () => {
-            const redirect = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
-            window.location.href = `/mbkauthe/api/google/login?redirect=${encodeURIComponent(redirect)}`;
-        };
-        document.getElementById('googleLoginBtn')?.addEventListener('click', startGoogleLogin);
-        document.querySelector('.mobile-google-btn')?.addEventListener('click', startGoogleLogin);
-        {{/if}}
+        document.querySelectorAll('.oauth-login-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const url = btn.getAttribute('data-url');
+                if (!url) return;
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || '{{customURL}}';
+                window.location.href = `${url}?redirect=${encodeURIComponent(redirect)}`;
+            });
+        });
     </script>
 </body>
 </html>

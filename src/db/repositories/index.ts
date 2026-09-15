@@ -13,3 +13,5 @@ export * from "./AuthRepository.js";
 export * from "./PermissionRepository.js";
 export * from "./ApiTokenRepository.js";
 export * from "./CliAuthSessionRepository.js";
+export * from "./OAuthAccountRepository.js";
+

@@ -7,7 +7,8 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "tsx src/devServer.ts",
-    "build": "tsc",
+    "build": "tsc && node scripts/minify.js",
+    "publish": "node scripts/publish.js",
     "create-tables": "node dist/db/schema/createTable.js",
     "test": "vitest run",
     "render:mermaid": "npx @mermaid-js/mermaid-cli -i docs/diagrams/auth-flows.mmd -o docs/images/auth-flows.svg",
@@ -47,17 +48,28 @@
       "types": "./dist/core/index.d.ts",
       "default": "./dist/core/index.js"
     },
+    "./diagnostics": {
+      "types": "./dist/diagnostics/index.d.ts",
+      "default": "./dist/diagnostics/index.js"
+    },
     "./response": {
       "types": "./dist/http/response/index.d.ts",
       "default": "./dist/http/response/index.js"
     },
+    "./oauth": {
+      "types": "./dist/oauth/index.d.ts",
+      "default": "./dist/oauth/index.js"
+    },
+    "./oauth/presets": {
+      "types": "./dist/oauth/providers/index.d.ts",
+      "default": "./dist/oauth/providers/index.js"
+    },
+    "./express": {
+      "types": "./dist/express/index.d.ts",
+      "default": "./dist/express/index.js"
+    },
     "./package.json": "./package.json"
-  },
-  "imports": {
-    "#pool.js": "./lib/pool.js",
-    "#response.js": "./lib/utils/response.js",
-    "#config.js": "./lib/config/index.js",
-    "#cookies.js": "./lib/config/cookies.js"
+
   },
   "repository": {
     "type": "git",
@@ -81,8 +93,8 @@
   },
   "homepage": "https://github.com/MIbnEKhalid/mbkauthe#readme",
   "files": [
+    "dist/",
     "docs/",
-    "lib/",
     "public/",
     "views/",
     ".env.example",
@@ -110,10 +122,7 @@
     "express-handlebars": "^9.0.1",
     "express-rate-limit": "^7.5.1",
     "express-session": "^1.18.1",
-    "node-fetch": "^3.3.2",
-    "passport": "^0.7.0",
-    "passport-github2": "^0.1.12",
-    "passport-google-oauth20": "^2.0.0",
+    "jose": "^6.2.12",
     "pg": "^8.16.3",
     "speakeasy": "^2.0.0"
   },
@@ -130,13 +139,13 @@
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.19.0",
     "@types/node": "^26.5.1",
-    "@types/passport": "^1.0.17",
     "@types/pg": "^8.23.1",
     "@types/speakeasy": "^2.0.10",
     "@types/supertest": "^7.2.1",
     "cross-env": "^7.0.3",
     "nodemon": "^3.1.14",
     "supertest": "^7.1.4",
+    "terser": "^5.51.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

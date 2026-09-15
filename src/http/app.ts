@@ -8,9 +8,8 @@
 import express, { Router } from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
-import passport from "passport";
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { sessionConfig, corsMiddleware, securityHeadersMiddleware, sessionRestorationMiddleware, sessionCookieSyncMiddleware, requestContextMiddleware } from "./middleware/index.js";
 import authRoutes from "./routes/auth.routes.js";
 import oauthRoutes from "./routes/oauth.routes.js";
@@ -55,9 +54,8 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
 
   router.use(session(sessionConfig));
   router.use(sessionRestorationMiddleware);
-  router.use(passport.initialize());
-  router.use(passport.session());
   router.use(sessionCookieSyncMiddleware);
+
 
   router.use("/mbkauthe", authRoutes);
   if (enableOAuth) router.use("/mbkauthe", oauthRoutes);

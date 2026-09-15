@@ -26,10 +26,6 @@ export class AuthRepository extends BaseRepository {
     return this.sessions.buildSessionUserSelect(opts);
   }
 
-  resolveOAuthProvider(provider: string) {
-    return this.users.resolveOAuthProvider(provider);
-  }
-
   async fetchActiveSession(session_id: string): Promise<AuthUser | null> {
     return this.sessions.fetchActiveSession(session_id);
   }
@@ -116,17 +112,6 @@ export class AuthRepository extends BaseRepository {
 
   async getTwoFASecret(username: string): Promise<any> {
     const result = await this.executeRaw({ name: "verify-2fa-secret", text: "SELECT tfa.two_fa_secret FROM mbkcore_two_factor tfa WHERE tfa.username = $1", values: [username] });
-    return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
-  }
-
-  async getOAuthUserByProviderId(provider: string, provider_id: string): Promise<AuthUser | null> {
-    const { table, idColumn, queryName } = this.resolveOAuthProvider(provider);
-    const query = `SELECT ug.*, u.username, u.user_id, u.role, u.is_active, u.allowed_apps, u.full_name, u.image, tfa.is_enabled
-                   FROM ${table} ug
-                   JOIN mbkcore_users u ON ug.username = u.username
-                   LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
-                   WHERE ug.${idColumn} = $1`;
-    const result = await this.executeRaw({ name: queryName, text: query, values: [provider_id] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }
 

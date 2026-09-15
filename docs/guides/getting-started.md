@@ -1,118 +1,139 @@
-# Getting Started with MBKAuthe
+# Getting Started with MBKAuthe v6
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
-
-**MBKAuthe** is MBKTech's reusable authentication and session management system for Node.js and Express applications. It provides battle-tested security primitives, dual-database flexibility with PostgreSQL and SQLite, OAuth2 integration, Two-Factor Authentication, and RFC 8628 CLI device logins.
-
----
-
-## Key Capabilities
-
-- **Express Middleware**: Seamless session validation, role enforcement, and token checks.
-- **Dual-Database Storage**: Native PostgreSQL connection pooling and SQLite support via `better-sqlite3` with WAL mode.
-- **Strong Cryptography**: Password hashing via PBKDF2 with unique salts, AES encrypted session cookies.
-- **Two-Factor Authentication**: TOTP (RFC 6238) compatible with Google Authenticator, Authy, and 1Password with device trust periods.
-- **OAuth Providers**: Social sign-on with GitHub App and Google OAuth2.
-- **API Tokens**: Bearer tokens with `mbk_` prefix, SHA-256 storage hashing, and read/write scoping.
-- **CLI Device Flow**: Browser-based authentication for CLI tools and automation.
-- **Multi-Session Management**: Concurrent session tracking and automated stale session eviction.
+MBKAuthe is a developer-first authentication and authorization engine for Node.js and Express. It provides unified session management, dual-database persistence (PostgreSQL & SQLite), dynamic manifest-driven permissions (RBAC), cryptographic token creation, RFC 8628 CLI device flows, and domain event streaming.
 
 ---
 
 ## Prerequisites
 
-- **Node.js**: Version `18.0.0` or higher
-- **Framework**: Express 4.x or 5.x
-- **Database Backend**:
-  - **PostgreSQL**: PostgreSQL 12+ (local or hosted e.g. Neon, AWS RDS)
-  - **SQLite**: Local file path (no database server required)
+- **Node.js**: `>= 18.0.0` (ESM module support)
+- **Database**:
+  - **PostgreSQL**: Version 13+ (when using `DB_TYPE=postgres`), OR
+  - **SQLite**: Automatic zero-config embedded SQLite via `better-sqlite3` (when using `DB_TYPE=sqlite`).
 
 ---
 
 ## Installation
 
-Install `mbkauthe` via npm or link it locally in workspace repositories:
+Install MBKAuthe and Express in your project:
 
 ```bash
-# Production installation
-npm install mbkauthe
-
-# Or in MBKTech workspace
-npm install latest
+npm install mbkauthe express
 ```
 
 ---
 
-## Quick Start Mounting Example
+## 1. Environment Configuration
 
-Below is a complete Express application integrating MBKAuthe authentication:
+Create a `.env` file in the root of your project:
 
-```javascript
+```env
+APP_NAME=my_app
+DOMAIN=localhost
+IS_DEPLOYED=false
+MAIN_SECRET_TOKEN=c8a7f92039e14a19b2e047395018f3a9e14a19b2e047395018f3a9e14a19b2e0
+SESSION_SECRET_KEY=94e723910ab38c4719e048395029e14a19b2e047395018f3a9e14a19b2e04739
+DB_TYPE=sqlite
+SQLITE_PATH=./data/mbkauthe.sqlite
+COOKIE_EXPIRE_TIME=2
+LOGIN_REDIRECT_URL=/dashboard
+MAX_SESSIONS_PER_USER=5
+```
+
+> [!TIP]
+> Generate secure 32-byte (64 hex characters) secrets using `node -e "console.log(crypto.randomBytes(32).toString('hex'))"`.
+
+---
+
+## 2. Initialize Database Tables
+
+To apply the database schema automatically before starting your application:
+
+```typescript
+import { applySchema, dblogin, dialect } from "mbkauthe/db";
+
+async function initializeDatabase() {
+  console.log(`Connecting to ${dialect.name} database...`);
+  await applySchema(dblogin, dialect.name);
+  console.log("Database schema initialized successfully.");
+}
+
+initializeDatabase();
+```
+
+---
+
+## 3. Mount in Express Application
+
+Mount MBKAuthe as a router or create the full application via the factory:
+
+```typescript
 import express from "express";
-import session from "express-session";
-import cookieParser from "cookie-parser";
-import { sessRole, sessVal, roleChk, authRouter } from "mbkauthe";
+import mbkauthe, { sessVal, roleChk, sessPerm } from "mbkauthe";
 
 const app = express();
 
-// Required middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+// 1. Mount MBKAuthe authentication routes (/mbkauthe/*)
+app.use(mbkauthe);
 
-// Session configuration
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET_KEY || "dev-secret-key-32-chars-long",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.IS_DEPLOYED === "true",
-      httpOnly: true,
-      sameSite: "lax",
-    },
-  })
-);
-
-// Mount MBKAuthe core routes (login, logout, 2FA, OAuth, CLI device flows)
-app.use("/mbkauthe", authRouter);
-
-// Public route
+// 2. Public route
 app.get("/", (req, res) => {
-  res.send("<h1>Welcome to MBKTech App</h1><a href='/mbkauthe/login'>Login</a>");
+  res.json({ message: "Welcome to our application!" });
 });
 
-// Protected route (requires active session)
+// 3. Protected user route
 app.get("/dashboard", sessVal, (req, res) => {
   res.json({
-    message: "Welcome to dashboard",
+    message: `Hello, ${req.session.user.username}!`,
     user: req.session.user,
   });
 });
 
-// Admin-only route (requires superadmin role)
-app.get("/admin", sessRole("superadmin"), (req, res) => {
-  res.json({
-    message: "Welcome Superadmin",
-    user: req.session.user,
-  });
+// 4. Role-protected admin route
+app.get("/admin", sessVal, roleChk("superadmin"), (req, res) => {
+  res.json({ message: "Welcome to the Superadmin Control Center" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log("Server listening on http://localhost:3000");
 });
 ```
+
+---
+
+## 4. Key Architectural Concepts
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                   HTTP / Middleware Layer                │
+│  sessVal │ roleChk │ sessPerm │ securityHeaders │ CORS   │
+└────────────────────────────┬─────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────┐
+│                       Domain Services                    │
+│  AuthService │ ApiTokenService │ CliAuthService │ OAuth   │
+└────────────────────────────┬─────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────┐
+│                    Core Engine & Security                │
+│  TokenEngine │ RoleRegistry │ Manifests │ Event Emitter  │
+└────────────────────────────┬─────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────┐
+│                  Database & Repository Layer             │
+│  PostgresAdapter │ SqliteAdapter (WAL+Mutex) │ dbRetry   │
+└──────────────────────────────────────────────────────────┘
+```
+
+- **Modular Repositories**: Pure data access models (`UserRepository`, `SessionRepository`, `AuthRepository`, `PermissionRepository`, etc.) with built-in SQL dialect safety.
+- **Dynamic Manifest Permissions**: Define `app:service:action` permission scopes with `definePermissions` and sync them automatically with `syncAppPermissions`.
+- **Cryptographic TokenEngine**: Prefixed Bearer tokens (`mbk_pat_`, `mbk_cli_`) with constant-time SHA-256 verification.
+- **Observability & Health**: Listen to domain events via `authEvents` and inspect runtime status using `getAuthHealthReport()`.
 
 ---
 
 ## Next Steps
 
-Explore the detailed topic guides:
-
-- [Environment Configuration Guide](configuration.md)
-- [PostgreSQL & SQLite Dual Database Guide](dual-database-guide.md)
-- [Role-Based Access Control (RBAC)](rbac.md)
-- [Social OAuth Integration](oauth.md)
-- [Two-Factor Authentication (2FA)](2fa.md)
-- [REST API Reference](../reference/api.md)
+- Explore [Environment Configuration](configuration.md) for full configuration options.
+- Learn about [Dual-Database Setup](database.md).
+- Implement [Dynamic Permission Catalogs](permissions.md).

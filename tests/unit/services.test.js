@@ -2,18 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import { fileURLToPath } from "url";
 import { readFile } from "fs/promises";
-import {
-  SqlitePool,
-  AuthRepository,
-  ApiTokenRepository,
-  CliAuthSessionRepository,
-  AuthService,
-  ApiTokenService,
-  OAuthService,
-  CliAuthService,
-  getAuthHealthReport,
-  hashPassword,
-} from "../../dist/index.js";
+import { SqlitePool, AuthRepository, ApiTokenRepository, CliAuthSessionRepository, AuthService, ApiTokenService, OAuthService, CliAuthService, getAuthHealthReport, hashPassword } from "../../dist/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

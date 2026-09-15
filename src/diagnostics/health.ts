@@ -1,11 +1,12 @@
 import { dblogin, dialect } from "../db/pool.js";
-import { appVersion, validateConfiguration } from "../config/index.js";
+import { appVersion, checkConfigurationStatus } from "../config/index.js";
 import { authEvents } from "../core/events/index.js";
 
 export interface AuthHealthStatus {
   status: "healthy" | "degraded" | "unhealthy";
   version: string;
   dialect: string;
+  uptimeSeconds: number;
   database: {
     connected: boolean;
     latencyMs?: number;
@@ -29,8 +30,7 @@ export async function getAuthHealthReport(): Promise<AuthHealthStatus> {
   let dbError: string | undefined;
 
   try {
-    const isSqlite = dialect.name === "sqlite";
-    const text = isSqlite ? "SELECT 1 as ping" : "SELECT 1 as ping";
+    const text = "SELECT 1 as ping";
     await dblogin.query(text);
     dbLatency = Date.now() - startTime;
     dbConnected = true;
@@ -39,24 +39,25 @@ export async function getAuthHealthReport(): Promise<AuthHealthStatus> {
     dbError = err?.message || String(err);
   }
 
-  const configValidation = validateConfiguration();
+  const configStatus = checkConfigurationStatus();
 
-  const isHealthy = dbConnected && configValidation.valid;
-  const isDegraded = dbConnected && !configValidation.valid;
+  const isHealthy = dbConnected && configStatus.valid;
+  const isDegraded = dbConnected && !configStatus.valid;
 
   return {
     status: isHealthy ? "healthy" : isDegraded ? "degraded" : "unhealthy",
     version: appVersion,
     dialect: dialect.name,
+    uptimeSeconds: Math.floor(process.uptime()),
     database: {
       connected: dbConnected,
       latencyMs: dbLatency,
       error: dbError,
     },
     config: {
-      valid: configValidation.valid,
-      missingRequired: configValidation.missingRequired,
-      warnings: configValidation.warnings,
+      valid: configStatus.valid,
+      missingRequired: configStatus.missingRequired,
+      warnings: configStatus.warnings,
     },
     timestamp: new Date().toISOString(),
   };

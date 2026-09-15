@@ -1,11 +1,5 @@
 import { describe, test, expect } from "vitest";
-import {
-  validateLoginDto,
-  validateTotpDto,
-  validateCreateApiTokenDto,
-  validateCliDeviceCodeDto,
-  MbkAuthError,
-} from "../../dist/index.js";
+import { validateLoginDto, validateTotpDto, validateCreateApiTokenDto, validateCliDeviceCodeDto, MbkAuthError } from "../../dist/index.js";
 
 describe("DTO Validation Layer", () => {
   test("validates and trims login credentials", () => {

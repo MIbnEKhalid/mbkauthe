@@ -1,87 +1,57 @@
-# Social OAuth Integration (GitHub & Google)
+# Social OAuth Authentication in MBKAuthe v6
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
-
-MBKAuthe includes first-class support for **OAuth2 Social Sign-In** via **GitHub Apps** and **Google OAuth2**.
+MBKAuthe v6 provides unified social authentication for **GitHub App** and **Google OAuth 2.0**. Accounts are linked to user records in the database, allowing users to sign in interchangeably via passwords or social providers.
 
 ---
 
-## 1. Overview
+## 1. GitHub OAuth Configuration
 
-OAuth authentication allows users to log into your applications using their existing GitHub or Google accounts. MBKAuthe manages:
+MBKAuthe supports GitHub App credentials (preferred) as well as OAuth App keys.
 
-- CSRF state parameters and OAuth redirect handshakes
-- Automatic account linking with `mbkcore_users`
-- Linking multiple OAuth providers to a single primary account
-- Unified session creation and cookie encryption
-
----
-
-## 2. GitHub App OAuth Setup
-
-### Step 1: Create a GitHub App or OAuth App
-
-1. Go to **GitHub Settings → Developer Settings → GitHub Apps** (or OAuth Apps).
-2. Set **Homepage URL** to your domain (e.g., `https://mbktech.org`).
-3. Set **Authorization callback URL** to:
-   ```
-   https://yourdomain.com/mbkauthe/api/github/login/callback
-   ```
-4. Generate a Client Secret.
-
-### Step 2: Configure Environment Variables
+Set the following in `.env`:
 
 ```env
-# Enable GitHub Login
 GITHUB_LOGIN_ENABLED=true
+GITHUB_APP_CLIENT_ID=Iv1.8392019384920192
+GITHUB_APP_CLIENT_SECRET=3891028394019283019283019283019283019283
+```
 
-# GitHub App Credentials
-GITHUB_APP_CLIENT_ID=your_github_client_id
-GITHUB_APP_CLIENT_SECRET=your_github_client_secret
+### GitHub Callback URL
+Configure your GitHub App authorization callback URL to:
+```
+https://<YOUR_DOMAIN>/mbkauthe/api/github/callback
 ```
 
 ---
 
-## 3. Google OAuth Setup
+## 2. Google OAuth 2.0 Configuration
 
-### Step 1: Create Google Cloud Credentials
-
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Navigate to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-3. Set Application Type to **Web application**.
-4. Add Authorized redirect URI:
-   ```
-   https://yourdomain.com/mbkauthe/api/google/login/callback
-   ```
-
-### Step 2: Configure Environment Variables
+Set the following in `.env`:
 
 ```env
-# Enable Google Login
 GOOGLE_LOGIN_ENABLED=true
+GOOGLE_CLIENT_ID=123456789012-abc123xyz.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-abc123xyz_example_secret
+```
 
-# Google OAuth Credentials
-GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+### Google Callback URL
+Configure your Google Cloud Console Authorized redirect URI to:
+```
+https://<YOUR_DOMAIN>/mbkauthe/api/google/callback
 ```
 
 ---
 
-## 4. Shared OAuth Configuration Across Microservices
+## 3. Account Linking & Social Login Endpoints
 
-When deploying multiple apps under the same root domain (e.g. `portal.mbktech.org`, `api.mbktech.org`), you can share OAuth credentials across services via `mbkauthShared`:
+MBKAuthe mounts social login initiation and callback routes:
 
-```env
-mbkauthShared={"GITHUB_LOGIN_ENABLED":"true","GITHUB_APP_CLIENT_ID":"...","GITHUB_APP_CLIENT_SECRET":"...","GOOGLE_LOGIN_ENABLED":"true","GOOGLE_CLIENT_ID":"...","GOOGLE_CLIENT_SECRET":"..."}
-```
+- **GitHub Login**: `GET /mbkauthe/api/github/login` (Redirects user to GitHub)
+- **GitHub Callback**: `GET /mbkauthe/api/github/callback` (Validates code, creates session)
+- **Google Login**: `GET /mbkauthe/api/google/login` (Redirects user to Google consent)
+- **Google Callback**: `GET /mbkauthe/api/google/callback` (Validates code, creates session)
 
----
-
-## 5. Endpoints & Flow
-
-| Provider | Initiation Route | Callback Route |
-| :--- | :--- | :--- |
-| **GitHub** | `GET /mbkauthe/api/github/login` | `GET /mbkauthe/api/github/login/callback` |
-| **Google** | `GET /mbkauthe/api/google/login` | `GET /mbkauthe/api/google/login/callback` |
-
-Users are redirected to their chosen provider, authorize the application, and return with an authenticated session cookie scoped to your root domain.
+When an OAuth user authenticates:
+1. `OAuthService` searches `users` for a matching `github_id` or `google_id`.
+2. If found, the existing account logs in directly.
+3. If not found, a matching email links the profile or prompts account registration according to application settings.

@@ -116,6 +116,8 @@ export class SqliteAdapter implements IDatabaseAdapter {
       try {
         this.db.pragma("journal_mode = WAL");
         this.db.pragma("foreign_keys = ON");
+        this.db.pragma("busy_timeout = 5000");
+        this.db.pragma("synchronous = NORMAL");
       } catch {}
     } else {
       this.db = filePathOrDb;

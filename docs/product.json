@@ -1,8 +1,8 @@
 {
   "name": "MBKAuthe",
-  "tagline": "Modern, developer-first authentication & session engine for Node.js and Express",
-  "description": "MBKAuthe is an open-source authentication package for Node.js and Express, backed by PostgreSQL or SQLite. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, RFC 8628 CLI device flows, and multi-session management.",
-  "version": "5.6.0",
+  "tagline": "Modern, developer-first authentication & authorization engine for Node.js and Express",
+  "description": "MBKAuthe is an enterprise-grade authentication and authorization framework for Node.js and Express, built with TypeScript ESM. Features dual-database persistence (PostgreSQL & SQLite), encrypted multi-session management, dynamic manifest-driven RBAC & permissions, cryptographic TokenEngine, RFC 8628 CLI device login, OAuth social authentication, domain event streaming, and resilient database retries.",
+  "version": "6.0.0",
   "license": "MIT",
   "nodeVersion": ">=18.0.0",
   "author": "Muhammad Bin Khalid",
@@ -14,80 +14,80 @@
   "issuesUrl": "https://github.com/MIbnEKhalid/mbkauthe/issues",
   "installCommand": "npm install mbkauthe",
   "stats": {
-    "version": "v5.6.0",
+    "version": "v6.0.0",
     "license": "MIT",
     "node": ">=18.0.0",
     "databases": "PostgreSQL & SQLite",
-    "security": "PBKDF2 & TOTP"
+    "security": "Argon2id / PBKDF2 + AES-GCM + TOTP"
   },
   "keyFeatures": [
     {
       "id": "dual-database",
       "icon": "lni-database",
-      "title": "Dual-Database Architecture",
+      "title": "Dual-Database Resilience",
       "badge": "PostgreSQL + SQLite",
-      "description": "First-class support for both PostgreSQL (connection pooled) and SQLite (via better-sqlite3 with WAL mode and FIFO mutex). Switch effortlessly with zero code changes."
+      "description": "Production PostgreSQL connection pooling alongside fast embedded SQLite (via better-sqlite3 with WAL mode and FIFO Mutex). Includes dialect translation, query retry with exponential backoff, and live query logging."
     },
     {
       "id": "session-engine",
       "icon": "lni-shield",
-      "title": "Robust Session Engine",
-      "badge": "AES Encrypted",
-      "description": "Encrypted session cookies, automatic database validation, session fixation prevention, and configurable multi-session limits per user."
+      "title": "Encrypted Multi-Session Engine",
+      "badge": "AES Encrypted Cookies",
+      "description": "Encrypted session cookies, automatic database validation, session restoration middleware, multi-account device tracking, and automatic concurrent session pruning (MAX_SESSIONS_PER_USER)."
     },
     {
-      "id": "rbac",
+      "id": "dynamic-permissions",
       "icon": "lni-lock",
-      "title": "Granular Role-Based Access (RBAC)",
-      "badge": "Express Middleware",
-      "description": "Drop-in middleware helpers (sessVal, roleChk, sessRole, strictSessRole) for superadmin, normaluser, member, and guest role enforcement."
+      "title": "Dynamic Manifest-Driven RBAC",
+      "badge": "app:service:action",
+      "description": "Fine-grained permissions defined via declarative manifests (definePermissions, syncAppPermissions). Features RoleRegistry, wildcard matching, and drop-in middleware (sessVal, sessRole, sessPerm, roleChk, permChk)."
     },
     {
-      "id": "two-fa",
-      "icon": "lni-key",
-      "title": "Two-Factor Auth (TOTP)",
-      "badge": "RFC 6238",
-      "description": "Time-based One-Time Passwords compatible with Google Authenticator, Authy, and 1Password, featuring trusted device remember periods."
-    },
-    {
-      "id": "oauth",
-      "icon": "lni-github",
-      "title": "GitHub & Google OAuth",
-      "badge": "Social Login",
-      "description": "Native GitHub App and Google OAuth2 integration with unified user account linking and shared credential support for microservices."
-    },
-    {
-      "id": "api-tokens",
+      "id": "token-engine",
       "icon": "lni-code",
-      "title": "API Tokens & RFC 8628 CLI Auth",
-      "badge": "Bearer mbk_*",
-      "description": "SHA-256 hashed API tokens with read-only/write scopes, plus a browser-based CLI device flow for seamless command-line logins."
+      "title": "Cryptographic TokenEngine",
+      "badge": "Prefixed Tokens",
+      "description": "Cryptographically secure prefixed tokens (mbk_pat_, mbk_cli_, mbk_dev_, mbk_sess_) with constant-time SHA-256 validation, scoped permissions, and last-used tracking."
+    },
+    {
+      "id": "cli-device-auth",
+      "icon": "lni-laptop-phone",
+      "title": "RFC 8628 CLI Device Login",
+      "badge": "Device Auth Flow",
+      "description": "Standards-compliant OAuth 2.0 Device Authorization Grant allowing command-line tools to authenticate seamlessly via the browser with 8-character user codes."
+    },
+    {
+      "id": "events-diagnostics",
+      "icon": "lni-pulse",
+      "title": "Domain Events & Diagnostics",
+      "badge": "Observability",
+      "description": "Type-safe domain event emitter (authEvents) for login, logout, token creation, and CLI approvals, paired with real-time health diagnostics (getAuthHealthReport)."
     }
   ],
   "securityHighlights": [
     {
-      "title": "PBKDF2 Password Hashing",
-      "description": "Cryptographically strong password hashing using Node.js crypto PBKDF2 with unique per-user salts."
+      "title": "Salt + Pepper Password Hashing",
+      "description": "Cryptographically secure password hashing using Node.js crypto PBKDF2/Argon2id hybrid mechanics with unique per-user salts and global server pepper."
     },
     {
-      "title": "Session Fixation Prevention",
-      "description": "Session identifiers are rotated and encrypted on authentication to thwart session hijacking."
+      "title": "Constant-Time Token Verification",
+      "description": "All API tokens, device tokens, and session secrets are verified using crypto.timingSafeEqual to eliminate timing side-channel attacks."
     },
     {
-      "title": "CSRF & Rate Limiting",
-      "description": "Built-in double-submit CSRF cookie validation and IP-level rate limiting on sensitive endpoints."
+      "title": "Encrypted Session Cookies",
+      "description": "Session identifiers are encrypted on the client side to protect against tampering and network inspection."
     },
     {
-      "title": "Multi-Session Auto-Pruning",
-      "description": "Configurable maximum concurrent sessions per user (MAX_SESSIONS_PER_USER) with automatic eviction of stale logins."
+      "title": "Built-in Security Middleware",
+      "description": "Includes automated security headers (HSTS, CSP, X-Frame-Options), strict CORS negotiation, CSRF protection, and rate limiting."
     },
     {
-      "title": "Timing-Safe Comparisons",
-      "description": "Constant-time string comparison for secret tokens and API hashes to defeat side-channel attacks."
+      "title": "Automatic Session Eviction",
+      "description": "Enforces MAX_SESSIONS_PER_USER by automatically pruning the oldest active sessions upon new logins."
     },
     {
-      "title": "Strict Cookie Policies",
-      "description": "HttpOnly, SameSite=Lax, and Secure cookie flags configured with cross-subdomain sharing support."
+      "title": "Resilient Database Retries",
+      "description": "Transparent query retries with exponential backoff and jitter for transient connection errors, timeouts, and SQLite locks."
     }
   ]
 }

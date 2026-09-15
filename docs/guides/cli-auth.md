@@ -1,323 +1,94 @@
-# Browser-based CLI Authentication (Device Flow)
+# RFC 8628 CLI Device Login in MBKAuthe v6
 
-[Back to guides index](../README.md) | [Back to project README](../../README.md)
+MBKAuthe v6 provides an implementation of the **OAuth 2.0 Device Authorization Grant (RFC 8628)**. This allows command-line interfaces (CLIs), terminal tools, and embedded headless devices to authenticate users securely via a standard web browser.
 
-MBKAuthe implements an RFC 8628-style **device authorization flow** that lets
-CLI tools authenticate a user in a browser without ever asking for credentials
-in the terminal — the same UX as `gh auth login` or `az login`.
+---
 
-The key difference from a stock device flow is **customized token
-provisioning**: instead of a client picking permissions itself, the CLI
-references an **API Token Profile** (a predefined template managed by MBKCore).
-MBKAuthe builds the issued API token from that template.
+## 1. How the CLI Device Flow Works
 
-## Flow
-
-```mermaid
-sequenceDiagram
-    participant CLI
-    participant MBKAuthe
-    participant Browser
-    participant MBKCore
-
-    CLI->>MBKAuthe: POST /api/cli/device {client_name, profile_id}
-    MBKAuthe->>MBKCore: read ApiTokenProfile (read-only)
-    MBKAuthe-->>CLI: 201 {verification_url, user_code, device_code, interval}
-
-    CLI-->>User: "Open https://…/mbkauthe/cli/device/XXXX-XXXX"
-    User->>Browser: open URL (signs in if needed)
-    Browser->>MBKAuthe: GET /mbkauthe/cli/device/:userCode
-    User->>Browser: Approve
-    Browser->>MBKAuthe: POST /api/cli/device/approve {user_code, action}
-    MBKAuthe->>MBKCore: read active ApiTokenProfile
-    MBKAuthe-->>MBKCore: create ApiToken from profile (scope, apps, expiry)
-    MBKAuthe-->>Browser: 200 approved
-
-    loop until approved / denied / expired
-        CLI->>MBKAuthe: POST /api/cli/device/token {device_code}
-        MBKAuthe-->>CLI: pending
-    end
-    MBKAuthe-->>CLI: approved + token (delivered exactly once)
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. CLI requests authorization code                     │
+│    POST /mbkauthe/api/cli-auth/device-code             │
+└──────────────────────────┬─────────────────────────────┘
+                           │ Returns: device_code, user_code (e.g. RRR2-L9QJ), verification_uri
+┌──────────────────────────▼─────────────────────────────┐
+│ 2. User opens browser to verification_uri and enters   │
+│    user_code to review requested client name & scopes. │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────────┐
+│ 3. CLI polls POST /mbkauthe/api/cli-auth/poll          │
+│    with device_code every 3-5 seconds.                 │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────────┐
+│ 4. User approves in browser -> CLI poll returns token: │
+│    { status: "approved", token: "mbk_cli_...", user }  │
+└────────────────────────────────────────────────────────┘
 ```
 
-## Configuration
+---
 
-### Mounting
+## 2. Enabling CLI Auth
 
-The CLI device-flow router is attached to MBKAuthe's **main router by default**,
-so host apps do not need to mount `cliAuthRouter` themselves. The endpoints
-below are served at the host root (`/api/cli/device`, `/mbkauthe/cli/device/…`).
+Set `CLI_AUTH_ENABLED=true` in your `.env` file:
 
-To disable it:
-
-```jsonc
-// mbkautheVar
-{
-  "APP_NAME": "mbkauthe",
-  "CLI_AUTH_ENABLED": "false"
-}
+```env
+CLI_AUTH_ENABLED=true
+CLI_AUTH_BASE_URL=https://auth.mbktech.org/mbkauthe/cli-auth/verify
 ```
 
-`CLI_AUTH_ENABLED` accepts `"true"` (default) / `"false"` / `"f"`.
+---
 
-When disabled, the router **stays mounted** but rejects every request with
-`403` and `{ "success": false, "message": "CLI auth is disabled" }`, instead
-of detaching the endpoints (which would produce `404`s).
+## 3. Reference CLI Client Implementation
 
-### Verification URL
+Here is a complete, runnable Node.js CLI login script:
 
-The verification URL shown to the user is built from, in order of priority:
+```typescript
+import fetch from "node-fetch";
 
-1. `CLI_AUTH_BASE_URL` — an absolute base URL (no trailing slash), e.g.
-   `"https://portal.mbktech.org"`. Recommended for production so CLIs always get
-   a reachable public URL regardless of the request's host header.
-2. `https://<DOMAIN>` when `IS_DEPLOYED` is `true`.
-3. The incoming request's protocol + host (dev default).
+const AUTH_HOST = "https://auth.mbktech.org";
 
-Example:
+async function loginCLI() {
+  console.log("Initiating CLI login...");
 
-```jsonc
-// mbkautheVar
-{
-  "APP_NAME": "mbkauthe",
-  "DOMAIN": "mbktech.org",
-  "IS_DEPLOYED": "true",
-  "CLI_AUTH_BASE_URL": "https://portal.mbktech.org",
-  "CLI_AUTH_ENABLED": "true"
-}
-```
-
-## Endpoints
-
-### 1. Start a login — `POST /api/cli/device`
-
-Called by the CLI. Public, rate-limited (20/min/IP).
-
-The profile can be referenced by its **`profile_key`** (a random ≥6-char unique
-id, preferred) or its numeric serial **`profile_id`**.
-
-```bash
-curl -X POST https://portal.mbktech.org/api/cli/device \
-  -H "Content-Type: application/json" \
-  -d '{"client_name": "my-cli", "profile_key": "1362403658a3"}'
-```
-
-Response `201`:
-
-```json
-{
-  "success": true,
-  "verification_url": "https://portal.mbktech.org/mbkauthe/cli/device/XXXX-XXXX",
-  "user_code": "XXXX-XXXX",
-  "device_code": "a3f9…(48 hex chars, secret)",
-  "expires_in": 900,
-  "interval": 5,
-  "client_name": "my-cli",
-  "profile": {
-    "id": 3,
-    "key": "1362403658a3",
-    "name": "cli-default",
-    "permissions": ["portal:dns:view"],
-    "expires_in_days": 30
-  }
-}
-```
-
-Errors: `400` for a missing `client_name` or an invalid/inactive
-`profile_key`/`profile_id`.
-
-### 2. Browser approval page — `GET /mbkauthe/cli/device/:user_code`
-
-Opened by the user. Requires an authenticated session; if not logged in, the
-user is redirected to `/mbkauthe/login?redirect=…` and returned here after
-signing in. Shows the requesting client, the token profile details, and
-**Approve** / **Deny** buttons.
-
-### 3. Approve / deny — `POST /api/cli/device/approve`
-
-Session-authenticated (rate-limited 30/min/IP). Called by the approval page.
-
-```json
-{ "user_code": "XXXX-XXXX", "action": "approve" }
-```
-
-On approval MBKAuthe:
-
-1. Reads the **active** API Token Profile for `profile_id` (MBKCore-owned).
-2. Creates an API token from that template — its permission list and expiration
-   come from the profile (capped at the approving user's own permissions).
-3. Stages the raw token and marks the session `approved`.
-
-Response `200`:
-
-```json
-{ "success": true, "status": "approved", "message": "Login approved. The CLI will receive the token momentarily." }
-```
-
-### 4. Poll for the token — `POST /api/cli/device/token`
-
-Called by the CLI on `interval` seconds. Public, rate-limited (60/min/IP).
-
-```bash
-curl -X POST https://portal.mbktech.org/api/cli/device/token \
-  -H "Content-Type: application/json" \
-  -d '{"device_code": "a3f9…"}'
-```
-
-Possible responses:
-
-| Status | Meaning |
-| --- | --- |
-| `pending` | User hasn't decided yet — poll again after `interval` seconds |
-| `approved` | Includes `token` (the raw `mbk_…` API token). **Delivered once.** |
-| `completed` | The token was already delivered to an earlier poll |
-| `denied` | The user denied the request |
-| `expired` | The 15-minute window elapsed before approval |
-| `invalid` (`404`) | Unknown device code |
-
-```json
-{ "success": true, "status": "approved", "token": "mbk_…", "token_prefix": "mbk_1234", "username": "jane", "message": "Login approved" }
-```
-
-## Error Response Reference
-
-### POST /api/cli/device
-
-| HTTP Status | Condition |
-|---|---|
-| `201` | Session created, verification URL returned |
-| `400` | Missing/invalid `clientName` (empty or >255 chars) |
-| `400` | No valid `profileKey` (≥6 chars) or `profileId` provided |
-| `400` | Profile not found or inactive |
-| `429` | Rate limit exceeded (20/min/IP) |
-| `500` | Internal server error |
-
-### POST /api/cli/device/approve
-
-| HTTP Status | `status` field | Condition |
-|---|---|---|
-| `200` | `"approved"` | Login approved, token staged |
-| `200` | `"denied"` | Login explicitly denied |
-| `400` | — | Missing `userCode` or invalid `action` |
-| `403` | — | Token limit reached for non-superadmin (max 10) |
-| `404` | — | `userCode` not found |
-| `409` | `"approved"` / `"denied"` / `"expired"` | Request already processed |
-| `410` | `"expired"` | Request expired before decision |
-| `429` | — | Rate limit exceeded (30/min/IP) |
-| `500` | — | Internal server error |
-
-### POST /api/cli/device/token
-
-| HTTP Status | `success` | `status` field | Condition |
-|---|---|---|---|
-| `200` | `true` | `"approved"` | **Token delivered** (includes `token`, `tokenPrefix`, `username`) |
-| `200` | `false` | `"pending"` | Still waiting — poll again after `interval` seconds |
-| `200` | `false` | `"completed"` | Token was already delivered on a prior poll |
-| `200` | `false` | `"denied"` | User denied the request |
-| `200` | `false` | `"expired"` | Request expired |
-| `400` | `false` | — | Missing `device_code` |
-| `404` | `false` | `"invalid"` | Unknown `device_code` |
-| `429` | — | — | Rate limit exceeded (60/min/IP) |
-| `500` | — | — | Internal server error |
-
-## CLI Client Example
-
-A complete reference implementation is available at
-[`tests/helpers/mbkcli.mjs`](../../tests/helpers/mbkcli.mjs). It covers:
-
-1. **Token persistence** — saves the token to `~/.mbkcli_token` (0600)
-2. **Token verification** — on startup, validates any saved token via `POST /api/tokens/verify`
-3. **Device login** — starts a new device flow if no valid token exists
-4. **Protected API call** — confirms the token works against a protected endpoint
-
-Key configuration via environment variables:
-
-| Variable | Default | Description |
-|---|---|---|
-| `MBKCLI_BASE_URL` | `http://localhost:5555` | Server base URL |
-| `MBKCLI_CLIENT_NAME` | `mbkbucket-cli` | Display name shown in browser approval page |
-| `MBKCLI_PROFILE_KEY` | `"1362403658a3"` | API Token Profile public key (≥6 chars) |
-| `MBKCLI_PROFILE_ID` | *(none)* | Fallback profile ID |
-| `MBKCLI_TOKEN_FILE` | `~/.mbkcli_token` | Path to save the API token |
-
-### Minimal polling loop
-
-```javascript
-// 1. Start
-const start = await fetch(`${BASE}/api/cli/device`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ client_name: "my-cli", profile_key: "1362403658a3" }),
-}).then((r) => r.json());
-
-console.log(`Open: ${start.verification_url}`);
-
-// 2. Poll
-for (;;) {
-  await sleep(start.interval * 1000);
-  const res = await fetch(`${BASE}/api/cli/device/token`, {
+  // 1. Request device authorization
+  const initRes = await fetch(`${AUTH_HOST}/mbkauthe/api/cli-auth/device-code`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ device_code: start.device_code }),
-  }).then((r) => r.json());
+    body: JSON.stringify({ client_name: "MBK Developer CLI" }),
+  });
+  const { device_code, user_code, verification_uri, interval = 5, expires_in } = await initRes.json();
 
-  if (res.status === "approved") {
-    console.log(`Authenticated as ${res.username}. Token: ${res.token}`);
-    break;
+  console.log(`\n👉 Please open your browser: ${verification_uri}`);
+  console.log(`🔑 Enter code: ${user_code}\n`);
+
+  // 2. Poll for authorization
+  const deadline = Date.now() + expires_in * 1000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, interval * 1000));
+
+    const pollRes = await fetch(`${AUTH_HOST}/mbkauthe/api/cli-auth/poll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_code }),
+    });
+    const pollData = await pollRes.json();
+
+    if (pollData.status === "approved") {
+      console.log("✅ Authentication successful!");
+      console.log(`Welcome, ${pollData.user.username}`);
+      console.log(`API Token: ${pollData.token}`);
+      return pollData.token;
+    } else if (pollData.status === "denied") {
+      console.error("❌ Authentication was denied by user.");
+      return null;
+    }
   }
-  if (["denied", "expired", "completed", "invalid"].includes(res.status)) {
-    throw new Error(`Login ${res.status}`);
-  }
+
+  console.error("⌛ Device code expired. Please try again.");
 }
+
+loginCLI();
 ```
-
-### Token Verification
-
-After obtaining a token, verify it before use:
-
-```bash
-curl -X POST https://portal.mbktech.org/api/tokens/verify \
-  -H "Content-Type: application/json" \
-  -d '{"token": "mbk_..."}'
-```
-
-**Success (`200 OK`):**
-```json
-{
-  "success": true,
-  "tokenValid": true,
-  "username": "jane",
-  "permissions": { "scope": "read-only", "allowedApps": ["Portal"] },
-  "expiresAt": "2026-09-01T00:00:00.000Z"
-}
-```
-
-**Expired/Invalid (`200 OK`):**
-```json
-{ "success": false, "tokenValid": false, "message": "Token is invalid or expired" }
-```
-
-**Malformed Token (`400`):**
-```json
-{ "success": false, "message": "Token format is invalid" }
-```
-
-## Managing API Token Profiles
-
-API Token Profiles are **managed by MBKCore** (admin CRUD at
-`/dashboard/admin/api-token-profiles`). MBKAuthe only **consumes** them at
-token-issuance time — it never creates or edits profiles. See the MBKCore docs
-for profile management.
-
-## Security notes
-
-- **Device codes** are high-entropy secrets; only their SHA-256 hash is stored.
-  The raw token is staged in `PendingToken` only between approval and the CLI's
-  next poll, then cleared on delivery.
-- **Single delivery**: pollers race for the token via an atomic
-  `pending -> approved -> completed` transition, so a token can never be
-  returned to two different polls.
-- **User codes** are short and single-use; only their hash is stored.
-- The approve endpoint is a same-origin JSON POST; cross-site requests are
-  blocked by CORS + `SameSite=Lax` cookies (consistent with `POST /api/token`).
-- Sessions expire after 15 minutes (`DEVICE_CODE_TTL_MS` in `lib/routes/cliAuth.js`).

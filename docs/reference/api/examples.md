@@ -1,261 +1,119 @@
-# Code Examples
+# Code Examples & Recipes
 
-[Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
+Ready-to-use recipes and full integration patterns for MBKAuthe v6.
 
-## Code Examples
+---
 
-### Basic Integration
+## 1. Complete Express TypeScript Server
 
-```javascript
-import express from 'express';
-import mbkauthe, { validateSession } from 'mbkauthe';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-// Configure MBKAuthe
-process.env.mbkautheVar = JSON.stringify({
-  APP_NAME: process.env.APP_NAME,
-  SESSION_SECRET_KEY: process.env.SESSION_SECRET_KEY,
-  IS_DEPLOYED: process.env.IS_DEPLOYED,
-  DOMAIN: process.env.DOMAIN,
-  LOGIN_DB: process.env.LOGIN_DB,
-  MBKAUTH_TWO_FA_ENABLE: process.env.MBKAUTH_TWO_FA_ENABLE,
-  COOKIE_EXPIRE_TIME: process.env.COOKIE_EXPIRE_TIME || 2,
-  LOGIN_REDIRECT_URL: '/dashboard'
-});
+```typescript
+import express from "express";
+import mbkauthe, { sessVal, roleChk, sessPerm } from "mbkauthe";
+import { definePermissions } from "mbkauthe/core";
+import { syncAppPermissions } from "mbkauthe/services";
+import { authEvents } from "mbkauthe/core";
 
 const app = express();
 
-// Mount MBKAuthe routes
+// 1. Define App Permissions
+const AppPermissions = definePermissions({
+  appKey: "analytics",
+  permissions: {
+    reports: {
+      view: "View analytics reports",
+      export: "Export CSV datasets",
+    },
+  },
+  roles: {
+    analyst: {
+      label: "Data Analyst",
+      permissions: ["analytics:reports:*"],
+    },
+  },
+});
+
+// 2. Register Audit Event Listeners
+authEvents.on("auth:login:success", (evt) => {
+  console.log(`[Audit] ${evt.username} logged in from ${evt.ip}`);
+});
+
+// 3. Mount MBKAuthe Router
 app.use(mbkauthe);
 
-// Protected route
-app.get('/dashboard', sessVal, (req, res) => {
-  res.send(`Welcome ${req.session.user.username}!`);
+// 4. Protect Routes
+app.get("/api/reports", sessVal, permChk(AppPermissions.reports.view), (req, res) => {
+  res.json({ reports: [{ id: 1, title: "Q3 Traffic" }] });
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+app.post("/api/reports/export", sessPerm(AppPermissions.reports.export), (req, res) => {
+  res.json({ status: "exported", downloadUrl: "/downloads/q3.csv" });
 });
-```
 
----
-
-### Role-Based Access Control
-
-```javascript
-import { sessVal, roleChk, sessRole } from 'mbkauthe';
-
-// Method 1: Separate middleware
-app.get('/admin', sessVal, roleChk('superadmin'), (req, res) => {
-    res.send('Admin panel');
-  }
-);
-
-// Method 2: Combined middleware
-app.get('/admin', sessRole('superadmin'), (req, res) => {
-    res.send('Admin panel');
-  }
-);
-
-// Allow any role except guest
-app.get('/content', sessVal, roleChk('Any', 'guest'), (req, res) => {
-    res.send('Content for registered users');
-  }
-);
-
-// Multiple roles (using separate middleware)
-app.get('/moderator', sessVal, (req, res, next) => {
-    if (['superadmin', 'normaluser'].includes(req.session.user.role)) {
-      next();
-    } else {
-      res.status(403).send('Access denied');
-    }
-  },
-  (req, res) => {
-    res.send('Moderator panel');
-  }
-);
-```
-
----
-
-### API Authentication
-
-```javascript
-import { authenticate } from 'mbkauthe';
-
-// Simple token authentication
-app.post('/api/webhook',  authenticate(process.env.WEBHOOK_SECRET), (req, res) => {
-    // Process webhook
-    res.json({ received: true });
-  }
-);
-
-// Admin API with token authentication
-app.post('/api/admin/terminate-sessions', authenticate(process.env.MAIN_SECRET_TOKEN),  async (req, res) => {
-    // Terminate all sessions
-    res.json({ success: true });
-  }
-);
-
-// Protected API endpoint (requires session)
-app.get('/api/user/profile',  sessVal, async (req, res) => {
-    const { username } = req.session.user;
-    
-    // Fetch user profile
-    const profile = await getUserProfile(username);
-    
-    res.json({ success: true, profile });
-  }
-);
-```
-
----
-
-### Client-Side Login
-
-```javascript
-// Login form submission
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  
-  try {
-    const response = await fetch('/mbkauthe/api/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      if (data.two_factor_required) {
-        // Redirect to 2FA page
-        window.location.href = '/mbkauthe/2fa';
-      } else {
-        // Login successful, redirect
-        window.location.href = data.redirect_url || '/dashboard';
-      }
-    } else {
-      alert(data.message || 'Login failed');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    alert('An error occurred during login');
-  }
+// 5. Start Server & Sync Permissions
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+  await syncAppPermissions(AppPermissions);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 ```
 
 ---
 
-### Client-Side Logout
+## 2. Custom Database Repository Extension
 
-```javascript
-async function logout() {
-  // Get CSRF token from page
-  const csrfToken = document.querySelector('[name="_csrf"]').value;
-  
-  try {
-    const response = await fetch('/mbkauthe/api/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ _csrf: csrfToken })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      window.location.href = '/mbkauthe/login';
-    } else {
-      alert('Logout failed: ' + data.message);
-    }
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
+Extend `BaseRepository` to create custom models with dual-database support:
+
+```typescript
+import { BaseRepository, dblogin, dialect } from "mbkauthe/db";
+
+export interface Project {
+  id: number;
+  name: string;
+  owner_id: number;
+  created_at: Date;
 }
-```
 
----
-
-### Database Access via BaseRepository
-
-Applications should access the database through repositories extending `BaseRepository`:
-
-```javascript
-import { BaseRepository } from 'mbkauthe';
-import { defaultAdapter } from '../db/index.js';
-
-export class UserRepository extends BaseRepository {
-  constructor(adapter = defaultAdapter) {
-    super(adapter);
+export class ProjectRepository extends BaseRepository<Project> {
+  constructor() {
+    super("projects", dblogin, dialect);
   }
 
-  async findActiveUsers() {
-    const { rows } = await this.query(
-      'SELECT id, username, role, is_active FROM users WHERE is_active = TRUE ORDER BY id'
-    );
-    return rows;
+  async findByOwner(ownerId: number): Promise<Project[]> {
+    return this.findMany({ owner_id: ownerId });
+  }
+
+  async createProject(name: string, ownerId: number): Promise<Project> {
+    return this.insert({ name, owner_id: ownerId });
   }
 }
 
-export const userRepository = new UserRepository();
-
-// In routes / controllers:
-app.get('/api/users', sessVal, sessRole('superadmin'), async (req, res) => {
-  try {
-    const users = await userRepository.findActiveUsers();
-    res.json({ success: true, users });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
-  }
-});
-```
-
-
----
-
-### Error Handling
-
-```javascript
-// Custom error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  
-  if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Invalid CSRF token' 
-    });
-  }
-  
-  res.status(500).json({ 
-    success: false, 
-    message: 'Internal Server Error' 
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).render('Error/dError.handlebars', {
-    layout: false,
-    code: 404,
-    error: 'Not Found',
-    message: 'The requested page was not found.',
-    pagename: 'Home',
-    page: '/',
-  });
-});
+export const projectRepository = new ProjectRepository();
 ```
 
 ---
 
+## 3. Programmatic Login & Token Creation
+
+```typescript
+import { authService, apiTokenService } from "mbkauthe/services";
+
+// Authenticate programmatically
+const loginResult = await authService.authenticate({
+  username: "developer",
+  password: "securePassword123",
+});
+
+if (loginResult.success) {
+  console.log("Logged in user:", loginResult.user.username);
+
+  // Issue Personal Access Token
+  const { token } = await apiTokenService.createToken({
+    userId: loginResult.user.id,
+    name: "CLI Token",
+    scopes: ["analytics:reports:view"],
+    expiresInDays: 30,
+  });
+
+  console.log("Generated PAT:", token);
+}
+```

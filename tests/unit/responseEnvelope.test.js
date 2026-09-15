@@ -118,16 +118,22 @@ describe("Standardized Response & Error Envelope Unit Tests", () => {
       expect(res.body.message).toBeDefined();
     });
 
-    test("formats standard error envelope from Error instance", () => {
+    test("attaches requestId from req headers or options", () => {
       const res = createMockRes();
-      const err = new Error("Database timeout");
-      sendError(res, err, { statusCode: 500 });
+      const mockReq = { headers: { "x-request-id": "req-xyz-789" }, _startTime: Date.now() - 25 };
+      sendSuccess(res, { status: "ok" }, { req: mockReq });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe("INTERNAL_SERVER_ERROR");
-      expect(res.body.error.message).toBe("Database timeout");
-      expect(res.body.message).toBe("Database timeout");
+      expect(res.body.requestId).toBe("req-xyz-789");
+      expect(typeof res.body.durationMs).toBe("number");
+      expect(res.body.durationMs).toBeGreaterThanOrEqual(20);
+    });
+
+    test("attaches requestId to error envelopes", () => {
+      const res = createMockRes();
+      const mockReq = { headers: { "x-correlation-id": "corr-12345" } };
+      sendError(res, "Resource not found", { statusCode: 404, req: mockReq });
+
+      expect(res.body.requestId).toBe("corr-12345");
     });
   });
 

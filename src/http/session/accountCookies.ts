@@ -1,15 +1,5 @@
 import type { Request, Response } from "express";
-import {
-  ACCOUNT_LIST_COOKIE,
-  MAX_REMEMBERED_ACCOUNTS,
-  parseSignedCookiePayload,
-  createSignedCookiePayload,
-  generateFingerprintFromUserAgent,
-  encryptSessionId,
-  decryptSessionId,
-  cachedCookieOptions,
-  cachedClearCookieOptions,
-} from "../../config/cookies.js";
+import { ACCOUNT_LIST_COOKIE, MAX_REMEMBERED_ACCOUNTS, parseSignedCookiePayload, createSignedCookiePayload, generateFingerprintFromUserAgent, encryptSessionId, decryptSessionId, cachedCookieOptions, cachedClearCookieOptions } from "../../config/cookies.js";
 
 export const generateFingerprint = (req: Request) =>
   generateFingerprintFromUserAgent(String(req.headers?.["user-agent"] || ""));

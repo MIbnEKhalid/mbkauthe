@@ -15,7 +15,14 @@ function toCharFormatToStrftime(pgFormat: string): string {
     .replace(/\x00LIT(\d+)\x00/g, (_, idx) => literals[parseInt(idx, 10)]);
 }
 
-export function translatePgToSqlite(text: string, values: any[] = []): { text: string; values: any[] } {
+const TRANSLATION_CACHE_MAX = 1000;
+const translationCache = new Map<string, string>();
+
+function translateSqlTemplate(text: string): string {
+  if (translationCache.has(text)) {
+    return translationCache.get(text)!;
+  }
+
   let sql = String(text ?? "");
 
   sql = sql
@@ -89,6 +96,17 @@ export function translatePgToSqlite(text: string, values: any[] = []): { text: s
     const fmt = extractMap[field.toUpperCase()];
     return fmt ? `CAST(strftime('${fmt}', ${expr}) AS INTEGER)` : match;
   });
+
+  if (translationCache.size >= TRANSLATION_CACHE_MAX) {
+    const firstKey = translationCache.keys().next().value;
+    if (firstKey) translationCache.delete(firstKey);
+  }
+  translationCache.set(text, sql);
+  return sql;
+}
+
+export function translatePgToSqlite(text: string, values: any[] = []): { text: string; values: any[] } {
+  const sql = translateSqlTemplate(text);
 
   if (!/\$\d/.test(sql)) return { text: sql, values };
 

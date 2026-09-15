@@ -1,19 +1,61 @@
-# API Reference
+# REST API Reference Overview
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
+MBKAuthe v6 provides RESTful API endpoints for authentication, session verification, personal access token management, CLI device authorizations, OAuth callbacks, and system diagnostics.
 
-The API reference is split by responsibility so each source file stays focused and easy to review.
+---
 
-## Sections
+## Base Path & Content Negotiation
 
-- [Authentication and sessions](api/authentication.md) - session cookies, API tokens, and session lifetime.
-- [Endpoints](api/endpoints.md) - public routes, protected routes, multi-account routes, information routes, diagnostics, and OAuth routes.
-- [Middleware](api/middleware.md) - `sessVal`, `roleChk`, strict session helpers, render helpers, and token authentication.
-- [Code examples](api/examples.md) - Express integration, role checks, API auth, client login/logout, database access, and error handling.
-- [Operational reference](api/operations.md) - HTTP status codes, security best practices, and rate limits.
+All authentication and session endpoints are mounted under the `/mbkauthe` prefix by default (or the custom router mount path in your Express application).
 
-## Related Reference
+### Content Negotiation
+- **JSON Requests**: If `Accept: application/json` or `Content-Type: application/json` is sent, MBKAuthe responds with JSON envelopes `{ success: boolean, ... }`.
+- **HTML Requests**: Standard browser navigation requests return rendered HTML views with appropriate HTTP status codes.
 
-- [Error codes](error-codes.md)
-- [Database guide](../guides/database.md)
-- [Configuration guide](../guides/configuration.md)
+---
+
+## Standard Response Envelopes
+
+### Success Response
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Operation completed successfully",
+  "data": { ... }
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "statusCode": 401,
+  "errorCode": 601,
+  "error": {
+    "code": 601,
+    "message": "The username or password you entered is incorrect. Please try again.",
+    "details": "Check your spelling and make sure Caps Lock is off"
+  },
+  "message": "The username or password you entered is incorrect. Please try again.",
+  "hint": "Check your spelling and make sure Caps Lock is off",
+  "timestamp": "2026-09-14T06:00:00.000Z"
+}
+```
+
+---
+
+## Authentication Schemes
+
+1. **Session Cookie**: Encrypted `session_id` cookie sent with browser requests.
+2. **Bearer Token**: Standard HTTP Header `Authorization: Bearer mbk_pat_...` or `Authorization: Bearer mbk_cli_...`.
+3. **Internal Secret**: `Authorization: Bearer <MAIN_SECRET_TOKEN>` for internal service-to-service calls.
+
+---
+
+## Endpoint Categories
+
+- [REST Endpoints Catalog](api/endpoints.md) — Comprehensive list of all endpoints.
+- [Middleware Reference](api/middleware.md) — Express middleware documentation.
+- [Events & Diagnostics](api/operations.md) — Observability, health reports, and query monitoring.
+- [Error Codes Directory](error-codes.md) — Exact error codes and recovery hints.

@@ -11,10 +11,11 @@ export interface BaseRepositoryOptions {
 
 const isPlainObject = (val: any) => Boolean(val && typeof val === "object" && !Array.isArray(val));
 
-export class BaseRepository {
+export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpdateInput = Partial<TEntity>> {
   public db: any;
   public adapter: any;
   public dialect: IDialect;
+  public defaultTable: string | null = null;
 
   constructor(adapterOrOptions: any = {}) {
     if (adapterOrOptions && typeof adapterOrOptions.query === "function") {
@@ -25,6 +26,7 @@ export class BaseRepository {
       this.db = adapterOrOptions?.db || adapterOrOptions?.adapter || dblogin;
       this.adapter = this.db;
       this.dialect = adapterOrOptions?.dialect || this.db?.dialect || defaultDialect || postgresDialect;
+      this.defaultTable = adapterOrOptions?.defaultTable || adapterOrOptions?.tableName || null;
     }
   }
 
@@ -80,7 +82,7 @@ export class BaseRepository {
     return columnSql ? this.raw(this.dialect.returningClause(columnSql)) : this.raw("");
   }
 
-  limit(limit: any, offset: any) {
+  limit(limit: any, offset: any = null) {
     return this.raw(this.dialect.limitOffset({ limit, offset }));
   }
 
@@ -151,18 +153,206 @@ export class BaseRepository {
     return target.query(name ? { name, text, values } : { text, values });
   }
 
+  /**
+   * Find a single record by ID
+   */
+  async findById(id: string | number, idColumn: string = "id", tableName?: string): Promise<TEntity | null> {
+    const table = tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const query = this.sql`SELECT * FROM ${this.table(table)} WHERE ${this.ident(idColumn)} = ${this.value(id)} ${this.limit(1, 0)}`;
+    const result = await this.execute<TEntity>(query);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Find a single record matching specific criteria
+   */
+  async findOne(criteria: Partial<TEntity> | Record<string, any>, tableName?: string): Promise<TEntity | null> {
+    const table = tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const entries = Object.entries(criteria).filter(([_, v]) => v !== undefined);
+    if (entries.length === 0) {
+      const query = this.sql`SELECT * FROM ${this.table(table)} ${this.limit(1, 0)}`;
+      const result = await this.execute<TEntity>(query);
+      return result.rows[0] || null;
+    }
+
+    const values: any[] = [];
+    let sqlText = `SELECT * FROM ${this.quoteIdentifier(table)} WHERE `;
+    entries.forEach(([k, v], idx) => {
+      if (idx > 0) sqlText += " AND ";
+      sqlText += `${this.quoteIdentifier(k)} = ${this.dialect.param(values.length + 1)}`;
+      values.push(v);
+    });
+    sqlText += ` ${this.dialect.limitOffset({ limit: 1 })}`;
+    const result = await this.execute<TEntity>({ text: sqlText, values });
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Find multiple records matching specific criteria
+   */
+  async findMany(
+    criteria: Partial<TEntity> | Record<string, any> = {},
+    options: { tableName?: string; limit?: number; offset?: number; orderBy?: string } = {}
+  ): Promise<TEntity[]> {
+    const table = options.tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const entries = Object.entries(criteria).filter(([_, v]) => v !== undefined);
+    const values: any[] = [];
+    let sqlText = `SELECT * FROM ${this.quoteIdentifier(table)}`;
+
+    if (entries.length > 0) {
+      sqlText += " WHERE ";
+      entries.forEach(([k, v], idx) => {
+        if (idx > 0) sqlText += " AND ";
+        sqlText += `${this.quoteIdentifier(k)} = ${this.dialect.param(values.length + 1)}`;
+        values.push(v);
+      });
+    }
+
+    if (options.orderBy) {
+      sqlText += ` ORDER BY ${options.orderBy}`;
+    }
+
+    if (options.limit !== undefined || options.offset !== undefined) {
+      sqlText += ` ${this.dialect.limitOffset({ limit: options.limit, offset: options.offset })}`;
+    }
+
+    const result = await this.execute<TEntity>({ text: sqlText, values });
+    return result.rows;
+  }
+
+  /**
+   * Count records matching specific criteria
+   */
+  async count(criteria: Partial<TEntity> | Record<string, any> = {}, tableName?: string): Promise<number> {
+    const table = tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const entries = Object.entries(criteria).filter(([_, v]) => v !== undefined);
+    const values: any[] = [];
+    let sqlText = `SELECT COUNT(*) as total FROM ${this.quoteIdentifier(table)}`;
+
+    if (entries.length > 0) {
+      sqlText += " WHERE ";
+      entries.forEach(([k, v], idx) => {
+        if (idx > 0) sqlText += " AND ";
+        sqlText += `${this.quoteIdentifier(k)} = ${this.dialect.param(values.length + 1)}`;
+        values.push(v);
+      });
+    }
+
+    const result = await this.execute<{ total: number | string }>({ text: sqlText, values });
+    const countVal = result.rows[0]?.total;
+    return typeof countVal === "number" ? countVal : parseInt(String(countVal || 0), 10);
+  }
+
+  /**
+   * Insert a new record
+   */
+  async create(data: TCreateInput, tableName?: string): Promise<TEntity> {
+    const table = tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const entries = Object.entries(data as Record<string, any>).filter(([_, v]) => v !== undefined);
+    if (entries.length === 0) {
+      throw new Error("[BaseRepository] Cannot create record with empty data");
+    }
+
+    const columns = entries.map(([k]) => this.quoteIdentifier(k)).join(", ");
+    const values: any[] = [];
+    const params = entries.map(([_, v]) => {
+      values.push(v);
+      return this.dialect.param(values.length);
+    }).join(", ");
+
+    const returningClause = this.dialect.supportsReturning ? ` ${this.dialect.returningClause("*")}` : "";
+    const sqlText = `INSERT INTO ${this.quoteIdentifier(table)} (${columns}) VALUES (${params})${returningClause}`;
+    const result = await this.execute<TEntity>({ text: sqlText, values });
+
+    if (result.rows && result.rows.length > 0) {
+      return result.rows[0];
+    }
+    if (result.lastInsertRowid) {
+      const inserted = await this.findById(result.lastInsertRowid as any, "id", table);
+      if (inserted) return inserted;
+    }
+    return data as any;
+  }
+
+  /**
+   * Update a record by ID
+   */
+  async updateById(
+    id: string | number,
+    data: TUpdateInput,
+    options: { idColumn?: string; tableName?: string } = {}
+  ): Promise<TEntity | null> {
+    const table = options.tableName || this.defaultTable;
+    const idColumn = options.idColumn || "id";
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const entries = Object.entries(data as Record<string, any>).filter(([_, v]) => v !== undefined);
+    if (entries.length === 0) return this.findById(id, idColumn, table);
+
+    const values: any[] = [];
+    const setClauses = entries.map(([k, v]) => {
+      values.push(v);
+      return `${this.quoteIdentifier(k)} = ${this.dialect.param(values.length)}`;
+    }).join(", ");
+
+    values.push(id);
+    const idParam = this.dialect.param(values.length);
+    const returningClause = this.dialect.supportsReturning ? ` ${this.dialect.returningClause("*")}` : "";
+    const sqlText = `UPDATE ${this.quoteIdentifier(table)} SET ${setClauses} WHERE ${this.quoteIdentifier(idColumn)} = ${idParam}${returningClause}`;
+
+    const result = await this.execute<TEntity>({ text: sqlText, values });
+    if (result.rows && result.rows.length > 0) {
+      return result.rows[0];
+    }
+    return this.findById(id, idColumn, table);
+  }
+
+  /**
+   * Delete a record by ID
+   */
+  async deleteById(id: string | number, idColumn: string = "id", tableName?: string): Promise<boolean> {
+    const table = tableName || this.defaultTable;
+    if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
+    const query = this.sql`DELETE FROM ${this.table(table)} WHERE ${this.ident(idColumn)} = ${this.value(id)}`;
+    const result = await this.execute(query);
+    return (result.rowCount ?? 0) > 0;
+  }
+
   cloneWithDb(db: any) {
-    return new (this.constructor as any)({ db, dialect: this.dialect });
+    const instance = Object.create(Object.getPrototypeOf(this));
+    Object.assign(instance, this);
+    instance.db = db;
+    instance.adapter = db;
+    instance.dialect = db?.dialect || this.dialect;
+    instance.defaultTable = this.defaultTable;
+    return instance;
   }
 
   cloneWithAdapter(adapter: any) {
-    return new (this.constructor as any)(adapter);
+    const instance = Object.create(Object.getPrototypeOf(this));
+    Object.assign(instance, this);
+    instance.db = adapter;
+    instance.adapter = adapter;
+    instance.dialect = adapter?.dialect || this.dialect;
+    instance.defaultTable = this.defaultTable;
+    return instance;
   }
 
   async withTransaction<R = any>(fn: (txRepo: this, client: any) => Promise<R>): Promise<R> {
-    if (!this.db || typeof this.db.connect !== "function") return fn(this, this.db);
+    if (this.db?._inTransaction) {
+      return fn(this, this.db);
+    }
+
+    if (!this.db || typeof this.db.connect !== "function") {
+      return fn(this, this.db);
+    }
 
     const client = await this.db.connect();
+    client._inTransaction = true;
     const txRepo = this.cloneWithDb(client);
     try {
       await client.query("BEGIN");
@@ -173,7 +363,10 @@ export class BaseRepository {
       await client.query("ROLLBACK").catch(() => {});
       throw err;
     } finally {
-      client.release();
+      client._inTransaction = false;
+      if (typeof client.release === "function") {
+        client.release();
+      }
     }
   }
 

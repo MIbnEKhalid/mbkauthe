@@ -1,64 +1,36 @@
-# Two-Factor Authentication (2FA) Guide
+# Two-Factor Authentication (TOTP 2FA) in MBKAuthe v6
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
-
-MBKAuthe provides robust **Two-Factor Authentication (2FA)** using Time-based One-Time Passwords (TOTP / RFC 6238), fully compatible with **Google Authenticator**, **Authy**, and **1Password**.
+MBKAuthe v6 includes RFC 6238 Time-based One-Time Password (TOTP) two-factor authentication, compatible with Google Authenticator, Authy, 1Password, and Apple Keychain.
 
 ---
 
-## 1. Enabling 2FA in Configuration
+## 1. Enabling 2FA
 
-Enable two-factor authentication in your environment variables:
+Enable 2FA globally in `.env`:
 
 ```env
 MBKAUTH_TWO_FA_ENABLE=true
 DEVICE_TRUST_DURATION_DAYS=7
 ```
 
-- **`MBKAUTH_TWO_FA_ENABLE`**: When set to `true`, users with 2FA enabled will be prompted for their 6-digit TOTP code during login.
-- **`DEVICE_TRUST_DURATION_DAYS`**: Number of days a verified device remains trusted, bypassing repeated 2FA challenges on subsequent logins from the same browser.
+---
+
+## 2. 2FA Setup Flow
+
+1. User initiates 2FA setup in settings.
+2. Server generates a base32 secret and `otpauth://` URI using `speakeasy`.
+3. Server returns QR code data or setup key to the frontend.
+4. User enters the 6-digit confirmation code.
+5. Server verifies code and sets `two_factor_enabled = true` on the user record.
 
 ---
 
-## 2. Authentication Workflow
+## 3. 2FA Login Flow & Device Trust
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Browser
-    participant MBKAuthe
-    participant DB
+When a user with 2FA enabled logs in with username and password:
 
-    User->>Browser: Submit Username & Password
-    Browser->>MBKAuthe: POST /mbkauthe/api/login
-    MBKAuthe->>DB: Validate credentials & check 2FA status
-    alt 2FA Not Enabled
-        MBKAuthe-->>Browser: Set session cookies (Logged In)
-    else 2FA Enabled & Device Not Trusted
-        MBKAuthe-->>Browser: Return 2FA Challenge (requires_2fa: true)
-        Browser->>MBKAuthe: POST /mbkauthe/api/verify-2fa (code, trust_device)
-        MBKAuthe->>DB: Verify TOTP token via speakeasy
-        MBKAuthe-->>Browser: Set session & device trust cookies
-    end
-```
-
----
-
-## 3. Trusted Devices System
-
-When a user checks *"Trust this device for 7 days"*, MBKAuthe generates a secure, cryptographically random token stored in the `mbkauthe_trusted_devices` table.
-
-- Future logins from this browser check the trusted device cookie before challenging for 2FA.
-- The trust token expires after `DEVICE_TRUST_DURATION_DAYS`.
-- Changing password or revoking sessions automatically invalidates trusted device tokens.
-
----
-
-## 4. API Endpoints for 2FA
-
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/mbkauthe/api/verify-2fa` | `POST` | Validates submitted TOTP 6-digit token and completes login. |
-| `/mbkauthe/api/setup-2fa` | `POST` | Generates a new TOTP secret seed and QR code data URI. |
-| `/mbkauthe/api/confirm-2fa` | `POST` | Confirms initial setup with a valid code and activates 2FA. |
-| `/mbkauthe/api/disable-2fa` | `POST` | Disables 2FA (requires password re-verification). |
+1. `POST /mbkauthe/api/login` verifies password credentials.
+2. Server responds with `200 OK` and `{ requires2FA: true }` (or renders the 2FA verification screen).
+3. User submits 6-digit code to `POST /mbkauthe/api/verify-2fa`.
+4. If valid, the session is promoted to fully authenticated status.
+5. If user checks **"Trust this device"**, MBKAuthe issues an `mbk_dev_` cookie valid for `DEVICE_TRUST_DURATION_DAYS` (default: 7 days). Subsequent logins on that device bypass the 2FA challenge until expiry.

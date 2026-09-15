@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { describe, beforeAll, it, expect } from 'vitest';
-import { SqlitePool, translatePgToSqlite, SqliteSessionStore, sqliteDialect, AuthRepository } from '../../dist/index.js';
+import { SqlitePool, translatePgToSqlite, SqliteSessionStore, sqliteDialect, AuthRepository, BaseRepository } from '../../dist/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
@@ -605,5 +605,73 @@ describe('SqliteSessionStore', () => {
     expect(await storeGet('old-sid')).toBeUndefined();
     const sess = await storeGet('new-sid');
     expect(sess.user.username).toBe('normal');
+  });
+
+  describe('BaseRepository Generic CRUD & Transaction Enhancements', () => {
+    test('create, findById, findOne, findMany, count, updateById, deleteById', async () => {
+      class TestUserRepo extends BaseRepository {
+        constructor(db) {
+          super({ db, defaultTable: 'mbkcore_users' });
+        }
+      }
+
+      const userRepo = new TestUserRepo(pool);
+
+      // 1. count
+      const initialCount = await userRepo.count();
+      expect(initialCount).toBeGreaterThan(0);
+
+      // 2. findById
+      const user = await userRepo.findById('normal', 'username');
+      expect(user).toBeDefined();
+      expect(user.username).toBe('normal');
+
+      // 3. findOne
+      const foundOne = await userRepo.findOne({ username: 'normal' });
+      expect(foundOne.username).toBe('normal');
+
+      // 4. findMany
+      const allUsers = await userRepo.findMany({}, { limit: 2, orderBy: 'username ASC' });
+      expect(allUsers.length).toBeLessThanOrEqual(2);
+
+      // 5. create
+      const created = await userRepo.create({
+        username: 'crud_user',
+        password_hash: 'hash123',
+        role: 'normaluser'
+      });
+      expect(created.username).toBe('crud_user');
+
+      // 6. updateById
+      const updated = await userRepo.updateById('crud_user', { full_name: 'CRUD Full Name' }, { idColumn: 'username' });
+      expect(updated.full_name).toBe('CRUD Full Name');
+
+      // 7. deleteById
+      const deleted = await userRepo.deleteById('crud_user', 'username');
+      expect(deleted).toBe(true);
+
+      const afterDelete = await userRepo.findById('crud_user', 'username');
+      expect(afterDelete).toBeNull();
+    });
+
+    test('withTransaction supports nested transaction calls cleanly without double BEGIN', async () => {
+      class TestUserRepo extends BaseRepository {
+        constructor(db) {
+          super({ db, defaultTable: 'mbkcore_users' });
+        }
+      }
+
+      const userRepo = new TestUserRepo(pool);
+
+      const result = await userRepo.withTransaction(async (txRepo1) => {
+        // Nested transaction call
+        return await txRepo1.withTransaction(async (txRepo2) => {
+          const u = await txRepo2.findById('normal', 'username');
+          return u.username;
+        });
+      });
+
+      expect(result).toBe('normal');
+    });
   });
 });

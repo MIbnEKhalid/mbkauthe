@@ -1,118 +1,74 @@
-# Role-Based Access Control (RBAC) Guide
+# Role-Based Access Control (RBAC) in MBKAuthe v6
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
-
-MBKAuthe provides built-in, granular **Role-Based Access Control (RBAC)** and **Application Scope Verification** to protect Express routes and API endpoints.
+MBKAuthe provides hierarchical Role-Based Access Control (RBAC) integrated into the session lifecycle and Express middleware routing.
 
 ---
 
-## 1. System Roles
+## 1. Built-in Roles
 
-MBKAuthe defines four standard system roles:
+MBKAuthe includes four standard global roles:
 
-| Role | Hierarchy Level | Capabilities & Access |
-| :--- | :--- | :--- |
-| `superadmin` | Level 4 (Highest) | Full system administration, user management, cross-application bypass, session termination, token management. |
-| `normaluser` | Level 3 (Standard) | Default registered user role. Can access authenticated user features for assigned applications in `allowed_apps`. |
-| `member` | Level 2 (Restricted) | Application member with restricted write/read privileges. |
-| `guest` | Level 1 (Read-only) | Temporary or unverified visitor role with strictly limited read access. |
+| Role | Hierarchy Level | Description |
+|---|---|---|
+| `superadmin` | Level 4 (Highest) | Full system bypass. Automatically passes all role checks and permissions. |
+| `admin` | Level 3 | Administrative access for managing users, tokens, and application data. |
+| `normaluser` | Level 2 | Standard authenticated user with default application privileges. |
+| `guest` | Level 1 | Restricted or read-only access. |
 
 ---
 
-## 2. Middleware Helpers
+## 2. The `RoleRegistry`
 
-Import RBAC middleware helpers from `"mbkauthe"`:
+Roles and their associated permissions are managed in-memory via `RoleRegistry` and dynamically loaded from the database:
 
-```javascript
-import { sessVal, roleChk, sessRole, strictSessRole } from "mbkauthe";
+```typescript
+import { RoleRegistry, defaultRoleRegistry } from "mbkauthe/core";
+
+// Register custom role with permissions
+defaultRoleRegistry.setRole("editor", [
+  "blog:articles:create",
+  "blog:articles:edit",
+  "blog:comments:delete"
+]);
+
+// Check if role has a permission
+const canEdit = defaultRoleRegistry.checkRoleHasPermission("editor", "blog:articles:edit");
+console.log("Editor can edit:", canEdit); // true
 ```
 
-### `sessRole(requiredRole, notAllowed)`
+---
 
-Combined session validation and role enforcement. This is the recommended middleware for most protected routes.
+## 3. Protecting Routes with `roleChk` and `sessRole`
 
-```javascript
+### Using `roleChk` (Role Check Middleware)
+
+`roleChk` verifies that the logged-in user possesses one of the allowed roles:
+
+```typescript
 import express from "express";
-import { sessRole } from "mbkauthe";
-
-const router = express.Router();
-
-// Route accessible only by superadmin
-router.get("/admin/dashboard", sessRole("superadmin"), (req, res) => {
-  res.render("admin-dashboard", { user: req.session.user });
-});
-
-// Route accessible by any authenticated user EXCEPT guest
-router.get("/app/workspace", sessRole("Any", "guest"), (req, res) => {
-  res.render("workspace", { user: req.session.user });
-});
-```
-
-### `roleChk(requiredRole, notAllowed)`
-
-Standalone role-checking middleware used after `sessVal` or custom authentication:
-
-```javascript
 import { sessVal, roleChk } from "mbkauthe";
 
-router.post("/api/settings", sessVal, roleChk("superadmin"), (req, res) => {
-  res.json({ success: true, message: "Settings saved" });
+const app = express();
+
+// Accessible only to 'superadmin' and 'admin'
+app.get("/admin/settings", sessVal, roleChk(["superadmin", "admin"]), (req, res) => {
+  res.json({ message: "Admin Settings Panel" });
+});
+
+// Blacklist a specific role (e.g. deny 'guest')
+app.post("/comments", sessVal, roleChk("*", "guest"), (req, res) => {
+  res.json({ message: "Comment created successfully" });
 });
 ```
 
-### `strictSessRole(requiredRole, notAllowed)`
+### Combined Session & Role Middleware (`sessRole`)
 
-Enforces strict browser session cookie authentication (rejects bearer API tokens with a `401 Unauthorized` response):
+`sessRole` combines `validateSession` and `checkRolePermission` into a single middleware call:
 
-```javascript
-import { strictSessRole } from "mbkauthe";
+```typescript
+import { sessRole } from "mbkauthe";
 
-// Sensitive route that must never be callable via API tokens
-router.post("/profile/delete-account", strictSessRole("normaluser"), (req, res) => {
-  // delete account logic
+app.get("/superadmin/audit", sessRole("superadmin"), (req, res) => {
+  res.json({ message: "Superadmin Audit Logs" });
 });
 ```
-
----
-
-## 3. Application-Level Scoping (`allowed_apps`)
-
-In multi-application ecosystems, users have an `allowed_apps` JSONB array column in `mbkcore_users`:
-
-```json
-{
-  "allowed_apps": ["portal", "analytics", "billing"]
-}
-```
-
-- When `APP_NAME="portal"` is configured, `sessRole` / `sessVal` verifies that the current application name is present in `req.session.user.allowed_apps`.
-- Users with `superadmin` role automatically bypass `allowed_apps` checks.
-- If a user attempts to access an unauthorized application, MBKAuthe responds with error code `902 - APP_ACCESS_DENIED`.
-
----
-
-## 4. Checking Roles Programmatically
-
-Inside route handlers or service layers, inspect the session context:
-
-```javascript
-app.get("/api/reports", sessRole("normaluser"), (req, res) => {
-  const { role, username } = req.session.user;
-
-  if (role === "superadmin") {
-    // Return all tenant reports
-    return res.json({ allReports: true });
-  }
-
-  // Return user-specific reports
-  return res.json({ userReports: true, username });
-});
-```
-
----
-
-## 5. Security Best Practices
-
-1. **Deny by Default**: Always protect sensitive mutation routes with `sessRole("superadmin")` or strict role checks.
-2. **Do Not Trust Client Role Headers**: MBKAuthe validates user roles against the authoritative database record on active session checks.
-3. **Use `reloadSessionUser(req, res)`**: When modifying roles or permissions in the database, refresh the session object immediately.

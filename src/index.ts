@@ -6,7 +6,7 @@
  */
 
 // 1. Config & Environment
-export { mbkautheVar, packageJson, appVersion, validateConfiguration, findValue, default as en } from "./config/index.js";
+export { mbkautheVar, packageJson, appVersion, validateConfiguration, checkConfigurationStatus, findValue, default as en } from "./config/index.js";
 export {
   hashPassword,
   verifyPassword,

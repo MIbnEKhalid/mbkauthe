@@ -32,15 +32,37 @@ export interface SendSuccessOptions {
   message?: string;
   req?: Request;
   res?: Response;
+  requestId?: string;
   [key: string]: any;
 }
 
+function resolveRequestId(options: { req?: Request; requestId?: string }): string | undefined {
+  if (options.requestId) return options.requestId;
+  if (!options.req) return undefined;
+  const headerId = options.req.headers?.["x-request-id"] || options.req.headers?.["x-correlation-id"];
+  if (typeof headerId === "string") return headerId;
+  return (options.req as any).id || (options.req as any).requestId;
+}
+
+function resolveDurationMs(req?: Request): number | undefined {
+  if (!req) return undefined;
+  const start = (req as any)._startTime || (req as any).startTime;
+  if (typeof start === "number") return Date.now() - start;
+  if (start instanceof Date) return Date.now() - start.getTime();
+  return undefined;
+}
+
 export function sendSuccess(res: Response, data: any = null, options: SendSuccessOptions = {}): Response {
-  const { statusCode = 200, message = undefined, req: _req, res: _res, ...extra } = options;
+  const { statusCode = 200, message = undefined, req, res: _res, ...extra } = options;
+  const requestId = resolveRequestId({ req, requestId: options.requestId });
+  const durationMs = resolveDurationMs(req);
+
   const envelope: Record<string, any> = {
     success: true,
     ...(message && { message }),
     ...(data !== null && data !== undefined && { data }),
+    ...(requestId && { requestId }),
+    ...(durationMs !== undefined && { durationMs }),
     timestamp: new Date().toISOString(),
     ...extra,
   };
@@ -57,14 +79,17 @@ export interface SendErrorOptions {
   code?: number | string;
   req?: Request;
   res?: Response;
+  requestId?: string;
   [key: string]: any;
 }
 
 export function sendError(res: Response, errorInput: any, options: SendErrorOptions = {}): Response {
-  const { statusCode = 500, details = undefined, errorCode = undefined, req: _req, res: _res, ...extra } = options;
+  const { statusCode = 500, details = undefined, errorCode = undefined, req, res: _res, ...extra } = options;
   let code = errorCode || options.code || (statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST");
   let message = "An unexpected error occurred";
   let rawDetails = details;
+  const requestId = resolveRequestId({ req, requestId: options.requestId });
+  const durationMs = resolveDurationMs(req);
 
   if (typeof errorInput === "string") {
     message = errorInput;
@@ -92,6 +117,8 @@ export function sendError(res: Response, errorInput: any, options: SendErrorOpti
     },
     message,
     ...(typeof code === "number" || errorCode !== undefined ? { errorCode: typeof code === "number" ? code : errorCode } : {}),
+    ...(requestId && { requestId }),
+    ...(durationMs !== undefined && { durationMs }),
     timestamp: new Date().toISOString(),
     ...extra,
   };

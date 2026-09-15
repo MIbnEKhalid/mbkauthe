@@ -1,148 +1,72 @@
-# Database Schema & DDL Specification
+# Database Schema & DDL Reference
 
-[Back to docs index](../README.md) | [Back to project README](../../README.md)
-
-This document provides the authoritative DDL database schema definitions for both **PostgreSQL** and **SQLite** utilized by `mbkauthe`.
+MBKAuthe v6 maintains identical entity relational models across PostgreSQL and SQLite databases.
 
 ---
 
-## 1. Overview of Core Tables
+## Entity Relational Tables
 
-| Table Name | Purpose | Dialect |
-| :--- | :--- | :--- |
-| `mbkcore_users` | Authoritative user identity, password hashes, roles, and allowed application scopes | PostgreSQL & SQLite |
-| `mbkcore_api_tokens` | Long-lived API bearer tokens with SHA-256 hashed storage and per-token permission lists | PostgreSQL & SQLite |
-| `mbkcore_api_token_profiles` | Predefined templates for scoped token provisioning | PostgreSQL & SQLite |
-| `mbkcore_cli_device_authorizations` | RFC 8628 CLI device login state, user codes, and authorization handshakes | PostgreSQL & SQLite |
-| `mbkauthe_sessions` / `sessions` | Encrypted multi-session table with automated eviction | PostgreSQL & SQLite |
-| `mbkauthe_totp` / `TwoFA` | TOTP 2FA secret seeds, recovery keys, and activation status | PostgreSQL & SQLite |
-| `mbkauthe_trusted_devices` | Device trust timestamps for remember-device functionality | PostgreSQL & SQLite |
-| `mbkcore_permission_catalog` | Auto-populated catalog of valid `app:service:action` permissions | PostgreSQL & SQLite |
-| `mbkcore_roles` | Named global unified roles (superadmin, admin, author, normaluser) | PostgreSQL & SQLite |
-| `mbkcore_role_permissions` | Permissions granted to each role across applications | PostgreSQL & SQLite |
-| `mbkcore_user_permission_overrides` | Per-user allow/deny permission exceptions | PostgreSQL & SQLite |
+### 1. `users`
+Core user account credentials, roles, and provider identifiers.
+- `id` (INTEGER / SERIAL PRIMARY KEY)
+- `username` (VARCHAR(255) UNIQUE NOT NULL)
+- `password_hash` (TEXT NOT NULL)
+- `email` (VARCHAR(255) UNIQUE)
+- `role` (VARCHAR(50) DEFAULT 'normaluser')
+- `is_active` (BOOLEAN DEFAULT TRUE / INTEGER DEFAULT 1)
+- `two_factor_enabled` (BOOLEAN DEFAULT FALSE / INTEGER DEFAULT 0)
+- `two_factor_secret` (TEXT)
+- `github_id` (VARCHAR(255))
+- `google_id` (VARCHAR(255))
+- `created_at` (TIMESTAMP DEFAULT NOW())
+- `updated_at` (TIMESTAMP DEFAULT NOW())
 
-> The `mbkcore_users` table also carries `perm_version integer` column used by
-> the dynamic permission model. See the [Permissions guide](../guides/permissions.md).
-> The canonical DDL lives in `db.sql` / `db.sqlite.sql` and is applied via
-> `npm run create-tables` / the consuming application's schema init. Host applications
-> must not create these tables at runtime — they are expected to already exist (schema is synced
-> up-front).
+### 2. `app_sessions` / `sessions`
+Active session storage with device information and expiration.
+- `sid` (VARCHAR(255) PRIMARY KEY)
+- `user_id` (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- `sess` (TEXT / JSONB NOT NULL)
+- `device_id` (VARCHAR(255))
+- `expire` (TIMESTAMP NOT NULL)
 
----
+### 3. `api_tokens`
+Hashed Personal Access Tokens with custom scopes.
+- `id` (SERIAL PRIMARY KEY)
+- `user_id` (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- `name` (VARCHAR(255) NOT NULL)
+- `token_hash` (VARCHAR(255) UNIQUE NOT NULL)
+- `scopes` (TEXT NOT NULL)
+- `expires_at` (TIMESTAMP)
+- `last_used_at` (TIMESTAMP)
+- `created_at` (TIMESTAMP DEFAULT NOW())
 
-## 2. PostgreSQL DDL (`db.sql`)
+### 4. `cli_auth_sessions`
+RFC 8628 device authorization requests and polling state.
+- `id` (SERIAL PRIMARY KEY)
+- `device_code` (VARCHAR(255) UNIQUE NOT NULL)
+- `user_code` (VARCHAR(50) UNIQUE NOT NULL)
+- `client_name` (VARCHAR(255) NOT NULL)
+- `status` (VARCHAR(50) DEFAULT 'pending')
+- `user_id` (INTEGER REFERENCES users(id))
+- `token_hash` (VARCHAR(255))
+- `expires_at` (TIMESTAMP NOT NULL)
+- `created_at` (TIMESTAMP DEFAULT NOW())
 
-```sql
--- PostgreSQL schema for mbkauthe (standard lowercase snake_case).
+### 5. `permissions_catalog` & `roles_catalog`
+Dynamic permission manifests and role definitions.
+- `id` (SERIAL PRIMARY KEY)
+- `app_key` (VARCHAR(100) NOT NULL)
+- `service_key` (VARCHAR(100) NOT NULL)
+- `action_key` (VARCHAR(100) NOT NULL)
+- `permission` (VARCHAR(255) UNIQUE NOT NULL)
+- `label` (VARCHAR(255))
+- `synced_at` (TIMESTAMP DEFAULT NOW())
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- Table: mbkcore_users
-CREATE TABLE IF NOT EXISTS mbkcore_users (
-    id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
-    username character varying(50),
-    password text DEFAULT '12345670'::text,
-    is_active boolean DEFAULT false,
-    role text DEFAULT 'normaluser'::text,
-    have_mail_account boolean DEFAULT false,
-    allowed_apps jsonb DEFAULT '["Portal", "mbkauthe"]'::jsonb,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    last_login timestamp with time zone,
-    password_hash character varying(255),
-    full_name character varying(100),
-    user_id character varying(9),
-    email text DEFAULT 'support@mbktech.org'::text,
-    image text DEFAULT 'https://portal.mbktech.org/icon.svg'::text,
-    bio text DEFAULT 'I am ....'::text,
-    social_accounts text DEFAULT '{}'::text,
-    positions jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb,
-    permission_templates jsonb DEFAULT '[]'::jsonb,
-    perm_version integer DEFAULT 1,
-    CONSTRAINT mbkcore_users_pkey PRIMARY KEY (id),
-    CONSTRAINT mbkcore_users_username_key UNIQUE (username),
-    CONSTRAINT mbkcore_users_user_id_key UNIQUE (user_id),
-    CONSTRAINT chk_mbkcore_users_user_id_length CHECK (user_id IS NULL OR length(user_id) = 9)
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users USING btree (is_active);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_allowed_apps_gin ON mbkcore_users USING gin (allowed_apps);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_email ON mbkcore_users USING btree (email);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_last_login ON mbkcore_users USING btree (last_login);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_positions_gin ON mbkcore_users USING gin (positions);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_role ON mbkcore_users USING btree (role);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_username_cover ON mbkcore_users USING btree (username) INCLUDE (is_active, role);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_user_id ON mbkcore_users USING btree (user_id);
-
--- Table: mbkcore_api_tokens
-CREATE TABLE IF NOT EXISTS mbkcore_api_tokens (
-    id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
-    username character varying(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    name character varying(255) NOT NULL,
-    token_hash character varying(128) NOT NULL,
-    prefix character varying(32) NOT NULL,
-    permissions jsonb DEFAULT '{"permissions": []}'::jsonb NOT NULL,
-    last_used timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now(),
-    expires_at timestamp with time zone,
-    CONSTRAINT mbkcore_api_tokens_pkey PRIMARY KEY (id),
-    CONSTRAINT mbkcore_api_tokens_token_hash_key UNIQUE (token_hash),
-    CONSTRAINT chk_mbkcore_api_tokens_name_not_empty CHECK ((length(TRIM(BOTH FROM name)) > 0)),
-    CONSTRAINT chk_mbkcore_api_tokens_expires_future CHECK (((expires_at IS NULL) OR (expires_at > created_at)))
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_expires ON mbkcore_api_tokens USING btree (expires_at) WHERE (expires_at IS NOT NULL);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_permissions_gin ON mbkcore_api_tokens USING gin (permissions);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_username_created ON mbkcore_api_tokens USING btree (username, created_at DESC);
-```
-
----
-
-## 3. SQLite DDL (`db.sqlite.sql`)
-
-```sql
--- SQLite schema for mbkauthe (WAL mode enabled).
-
-PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
-
--- Table: mbkcore_users
-CREATE TABLE IF NOT EXISTS mbkcore_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username VARCHAR(50) UNIQUE,
-    password TEXT DEFAULT '12345670',
-    is_active INTEGER DEFAULT 0,
-    role TEXT DEFAULT 'normaluser',
-    have_mail_account INTEGER DEFAULT 0,
-    allowed_apps TEXT DEFAULT '["Portal", "mbkauthe"]',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    last_login TEXT,
-    password_hash TEXT,
-    full_name TEXT,
-    user_id TEXT UNIQUE,
-    email TEXT DEFAULT 'support@mbktech.org',
-    image TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',
-    bio TEXT DEFAULT 'I am ....',
-    social_accounts TEXT DEFAULT '{}',
-    positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users (is_active);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_email ON mbkcore_users (email);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_role ON mbkcore_users (role);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_users_username ON mbkcore_users (username);
-
--- Table: mbkcore_api_tokens
-CREATE TABLE IF NOT EXISTS mbkcore_api_tokens (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    prefix TEXT NOT NULL,
-    permissions TEXT NOT NULL DEFAULT '{"permissions": []}',
-    last_used TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    expires_at TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_token_hash ON mbkcore_api_tokens (token_hash);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_api_tokens_username ON mbkcore_api_tokens (username);
-```
+### 6. `device_trust`
+Trusted 2FA device tokens.
+- `id` (SERIAL PRIMARY KEY)
+- `user_id` (INTEGER REFERENCES users(id) ON DELETE CASCADE)
+- `device_token_hash` (VARCHAR(255) UNIQUE NOT NULL)
+- `device_info` (TEXT)
+- `expires_at` (TIMESTAMP NOT NULL)
+- `created_at` (TIMESTAMP DEFAULT NOW())

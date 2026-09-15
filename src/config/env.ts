@@ -47,6 +47,8 @@ const CANONICAL_KEYS = [
 ].map((k) => ({ lower: k, upper: k.toUpperCase() }));
 
 const DEFAULT_CONFIG: Record<string, any> = {
+  app_name: "mbkapp",
+  domain: "localhost",
   device_trust_duration_days: 7,
   is_deployed: "false",
   db_type: "postgres",
@@ -263,7 +265,7 @@ function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<st
   Object.keys(mbkautheVarSource).forEach(resolveCustomKey);
   Object.keys(mbkauthSharedSource).forEach(resolveCustomKey);
 
-  if (strict || process.env.NODE_ENV !== "test") {
+  if (strict) {
     for (const key of REQUIRED_KEYS) {
       if (isBlank(resolved[key])) {
         errors.push(`Missing required configuration: ${key.toUpperCase()}`);
@@ -276,12 +278,21 @@ function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<st
 }
 
 export function resolveRawConfig(): MBKAuthConfig {
-  const { resolved, errors } = extractAndResolveConfig({ strict: false });
-  if (errors.length > 0 && process.env.NODE_ENV !== "test") {
-    throw new Error(`[mbkauthe] Configuration Errors:\n  - ${errors.join("\n  - ")}`);
-  }
+  const { resolved } = extractAndResolveConfig({ strict: false });
   setPasswordPepper(resolved.SESSION_SECRET_KEY || resolved.session_secret_key || "");
   return createConfigProxy(resolved);
+}
+
+export function checkConfigurationStatus(): { valid: boolean; missingRequired: string[]; warnings: string[]; resolved: Record<string, any> } {
+  const { resolved, errors } = extractAndResolveConfig({ strict: true });
+  const missingRequired = errors.filter((e) => e.startsWith("Missing required configuration:")).map((e) => e.replace("Missing required configuration: ", ""));
+  const warnings = errors.filter((e) => !e.startsWith("Missing required configuration:"));
+  return {
+    valid: errors.length === 0,
+    missingRequired,
+    warnings,
+    resolved,
+  };
 }
 
 export function validateConfiguration(): MBKAuthConfig {

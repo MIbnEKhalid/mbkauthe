@@ -1,235 +1,224 @@
-# MBKAuthe - Node.js Authentication System
+<div align="center">
 
-[![Website](https://img.shields.io/badge/website-mbkauthe.mbktech.org-0284c7.svg)](https://mbkauthe.mbktech.org)
-[![Version](https://img.shields.io/npm/v/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Check npm version](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml/badge.svg)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml)
-[![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
+# MBKAuthe v6
+
+**Enterprise-Grade Authentication & Authorization Framework for Node.js & Express**
 
 <p align="center">
-  <img height="64px" src="./public/logo.png" alt="MBKAuthe" />
+  <img src="https://skillicons.dev/icons?i=ts,js,nodejs,express,postgres,sqlite,vitest,git" alt="TypeScript, Node.js, Express, PostgreSQL, SQLite, Vitest, Git" />
 </p>
 
-**MBKAuthe** is an open source authentication package for Node.js and Express, backed by PostgreSQL or SQLite. It handles login, session validation, role/app access checks, optional TOTP 2FA, OAuth login, API token authentication, and multi-session management.
+# MBKAuthe - Node.js Authentication System
 
-🌐 **Official Website & Live Docs**: [https://mbkauthe.mbktech.org](https://mbkauthe.mbktech.org)
 
-> **Note:** MBKAuthe is intentionally focused on authentication and session validation. The broader user, permission, and dashboard management system is a separate MBKTech product named **MBKCore**(closed source for now).
+[![npm version](https://img.shields.io/npm/v/mbkauthe.svg?style=flat-square&color=0284c7)](https://www.npmjs.com/package/mbkauthe)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x_ESM-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Website](https://img.shields.io/badge/website-mbkauthe.mbktech.org-0284c7.svg?style=flat-square)](https://mbkauthe.mbktech.org)
+[![Tests](https://img.shields.io/badge/tests-297_passed-success.svg?style=flat-square)](https://github.com/MIbnEKhalid/mbkauthe)
+[![Downloads](https://img.shields.io/npm/dm/mbkauthe.svg)](https://www.npmjs.com/package/mbkauthe)
+[![Check npm version](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml/badge.svg)](https://github.com/MIbnEKhalid/mbkauthe/actions/workflows/checkLatestVersion.yml)
 
-## Features
+[Official Website](https://mbkauthe.mbktech.org) • [Interactive Docs](https://mbkauthe.mbktech.org/docs) • [API Reference](https://mbkauthe.mbktech.org/api-reference) • [Examples](https://mbkauthe.mbktech.org/examples)
 
-- Express middleware for session validation and role checks
-- PostgreSQL or SQLite storage for users, sessions, 2FA, trusted devices, and API tokens
-- Secure password authentication with PBKDF2
-- Optional TOTP 2FA with trusted devices
-- GitHub App and Google OAuth login flows
-- Optional browser-based CLI/device login flow for issuing API tokens
-- API token authentication with read-only/write scopes
-- Configurable multi-session support per user
-- CSRF protection, rate limiting, secure cookies, and session fixation prevention
-- Customizable Handlebars views
-- Vercel/serverless-friendly deployment support
-- Dev-only DB Query Monitor with callsite, timing, request context, and pool stats
+</div>
+
+---
+
+## Overview
+
+**MBKAuthe v6** is a modular, developer-first authentication and authorization engine built natively in TypeScript ESM for Node.js and Express applications.
+
+Designed for high reliability and defense-in-depth security, MBKAuthe provides dual-database persistence across PostgreSQL and embedded SQLite, encrypted multi-session management, dynamic manifest-driven permissions, cryptographic token generation, RFC 8628 CLI device login, social OAuth integrations, domain event streaming, and resilient query retries.
+
+---
+
+## Key Features
+
+- **Dual-Database Persistence**: First-class support for **PostgreSQL** (connection pooling) and embedded **SQLite** (via `better-sqlite3` with WAL mode and FIFO `SqliteMutex`).
+- **Encrypted Multi-Session Engine**: Client-side AES cookie encryption, automatic database session validation, session restoration, and concurrent session pruning (`MAX_SESSIONS_PER_USER`).
+- **Dynamic Manifest-Driven RBAC**: Declarative `app:service:action` permission manifests (`definePermissions`), database catalog sync (`syncAppPermissions`), `RoleRegistry`, and drop-in middleware (`sessVal`, `sessRole`, `sessPerm`, `roleChk`, `permChk`).
+- **Cryptographic TokenEngine**: Standardized prefixed tokens (`mbk_pat_`, `mbk_cli_`, `mbk_dev_`, `mbk_sess_`) with constant-time SHA-256 verification and last-used tracking.
+- **RFC 8628 CLI Device Login**: OAuth 2.0 Device Authorization Grant allowing command-line tools to authenticate seamlessly via the browser with 8-character user codes.
+- **Social OAuth & Account Linking**: Built-in GitHub App and Google OAuth 2.0 authentication with unified user account linking.
+- **TOTP Two-Factor Authentication**: RFC 6238 Time-based One-Time Passwords with QR code setup and trusted device tokens.
+- **Domain Event Streaming**: Type-safe `authEvents` emitter for audit logs, webhooks, and analytics (`auth:login:success`, `auth:logout`, `auth:token:created`, etc.).
+- **Health & Observability**: Real-time diagnostic reporting (`getAuthHealthReport`) and live in-memory database query logging.
+
+---
 
 ## Installation
 
 ```bash
-npm install mbkauthe
+npm install mbkauthe express
 ```
 
-## Quick Start
+**Prerequisites**:
+- Node.js `>= 18.0.0`
+- PostgreSQL 13+ (optional if using SQLite)
 
-1. Copy the environment template.
+---
 
-```powershell
-Copy-Item .env.example .env
-```
+## Quick Start (Express + TypeScript)
 
-2. Configure environment values.
-
-See the [configuration guide](docs/guides/configuration.md) for `mbkautheVar`, `mbkauthShared`, OAuth settings, session settings, and deployment flags.
-
-3. Choose a database backend.
-
-MBKAuthe supports two backends, selected with `DB_TYPE` in `mbkautheVar`:
-
-- **PostgreSQL** (default) - set `LOGIN_DB` to a connection string. Recommended for production and multi-instance deployments.
-- **SQLite** - set `DB_TYPE` to `sqlite` and `SQLITE_PATH` to a file path (created if missing). No database server required - convenient for development, tests, and small single-instance deployments. Uses `better-sqlite3` with WAL mode; expect `-wal`/`-shm` side files next to the database file. See the [SQLite backend notes](docs/guides/database.md#sqlite-backend-notes) in the database guide.
-
-4. Create database tables.
-
-```bash
-npm run create-tables
-```
-
-The script applies [docs/schema/db.sql](docs/schema/db.sql) (PostgreSQL) or [docs/schema/db.sqlite.sql](docs/schema/db.sqlite.sql) (SQLite) to the configured backend. You can also run the matching SQL file yourself.
-
-The schema includes a default superadmin user (`support` / `12345678`). Change that password immediately. See the [database guide](docs/guides/database.md).
-
-5. Mount MBKAuthe in Express.
-
-```javascript
+```typescript
 import express from "express";
-import dotenv from "dotenv";
-import mbkauthe, { sessVal, roleChk, sessRole } from "mbkauthe";
-
-dotenv.config();
+import mbkauthe, { sessVal, roleChk, sessPerm } from "mbkauthe";
+import { definePermissions } from "mbkauthe/core";
+import { syncAppPermissions } from "mbkauthe/services";
 
 const app = express();
 
+// 1. Define App Permissions
+const AppPermissions = definePermissions({
+  appKey: "portal",
+  permissions: {
+    dashboard: { view: "View main dashboard" },
+    admin: { manage: "Manage system configuration" },
+  },
+  roles: {
+    superadmin: ["portal:*"],
+    normaluser: ["portal:dashboard:view"],
+  },
+});
+
+// 2. Mount Authentication Router (/mbkauthe/*)
 app.use(mbkauthe);
 
+// 3. Protected User Route
 app.get("/dashboard", sessVal, (req, res) => {
-  res.send(`Welcome ${req.session.user.username}!`);
+  res.json({
+    message: `Welcome back, ${req.session.user.username}!`,
+    user: req.session.user,
+  });
 });
 
-app.get("/admin", sessVal, roleChk("superadmin"), (req, res) => {
-  res.send("Admin Panel");
-});
-
-// Or combine session and role checks into one middleware:
+// 4. Role-Protected Admin Route
 app.get("/admin", sessRole("superadmin"), (req, res) => {
-  res.send("Admin Panel");
+  res.json({ message: "Welcome to the Superadmin Panel" });
 });
 
-app.listen(3000);
+// 5. Permission-Protected Route
+app.get("/admin/config", sessPerm(AppPermissions.admin.manage), (req, res) => {
+  res.json({ config: { maintenanceMode: false } });
+});
+
+// 6. Start Server and Sync Permissions
+app.listen(3000, async () => {
+  await syncAppPermissions(AppPermissions);
+  console.log("Server listening on http://localhost:3000");
+});
 ```
 
-## Common Exports
+---
 
-- `sessVal` / `validateSession` - require a valid session or API token.
-- `roleChk` / `checkRolePermission` - require a role after session validation.
-- `sessRole` / `validateSessionAndRole` - combine session and role checks.
-- `sessPerm` / `permChk` - dynamic **permission** middleware (`app:service:action`) using a session-cached, catalog-driven permission model. See the [Permissions guide](docs/guides/permissions.md).
-- `definePermissions` / `syncAppPermissions` - declare an app's permission manifest and auto-sync it to the permission catalog.
-- `strictValidateSession` - require cookie session authentication only.
-- `strictValidateSessionAndRole` - strict cookie session plus role check.
-- `authenticate(token)` - protect server-to-server routes with a static bearer token.
-- `dblogin` - access the configured database pool (`pg.Pool` or the SQLite adapter, per `DB_TYPE`).
-- `dbType` - the active backend: `"postgres"` or `"sqlite"`.
-- `SqliteAdapter` / `SqlitePool` - universal SQLite adapter wrapping `better-sqlite3` with FIFO transaction mutex, type coercion, and row normalization.
-- `PostgresAdapter` - PostgreSQL database adapter wrapping `pg.Pool` with dialect binding.
-- `translatePgToSqlite` - runtime SQL translator for converting PostgreSQL queries ($1, `ANY()`, casts, `ILIKE`, `NOW()`, `to_char`, `gen_random_uuid`) to SQLite.
-- `BaseRepository` - extensible base repository with `execute()`, `query()`, `withTransaction()`, `setDb()`, and dialect query helpers.
-- `postgresDialect` / `sqliteDialect` - dialect SQL tokens for quoting, parameters, and pagination.
-- `cliAuthRouter` - the browser-based CLI/device-login routes, mounted automatically unless disabled.
+## Configuration (`.env`)
 
-See the **[Dual-Database & Repository Architecture Guide](docs/guides/dual-database-guide.md)** for integrating the standardized database layer and PostgreSQL + SQLite in host apps.
+Create a `.env` file in your application root:
 
-
-
-## API Token Management
-
-MBKAuthe provides both sides of the API token lifecycle:
-
-- **Authentication** (built-in): Bearer tokens prefixed with `mbk_` are validated on every request (`sessVal` / `sessRole` accept them), and each token carries an explicit permission allow-list enforced by `permChk` / `sessPerm`. See [the API reference](docs/reference/api/authentication.md) and `docs/schema/` for the `ApiTokens` table.
-- **Management backend** (mounted by the host app): the CRUD repository, user-facing routes, and admin routes. The page views (`settings/api-tokens.handlebars`, `dashboard/admin/api-tokens.handlebars`) are provided by the host application — only the backend ships here.
-
-Exports:
-
-- `apiTokenRepository` / `ApiTokenRepository` - repository with `listForUser`, `countForUser`, `insert`, `deleteByIdAndUsername`, `findByTokenHash`, `updateLastUsedByHash`, plus admin helpers (`listAll`, `stats`, `listForUserAdmin`, `findInfoById`, `deleteById`, `deleteAllByUsername`, `listForUserDetail`).
-- `apiTokensRouter` - user-facing routes: `GET /user/api-tokens`, `POST /api/token`, `DELETE /api/tokens/:id`, `POST /api/tokens/verify`.
-- `adminApiTokensRouter` - admin routes: `GET /dashboard/admin/api-tokens`, `GET /api/admin/api-tokens/stats`, `GET /api/admin/api-tokens/:username`, `DELETE /api/admin/api-tokens/:id`, `DELETE /api/admin/api-tokens/user/:username`.
-- `hashApiToken(token)` - SHA-256 hash for storage/comparison.
-- `generatePrefixedToken(prefix = "mbk_")` / `generateRandomHex(bytes = 32)` - token generation helpers.
-
-Mount the routers wherever you want the endpoints to live (they use root-relative paths):
-
-```javascript
-import express from "express";
-import mbkauthe, { apiTokensRouter, adminApiTokensRouter } from "mbkauthe";
-
-const app = express();
-app.use(mbkauthe);
-app.use(apiTokensRouter);        // /user/api-tokens, /api/token, ...
-app.use(adminApiTokensRouter);   // /dashboard/admin/api-tokens, /api/admin/api-tokens/*
+```env
+APP_NAME=portal
+DOMAIN=localhost
+IS_DEPLOYED=false
+MAIN_SECRET_TOKEN=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+SESSION_SECRET_KEY=f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5
+DB_TYPE=sqlite
+SQLITE_PATH=./data/mbkauthe.sqlite
+COOKIE_EXPIRE_TIME=2
+LOGIN_REDIRECT_URL=/dashboard
+MAX_SESSIONS_PER_USER=5
 ```
 
-See the [API reference](docs/reference/api.md) for endpoints, middleware, examples, security notes, and rate limits.
+---
 
-## JSON Error Responses
+## Subpath Modular Exports
 
-Browser page routes usually render HTML errors, while API/AJAX-style requests receive JSON. MBKAuthe treats a request as JSON when any of these are true:
+MBKAuthe provides modular TypeScript subpath exports:
 
-- The path starts with `/mbkauthe/api/` or `/api/`
-- `X-Requested-With: XMLHttpRequest`
-- `Accept` prefers JSON and does not explicitly prefer `text/html`
-- `User-Agent` looks like a non-browser client such as `curl`, `wget`, or `Postman`
-- `User-Agent: json`
+```typescript
+// 1. Top-Level Engine & Express Middleware
+import mbkauthe, { sessVal, roleChk, sessPerm, sessRole, permChk } from "mbkauthe";
 
-```bash
-curl -i -H "User-Agent: json" http://localhost:3000/mbkauthe/test
+// 2. Core Domain Models, Tokens & Events
+import { TokenEngine, RoleRegistry, authEvents, definePermissions, ErrorCodes } from "mbkauthe/core";
+
+// 3. Database Adapters, Pools & Query Retry
+import { dblogin, dialect, applySchema, withQueryRetry, BaseRepository } from "mbkauthe/db";
+
+// 4. Typed Repositories
+import { userRepository, sessionRepository, authRepository } from "mbkauthe/repositories";
+
+// 5. Domain Services
+import { authService, apiTokenService, cliAuthService, syncAppPermissions } from "mbkauthe/services";
+
+// 6. Response Formatters & Envelopes
+import { sendSuccess, sendError, renderPage, renderError, isJsonRequest } from "mbkauthe/response";
+
+// 7. Configuration & Security Hashing
+import { mbkautheVar, hashPassword, verifyPassword, encryptSessionId } from "mbkauthe/config";
 ```
 
-## Development
+---
 
-```bash
-npm test
-npm run test:watch
-npm run dev
+## Domain Event Listeners
+
+Subscribe to typed auth lifecycle events for real-time audit logging and metrics:
+
+```typescript
+import { authEvents } from "mbkauthe/core";
+
+authEvents.on("auth:login:success", (evt) => {
+  console.log(`[Audit] ${evt.username} logged in from ${evt.ip} via ${evt.authMethod}`);
+});
+
+authEvents.on("auth:token:created", (evt) => {
+  console.log(`[Audit] API Token "${evt.name}" created for user ${evt.userId}`);
+});
+
+authEvents.on("auth:cli:approved", (evt) => {
+  console.log(`[Audit] User ${evt.userId} approved CLI user code: ${evt.userCode}`);
+});
 ```
 
-Development-only diagnostics are mounted when `process.env.env === "dev"`:
+---
 
-- `/mbkauthe/db` - DB Query Monitor UI
-- `/mbkauthe/db.json` - DB Query Monitor JSON
-- `/mbkauthe/db/reset` - reset diagnostic query logs
-- `/mbkauthe/validate-superadmin` - superadmin validation check
+## REST Endpoints Overview
+
+| Method | Path | Description | Authentication |
+|---|---|---|---|
+| `POST` | `/mbkauthe/api/login` | Authenticate with username & password | Public |
+| `POST` | `/mbkauthe/api/logout` | Terminate active session | Session Cookie |
+| `POST` | `/mbkauthe/api/logout-all` | Terminate all user sessions across devices | Session Cookie |
+| `POST` | `/mbkauthe/api/checkSession` | Verify session validity | Session Cookie / Token |
+| `POST` | `/mbkauthe/api/verify-2fa` | Complete 2FA TOTP verification | Session Cookie |
+| `GET` | `/mbkauthe/api/tokens` | List Personal Access Tokens | Session Cookie |
+| `POST` | `/mbkauthe/api/tokens` | Create Personal Access Token | Session Cookie |
+| `DELETE` | `/mbkauthe/api/tokens/:id` | Revoke Personal Access Token | Session Cookie |
+| `POST` | `/mbkauthe/api/cli-auth/device-code` | Request CLI device code | Public |
+| `POST` | `/mbkauthe/api/cli-auth/poll` | Poll CLI authorization status | Public |
+| `GET` | `/mbkauthe/api/health` | System health diagnostic status | Public |
+
+---
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [Configuration guide](docs/guides/configuration.md)
-- [Database guide](docs/guides/database.md)
-- [API reference](docs/reference/api.md)
-- [Authentication and sessions](docs/reference/api/authentication.md)
-- [Endpoints](docs/reference/api/endpoints.md)
-- [Middleware](docs/reference/api/middleware.md)
-- [Code examples](docs/reference/api/examples.md)
-- [Operational reference](docs/reference/api/operations.md)
-- [Error codes](docs/reference/error-codes.md)
-- [Documentation style guide](docs/STYLE.md)
+Full interactive guides, recipes, and detailed API references are available at [https://mbkauthe.mbktech.org](https://mbkauthe.mbktech.org).
 
-## Deployment Checklist
+- [Getting Started Guide](docs/guides/getting-started.md)
+- [Environment Configuration Reference](docs/guides/configuration.md)
+- [Dual-Database Engine Setup](docs/guides/database.md)
+- [Database Repositories Guide](docs/guides/dual-database-guide.md)
+- [Dynamic Permissions & RBAC](docs/guides/permissions.md)
+- [TokenEngine & API Tokens](docs/guides/api-tokens.md)
+- [RFC 8628 CLI Device Login](docs/guides/cli-auth.md)
+- [Social OAuth (GitHub & Google)](docs/guides/oauth.md)
+- [REST Endpoints Catalog](docs/reference/api/endpoints.md)
+- [Express Middleware Reference](docs/reference/api/middleware.md)
+- [Error Codes Directory](docs/reference/error-codes.md)
+- [Changelog](docs/reference/changelog.md)
 
-- Set `IS_DEPLOYED=true`
-- Use strong `SESSION_SECRET_KEY` and `MAIN_SECRET_TOKEN` values
-- Enable HTTPS
-- Set the correct `DOMAIN`
-- Set an appropriate `COOKIE_EXPIRE_TIME`
-- Store secrets in environment variables
-- Configure OAuth credentials only when the matching provider is enabled
-- If using the SQLite backend, put `SQLITE_PATH` on persistent disk (not ephemeral/serverless storage) and back up the database together with its `-wal`/`-shm` side files
-
-Vercel deployments can use shared OAuth credentials through `mbkauthShared`.
+---
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
-
-## Author
-
-**Muhammad Bin Khalid**  
-[support@mbktech.org](mailto:support@mbktech.org) | [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)  
-[GitHub @MIbnEKhalid](https://github.com/MIbnEKhalid)
-
-## Links
- 
-- [Official Website](https://mbkauthe.mbktech.org)
-- [Interactive Documentation](https://mbkauthe.mbktech.org/docs)
-- [API Reference](https://mbkauthe.mbktech.org/api-reference)
-- [Code Examples](https://mbkauthe.mbktech.org/examples)
-- [npm Package](https://www.npmjs.com/package/mbkauthe)
-- [GitHub Repository](https://github.com/MIbnEKhalid/mbkauthe)
-- [Support Desk](https://mbktech.org/Support&Contact)
-- [Bug Tracker](https://github.com/MIbnEKhalid/mbkauthe/issues)
-- [MBKTech Studio](https://mbktech.org)
-
-
-<!--
- * MBKAuthe
- * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
- * Licensed under the MIT License.
- * Source: https://github.com/MIbnEKhalid/mbkauthe
--->
+MIT License. Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors.

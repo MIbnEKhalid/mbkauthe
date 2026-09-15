@@ -1,40 +1,31 @@
-# Documentation Style Guide
+# MBKAuthe Documentation & Coding Style Guide
 
-[Back to docs index](README.md) | [Back to project README](../README.md)
+Guidelines for contributing code, tests, and documentation to MBKAuthe.
 
-Use this guide when adding or changing documentation source.
+---
 
-## File Placement
+## 1. Documentation Standards
 
-- Put setup walkthroughs and operational how-to content in `guides/`.
-- Put endpoint, middleware, type, and error-code details in `reference/`.
-- Put long API sections under `reference/api/` and link them from `reference/api.md`.
-- Put executable database SQL in `schema/`.
-- Put Mermaid source in `diagrams/` and rendered outputs in `images/`.
+- **TypeScript-First**: All code examples in documentation must use modern TypeScript / ES Module syntax (`import`/`export`).
+- **Verifiable Code Snippets**: Every API, method, option, and endpoint documented must match real functions in `src/`.
+- **Alert Syntax**: Use standard GitHub alerts for callouts:
+  - `> [!NOTE]` for contextual background.
+  - `> [!TIP]` for best practices.
+  - `> [!IMPORTANT]` for mandatory steps.
+  - `> [!WARNING]` for security warnings or breaking changes.
+- **Heading IDs**: Use structured markdown headings without HTML formatting inside headings.
 
-## Markdown Structure
+---
 
-- Use one `#` title per file.
-- Keep files focused on one job; split a file when it becomes hard to scan or review.
-- Add a small navigation line under the title for files below `docs/`.
-- Prefer descriptive links such as `[Configuration guide](guides/configuration.md)` over raw paths in prose.
-- Keep table-of-contents blocks short; rely on smaller files instead of very deep TOCs.
+## 2. Code Architecture & Layer Rules
 
-## Code Blocks
-
-- Always include a language tag when the language is known: `javascript`, `json`, `bash`, `sql`, `env`, or `typescript`.
-- Keep examples copy-pasteable where possible.
-- Use placeholders for secrets and tokens; never include real credentials.
-- Keep endpoint examples close to the endpoint they describe.
-
-## Cross-Links
-
-- Links from `docs/README.md` are relative to `docs/`.
-- Links from `docs/reference/api/*.md` need one extra `..` segment to reach the docs index.
-- After moving docs, run a Markdown link check before committing.
-
-## Generated Assets
-
-- Mermaid source is authoritative.
-- Rendered images in `images/` should be regenerated when the matching `.mmd` file changes.
-- Keep package scripts aligned with the source paths in `diagrams/`.
+1. **`core/` Layer**:
+   - Must remain pure business logic and in-memory operations.
+   - Must never import Express `Request`/`Response` or direct database connections.
+2. **`db/` Layer**:
+   - All queries must be parameterized (`$1` for pg, `?` for sqlite).
+   - Use `BaseRepository` for standard CRUD.
+3. **`services/` Layer**:
+   - Coordinates domain models, database operations, and emits `authEvents`.
+4. **`http/` Layer**:
+   - Validates DTOs, calls domain services, and handles HTTP response envelopes.

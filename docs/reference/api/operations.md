@@ -1,68 +1,92 @@
-﻿# Operational Reference
+# Events, Observability & Operations
 
-[Back to API index](../api.md) | [Back to docs index](../../README.md) | [Back to project README](../../../README.md)
-
-## Error Codes
-
-### HTTP Status Codes
-
-| Code | Meaning | Usage |
-|------|---------|-------|
-| 200 | OK | Successful request |
-| 400 | Bad Request | Invalid input data |
-| 401 | Unauthorized | Authentication required or failed |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource not found |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server-side error |
+MBKAuthe v6 provides observability tools including type-safe domain event streaming (`authEvents`), comprehensive health reporting (`getAuthHealthReport`), and live database query logging.
 
 ---
 
-## Security Best Practices
+## 1. Domain Event Streaming (`authEvents`)
 
-1. **Always use HTTPS in production** - Set `IS_DEPLOYED=true` and ensure your server uses SSL/TLS
-2. **Keep SESSION_SECRET_KEY secure** - Use a strong, randomly generated key
-3. **Enable 2FA for sensitive applications** - Set `MBKAUTH_TWO_FA_ENABLE=true`
-4. **Validate all user input** - Never trust client-side data
-5. **Use rate limiting** - Already implemented for authentication endpoints
-6. **Keep dependencies updated** - Regularly update npm packages
-7. **Monitor for security vulnerabilities** - Use `npm audit`
-8. **Use prepared statements** - Prevent SQL injection (already implemented)
-9. **Implement proper logging** - Track authentication events
-10. **Regular security audits** - Review code and configurations
+MBKAuthe emits typed domain events throughout the authentication and authorization lifecycle. You can subscribe to these events for audit logging, analytics, webhooks, or alerting:
+
+```typescript
+import { authEvents } from "mbkauthe/core";
+
+// 1. Successful Login
+authEvents.on("auth:login:success", (evt) => {
+  console.log(`[Audit] User ${evt.username} (ID: ${evt.userId}) logged in from IP ${evt.ip}`);
+});
+
+// 2. Failed Login Attempt
+authEvents.on("auth:login:failed", (evt) => {
+  console.warn(`[Security Alert] Failed login for ${evt.username}: ${evt.reason} (IP: ${evt.ip})`);
+});
+
+// 3. User Logout
+authEvents.on("auth:logout", (evt) => {
+  console.log(`[Audit] User ${evt.userId} logged out (All devices: ${evt.allDevices})`);
+});
+
+// 4. API Token Created
+authEvents.on("auth:token:created", (evt) => {
+  console.log(`[Audit] API Token "${evt.name}" created for user ${evt.userId} with scopes: ${evt.scopes.join(", ")}`);
+});
+
+// 5. CLI Device Flow Approved
+authEvents.on("auth:cli:approved", (evt) => {
+  console.log(`[Audit] User ${evt.userId} approved CLI device code ${evt.userCode}`);
+});
+```
+
+### Supported Event Names
+
+| Event Name | Payload Interface | Trigger |
+|---|---|---|
+| `auth:login:success` | `AuthLoginSuccessEvent` | Successful login via password, OAuth, or 2FA. |
+| `auth:login:failed` | `AuthLoginFailedEvent` | Incorrect password, inactive account, or invalid 2FA. |
+| `auth:logout` | `AuthLogoutEvent` | Single or all-device session termination. |
+| `auth:token:created` | `AuthTokenCreatedEvent` | New Personal Access Token generated. |
+| `auth:token:revoked` | `AuthTokenRevokedEvent` | Token deletion / revocation. |
+| `auth:account:switched`| `AuthAccountSwitchedEvent` | Multi-account device account switch. |
+| `auth:cli:approved` | `AuthCliApprovedEvent` | RFC 8628 CLI login approval in browser. |
+| `auth:cli:denied` | `AuthCliDeniedEvent` | CLI login rejection by user. |
 
 ---
 
-## Rate Limits
+## 2. Health & Diagnostics (`getAuthHealthReport`)
 
-### Auth Endpoints
+Use `getAuthHealthReport()` for Kubernetes readiness/liveness probes or status pages:
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `/mbkauthe/api/login` | 8 requests | 1 minute |
-| `/mbkauthe/api/logout` | 10 requests | 1 minute |
-| `/mbkauthe/api/verify-2fa` | 5 requests | 1 minute |
-| `/mbkauthe/api/github/login` | 10 requests | 5 minutes |
-| `/mbkauthe/api/github/login/callback` | 10 requests | 5 minutes |
-| `/mbkauthe/login` | 8 requests | 1 minute |
-| `/mbkauthe/info` | 8 requests | 1 minute |
-| `/mbkauthe/test` | 8 requests | 1 minute |
+```typescript
+import { getAuthHealthReport } from "mbkauthe";
 
-### CLI Device Flow
+const health = await getAuthHealthReport();
+console.log("System Health:", health);
+```
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /api/cli/device` | 20 requests | 1 minute |
-| `POST /api/cli/device/approve` | 30 requests | 1 minute |
-| `POST /api/cli/device/token` | 60 requests | 1 minute |
-
-### Admin Endpoints
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| Admin operations (terminate sessions, etc.) | 3 requests | 5 minutes |
-
-Rate limits are applied per IP address. Logged-in users are exempt from some rate limits (e.g., login page rate limit). The `/mbkauthe/cli/device/:userCode` page render is session-authenticated and not rate-limited.
+### Sample Health Output
+```json
+{
+  "status": "healthy",
+  "version": "6.0.0",
+  "dialect": "postgres",
+  "database": {
+    "connected": true,
+    "latencyMs": 4
+  },
+  "config": {
+    "valid": true,
+    "missingRequired": [],
+    "warnings": []
+  },
+  "timestamp": "2026-09-14T06:00:00.000Z"
+}
+```
 
 ---
 
+## 3. Rate Limiting & Abuse Prevention
+
+MBKAuthe applies IP-based rate limiting to sensitive routes by default:
+- Login endpoints: 15 requests per 15-minute window.
+- 2FA verification: 10 attempts per 15-minute window.
+- CLI device code requests: 20 per hour.

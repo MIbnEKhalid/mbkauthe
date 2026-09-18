@@ -178,7 +178,7 @@ export {
   ALL_PERMISSIONS_KEY,
   ROLES_KEY,
 } from "./core/permissions/manifest.js";
-export { attachSessionPermissions, hasNoSessionPermissions } from "./http/session/sessionPermissions.js";
+export { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS } from "./http/session/sessionPermissions.js";
 
 // 8. Types
 export * from "./core/types/index.js";

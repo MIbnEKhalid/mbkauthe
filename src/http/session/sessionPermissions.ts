@@ -26,6 +26,13 @@ function resetSessionUserPermissions(sessionUser?: Partial<SessionUser> | null):
   return EMPTY_PERMISSIONS;
 }
 
+export const SUPERADMIN_PERMISSIONS: EffectivePermissionsResult = Object.freeze({
+  roles: ["superadmin"],
+  overrides: { allows: ["*"], denies: [] },
+  effective: { allows: ["*"], denies: [] },
+  perm_version: 1,
+});
+
 /**
  * Attach roles and permission overrides to `sessionUser`.
  */
@@ -36,12 +43,22 @@ export async function attachSessionPermissions(
 ): Promise<EffectivePermissionsResult> {
   if (!username) return resetSessionUserPermissions(sessionUser);
 
+  const effectiveRole = (knownRole || sessionUser?.role || "").trim().toLowerCase();
+  if (effectiveRole === "superadmin") {
+    if (sessionUser) {
+      sessionUser.roles = ["superadmin"];
+      sessionUser.overrides = { allows: ["*"], denies: [] };
+      sessionUser.permissions = { allows: ["*"], denies: [] };
+    }
+    return SUPERADMIN_PERMISSIONS;
+  }
+
   try {
-    const snapshot = await permissionRepository.computeEffectiveForUser(username, knownRole || sessionUser?.role || null);
+    const snapshot = await permissionRepository.computeEffectiveForUser(username, effectiveRole || null);
     if (sessionUser) {
       sessionUser.roles = snapshot.roles;
       sessionUser.overrides = snapshot.overrides;
-      sessionUser.permissions = snapshot.overrides;
+      sessionUser.permissions = snapshot.effective;
     }
     return snapshot;
   } catch (err: any) {

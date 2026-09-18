@@ -12,7 +12,7 @@ import { permissionRepository } from "../../db/repositories/PermissionRepository
 import { defaultRoleRegistry, GlobalPermissions, resolvePermission } from "../../core/permissions/index.js";
 import { authorizationService } from "../../core/permissions/AuthorizationService.js";
 import { AuthContext, createSessionAuthContext, createTokenAuthContext, createAnonymousContext, principalFromUser } from "../../core/context/AuthContext.js";
-import { attachSessionPermissions } from "../session/sessionPermissions.js";
+import { attachSessionPermissions, hasNoSessionPermissions } from "../session/sessionPermissions.js";
 import { createLogger } from "../../utils/logger.js";
 import type { AuthUser } from "../../core/types/user.types.js";
 
@@ -279,14 +279,30 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       image: sessionRow.image || undefined,
     };
 
+    const isSuper = sessionRow.role === "superadmin";
+
     if ((req as any).session) {
+      const existingUser = (req as any).session.user || {};
       (req as any).session.user = {
-        ...((req as any).session.user || {}),
+        ...existingUser,
         ...userForSession,
       };
-      await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
+
+      if (isSuper) {
+        (req as any).session.user.roles = ["superadmin"];
+        (req as any).session.user.overrides = { allows: ["*"], denies: [] };
+        (req as any).session.user.permissions = { allows: ["*"], denies: [] };
+      } else if (hasNoSessionPermissions((req as any).session.user) || existingUser.role !== sessionRow.role) {
+        await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
+      }
     } else {
-      await attachSessionPermissions(userForSession, userForSession.username, sessionRow.role);
+      if (isSuper) {
+        (userForSession as any).roles = ["superadmin"];
+        (userForSession as any).overrides = { allows: ["*"], denies: [] };
+        (userForSession as any).permissions = { allows: ["*"], denies: [] };
+      } else {
+        await attachSessionPermissions(userForSession, userForSession.username, sessionRow.role);
+      }
     }
 
     const sessionUser = (req as any).session?.user || userForSession;
@@ -316,10 +332,6 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     }
 
     attachAuthContextToRequest(req, context);
-
-    if (defaultRoleRegistry.roles.size === 0) {
-      await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
-    }
     return next();
   } catch (err) {
     console.error(`[mbkauthe] Session validation error:`, err);
@@ -396,7 +408,7 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
       (req as any).session.user.full_name = (req as any).cookies.full_name;
     }
 
-    await attachSessionPermissions((req as any).session.user, row.username);
+    await attachSessionPermissions((req as any).session.user, row.username, row.role);
     await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => (err ? reject(err) : resolve())));
 
     try {
@@ -506,6 +518,9 @@ export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (
         page: `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`,
       });
     }
+
+    // Superadmin bypass: instant return, zero DB lookups, zero permission comparison
+    if (authorizationService.isSuperadmin(authContext)) return next();
 
     if (defaultRoleRegistry.roles.size === 0) {
       await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});

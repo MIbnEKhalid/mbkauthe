@@ -24,8 +24,11 @@ export function permissionMatches(stored: string, required: string): boolean {
   if (!s || !r) return false;
   if (s === "*" || s === "*:*:*" || r === "*" || r === "*:*:*" || s === r) return true;
 
-  const a = splitPermission(s);
-  const b = splitPermission(r);
+  // Fast path: neither string contains a wildcard and they are not equal
+  if (!s.includes("*") && !r.includes("*")) return false;
+
+  const a = s.split(":");
+  const b = r.split(":");
   return a.length === 3 && b.length === 3 && segmentMatches(a[0], b[0]) && segmentMatches(a[1], b[1]) && segmentMatches(a[2], b[2]);
 }
 

@@ -127,13 +127,22 @@ export class AuthorizationService {
       principal.overrides?.denies ||
       (principal.permissions as any)?.denies ||
       []
-    ).map(normalizePermission).filter(Boolean);
-
-    if (userDenies.some((deny: string) => permissionMatches(deny, resolvedRequired))) {
-      return false;
+    );
+    for (let i = 0; i < userDenies.length; i++) {
+      if (permissionMatches(userDenies[i], resolvedRequired)) return false;
     }
 
-    // 3. Role-based permissions
+    // 3. Fast path: User effective / allow overrides check
+    const userAllows = (
+      principal.overrides?.allows ||
+      (principal.permissions as any)?.allows ||
+      (Array.isArray(principal.permissions) ? principal.permissions : [])
+    );
+    for (let i = 0; i < userAllows.length; i++) {
+      if (permissionMatches(userAllows[i], resolvedRequired)) return true;
+    }
+
+    // 4. Role-based permissions
     const userRoles = new Set<string>();
     if (principal.role) userRoles.add(principal.role.toLowerCase());
     if (Array.isArray(principal.roles)) {
@@ -149,14 +158,7 @@ export class AuthorizationService {
       }
     }
 
-    // 4. User Allow overrides
-    const userAllows = (
-      principal.overrides?.allows ||
-      (principal.permissions as any)?.allows ||
-      (Array.isArray(principal.permissions) ? principal.permissions : [])
-    ).map(normalizePermission).filter(Boolean);
-
-    return userAllows.some((allow: string) => permissionMatches(allow, resolvedRequired));
+    return false;
   }
 
   /**

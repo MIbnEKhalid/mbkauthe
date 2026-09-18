@@ -455,19 +455,35 @@ export class PermissionRepository extends BaseRepository {
     });
   }
 
-  // ------------------------------------------------- Effective permissions
-
   async computeEffectiveForUser(username: string, knownRole: string | null = null): Promise<EffectivePermissionsResult> {
-    const rolePromise = knownRole
-      ? Promise.resolve({ role: normalizePermission(knownRole), roles: [normalizePermission(knownRole)], perm_version: 1 })
-      : this.getUserRoles(username);
+    const cleanRole = normalizePermission(knownRole);
+    if (cleanRole === "superadmin") {
+      return {
+        roles: ["superadmin"],
+        overrides: { allows: ["*"], denies: [] },
+        effective: { allows: ["*"], denies: [] },
+        perm_version: 1,
+      };
+    }
 
-    const [, { roles, perm_version }, overrides] = await Promise.all([
-      this.loadAllRolesIntoRegistry(),
-      rolePromise,
-      this.listOverridesForUser(username),
-    ]);
+    const { role, roles, perm_version } = knownRole
+      ? { role: cleanRole, roles: [cleanRole], perm_version: 1 }
+      : await this.getUserRoles(username);
 
+    if (role === "superadmin") {
+      return {
+        roles: ["superadmin"],
+        overrides: { allows: ["*"], denies: [] },
+        effective: { allows: ["*"], denies: [] },
+        perm_version,
+      };
+    }
+
+    if (defaultRoleRegistry.roles.size === 0) {
+      await this.loadAllRolesIntoRegistry(defaultRoleRegistry);
+    }
+
+    const overrides = await this.listOverridesForUser(username);
     const denies = overrides.filter((o) => o.effect === "deny").map((o) => o.permission);
     const allows = overrides.filter((o) => o.effect === "allow").map((o) => o.permission);
     const effective = buildEffectivePermissions({ roles, allows, denies, roleRegistry: defaultRoleRegistry });

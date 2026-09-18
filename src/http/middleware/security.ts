@@ -56,7 +56,7 @@ export async function sessionRestorationMiddleware(req: Request, res: Response, 
         role: row.role,
         allowed_apps: row.allowed_apps,
       };
-      await attachSessionPermissions((req as any).session.user, row.username);
+      await attachSessionPermissions((req as any).session.user, row.username, row.role);
     }
   } catch (err) {
     console.error(`[mbkauthe] Session restoration error:`, err);

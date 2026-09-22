@@ -6,7 +6,7 @@
  */
 
 // 1. Config & Environment
-export { mbkautheVar, packageJson, appVersion, validateConfiguration, checkConfigurationStatus, findValue, default as en } from "./config/index.js";
+export { mbkautheVar, packageJson, appVersion, validateConfiguration, checkConfigurationStatus, findValue, isProductionEnvironment, default as en } from "./config/index.js";
 export {
   hashPassword,
   verifyPassword,
@@ -20,20 +20,17 @@ export * from "./core/security/index.js";
 export {
   encryptSessionId,
   decryptSessionId,
-  cachedCookieOptions,
-  cachedClearCookieOptions,
+  getCookieOptions,
+  getClearCookieOptions,
   getCookieDomain,
   getCookieSecure,
   resolveCookieDomain,
   isAllowedOriginHostname,
-} from "./config/cookies.js";
-export {
   clearSessionCookies,
-  upsertAccountListCookie,
-  readAccountListFromCookie,
-  removeAccountFromCookie,
-  clearAccountListCookie,
-} from "./http/session/accountCookies.js";
+  DEVICE_ID_COOKIE,
+  getOrCreateDeviceId,
+} from "./config/cookies.js";
+export { extractRequestOrigin, completeLoginProcess } from "./http/session/authFlow.js";
 
 // 2. Database Adapters, Dialects, Pools, and Schema
 export { type IDatabaseAdapter, type QueryResult } from "./db/adapters/IDatabaseAdapter.js";
@@ -190,14 +187,7 @@ export { MbkAuthError } from "./core/errors/MbkAuthError.js";
 // 10. HTTP Response, UI & Helpers
 export { commonHandlebarsHelpers, handlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
 export { isJsonRequest } from "./http/response/contentNegotiation.js";
-export {
-  sendSuccess,
-  sendError,
-  renderPage,
-  renderError,
-  getUserContext,
-  sanitizeErrorDetails,
-} from "./http/response/formatters.js";
+export { sendSuccess, sendError, renderPage, renderError, getUserContext, sanitizeErrorDetails } from "./http/response/formatters.js";
 export { createErrorHandler, createNotFoundHandler, proxycall } from "./http/response/handlers.js";
 export { isSafeFetchUrl } from "./http/utils/urlSafety.js";
 export { isSafeRelativeRedirect, sanitizeRelativeRedirect } from "./http/utils/redirect.js";
@@ -207,10 +197,12 @@ export { extractAuthorizationToken, timingSafeTokenMatch } from "./core/tokens/i
 
 // 11. HTTP & Express Middleware
 export { SqliteSessionStore } from "./http/session/SqliteSessionStore.js";
-export { sessionConfig, getSessionStore } from "./http/session/sessionConfig.js";
+export { sessionConfig, getSessionStore, getSessionMiddleware, hasSessionCookie } from "./http/session/sessionConfig.js";
 export {
   securityHeadersMiddleware,
   corsMiddleware,
+  ensureSession,
+  ensureSessionAsync,
   sessionRestorationMiddleware,
   sessionCookieSyncMiddleware,
   requestContextMiddleware,

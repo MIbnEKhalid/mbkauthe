@@ -28,6 +28,7 @@ import { emitAuthEvent } from "../core/events/index.js";
 import { authorizationService } from "../core/permissions/AuthorizationService.js";
 
 import { loadOAuthProvidersFromConfig } from "./providers/loader.js";
+import { mbkautheVar, isProductionEnvironment } from "../config/index.js";
 
 export class OAuthFlowError extends Error {
   public statusCode: number;
@@ -377,6 +378,19 @@ export class OAuthFlowService {
       throw new OAuthFlowError("Your account has been deactivated.", "ACCOUNT_INACTIVE", 403);
     }
 
+    const isLocalOnly = Boolean(user.is_local_only && user.is_local_only !== "0" && user.is_local_only !== "false");
+    if (isLocalOnly && isProductionEnvironment()) {
+      this.emitEvent("oauth.callback.failure", {
+        provider: provider.id,
+        reason: `User ${user.username} is local-only restricted`,
+        code: "LOCAL_USER_PROD_RESTRICTED",
+        ip: options.ip,
+        userAgent: options.userAgent,
+        timestamp: new Date(),
+      });
+      throw new OAuthFlowError("This account is restricted to local development/testing environments and cannot log into production.", "LOCAL_USER_PROD_RESTRICTED", 403);
+    }
+
     // 7. Check allowed apps
     if (!authorizationService.canAccessApp(user, this.appName)) {
       this.emitEvent("oauth.callback.failure", {
@@ -516,4 +530,20 @@ export class OAuthFlowService {
   }
 }
 
-export const oAuthFlowService = new OAuthFlowService();
+let _defaultOAuthFlowService: OAuthFlowService | null = null;
+export function getDefaultOAuthFlowService(): OAuthFlowService {
+  if (!_defaultOAuthFlowService) {
+    _defaultOAuthFlowService = new OAuthFlowService({
+      appName: mbkautheVar.APP_NAME || "mbkauthe",
+    });
+  }
+  return _defaultOAuthFlowService;
+}
+
+export const oAuthFlowService = new Proxy({} as OAuthFlowService, {
+  get(target, prop, receiver) {
+    const instance = getDefaultOAuthFlowService();
+    const val = Reflect.get(instance, prop, receiver);
+    return typeof val === "function" ? val.bind(instance) : val;
+  },
+});

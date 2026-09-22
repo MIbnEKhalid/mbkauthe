@@ -25,7 +25,7 @@
                         </div>
 
                         <div class="sidebar-actions">
-                            <a href="/mbkauthe/login" id="useAnother" class="btn-action-link full-width">
+                            <a href="/mbkauthe/login?prompt=add_account" id="useAnother" class="btn-action-link full-width">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Add another account</span>
                             </a>
@@ -71,7 +71,7 @@
                     </div>
 
                     <div class="mobile-switch-links">
-                        <a href="/mbkauthe/login" class="btn-action-link mobile-switch-btn full-width">
+                        <a href="/mbkauthe/login?prompt=add_account" class="btn-action-link mobile-switch-btn full-width">
                             <i class="fas fa-user-plus"></i>
                             <span>Add another account</span>
                         </a>
@@ -104,16 +104,16 @@
         const redirectTarget = sanitizeRelativeRedirect(new URLSearchParams(window.location.search).get('redirect')) || '{{customURL}}';
 
         (() => {
-            const loginUrl = `/mbkauthe/login${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
-            ['useAnother', '.mobile-switch-btn', '#emptyState a.btn-login-inline'].forEach((sel) => {
+            const addAccountUrl = `/mbkauthe/login?prompt=add_account${redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
+            ['useAnother', '.mobile-switch-btn'].forEach((sel) => {
                 const el = sel.startsWith('.') || sel.startsWith('#') ? document.querySelector(sel) : document.getElementById(sel);
-                if (el) el.href = loginUrl;
+                if (el) el.href = addAccountUrl;
             });
         })();
 
         const handleUseAnother = (e) => {
             e.preventDefault();
-            window.location.href = `/mbkauthe/login?redirect=${encodeURIComponent(redirectTarget)}`;
+            window.location.href = `/mbkauthe/login?prompt=add_account${redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
         };
         document.getElementById('useAnother')?.addEventListener('click', handleUseAnother);
         document.querySelector('.mobile-switch-btn')?.addEventListener('click', handleUseAnother);
@@ -124,7 +124,7 @@
             if (!list || !empty) return;
 
             try {
-                const res = await fetch('/mbkauthe/api/account-sessions', { credentials: 'include' });
+                const res = await fetch('/mbkauthe/api/accounts', { credentials: 'include' });
                 const data = await res.json();
                 const accounts = Array.isArray(data.accounts) ? data.accounts : [];
                 const currentId = data.current_session_id || data.currentSessionId || null;
@@ -136,7 +136,7 @@
                 }
                 empty.style.display = 'none';
 
-                accounts.slice(0, 5).forEach((acct) => {
+                accounts.slice(0, 10).forEach((acct) => {
                     const sid = acct.session_id;
                     const fullName = acct.full_name || acct.username || '?';
                     const isCurrent = acct.is_current !== undefined ? acct.is_current : (currentId && sid === currentId);
@@ -156,17 +156,24 @@
                     const initials = document.createElement('div');
                     initials.className = 'initials';
                     initials.textContent = initial;
-                    initials.style.display = acct.image ? 'none' : 'flex';
+                    initials.style.display = 'none';
 
-                    if (acct.image) {
-                        const img = document.createElement('img');
-                        img.className = 'avatar-img';
-                        img.src = acct.image;
-                        img.alt = `Avatar for ${acct.username}`;
-                        img.loading = 'lazy';
-                        img.onerror = () => { img.style.display = 'none'; initials.style.display = 'flex'; };
-                        avatar.appendChild(img);
-                    }
+                    const img = document.createElement('img');
+                    img.className = 'avatar-img';
+                    img.width = 44;
+                    img.height = 44;
+                    img.style.width = '44px';
+                    img.style.height = '44px';
+                    img.style.maxWidth = '44px';
+                    img.style.maxHeight = '44px';
+                    img.style.borderRadius = '9999px';
+                    img.style.objectFit = 'cover';
+                    img.style.display = 'block';
+                    img.src = '/mbkauthe/avatar/' + encodeURIComponent(acct.username);
+                    img.alt = `Avatar for ${acct.username}`;
+                    img.loading = 'lazy';
+                    img.onerror = () => { img.style.display = 'none'; initials.style.display = 'flex'; };
+                    avatar.appendChild(img);
                     avatar.appendChild(initials);
 
                     // Info Container
@@ -191,6 +198,16 @@
                         roleBadge.className = `role-badge badge-${role}`;
                         roleBadge.textContent = role === 'superadmin' ? 'Superadmin' : 'Admin';
                         badges.appendChild(roleBadge);
+                    }
+
+                    if (acct.session_origin) {
+                        const originBadge = document.createElement('span');
+                        originBadge.className = 'role-badge';
+                        originBadge.style.background = 'rgba(255, 255, 255, 0.08)';
+                        originBadge.style.color = '#94a3b8';
+                        originBadge.style.fontSize = '0.7rem';
+                        originBadge.textContent = acct.session_origin;
+                        badges.appendChild(originBadge);
                     }
 
                     if (isCurrent) {
@@ -259,7 +276,7 @@
             if (!confirm(`Are you sure you want to sign out ${username || 'this account'} on this device?`)) return;
 
             try {
-                const res = await fetch('/mbkauthe/api/logout-account', {
+                const res = await fetch('/mbkauthe/api/accounts/logout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -281,7 +298,7 @@
 
         async function switchSession(sessionId) {
             try {
-                const res = await fetch('/mbkauthe/api/switch-session', {
+                const res = await fetch('/mbkauthe/api/accounts/switch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -304,14 +321,14 @@
         async function logoutAll() {
             if (!confirm('Are you sure you want to sign out of all accounts on this device?')) return;
             try {
-                const res = await fetch('/mbkauthe/api/logout-all', {
+                const res = await fetch('/mbkauthe/api/accounts/logout-all', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    window.location.href = `/mbkauthe/login?redirect=${encodeURIComponent(redirectTarget)}`;
+                    window.location.href = `/mbkauthe/login?prompt=add_account${redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ''}`;
                 } else {
                     showMessage(data.message || 'Could not sign out all accounts', 'Sign out');
                 }

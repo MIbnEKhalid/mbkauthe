@@ -22,6 +22,24 @@ export class AuthRepository extends BaseRepository {
     this.apiTokens = new ApiTokenRepository(options);
   }
 
+  cloneWithDb(db: any) {
+    const instance = super.cloneWithDb(db);
+    instance.users = this.users.cloneWithDb(db);
+    instance.sessions = this.sessions.cloneWithDb(db);
+    instance.passkeys = this.passkeys.cloneWithDb(db);
+    instance.apiTokens = this.apiTokens.cloneWithDb(db);
+    return instance;
+  }
+
+  cloneWithAdapter(adapter: any) {
+    const instance = super.cloneWithAdapter(adapter);
+    instance.users = this.users.cloneWithAdapter(adapter);
+    instance.sessions = this.sessions.cloneWithAdapter(adapter);
+    instance.passkeys = this.passkeys.cloneWithAdapter(adapter);
+    instance.apiTokens = this.apiTokens.cloneWithAdapter(adapter);
+    return instance;
+  }
+
   buildSessionUserSelect(opts?: any): string {
     return this.sessions.buildSessionUserSelect(opts);
   }
@@ -52,28 +70,56 @@ export class AuthRepository extends BaseRepository {
 
   async deleteOldestSessionsForUser(username: string, limit: number, query_name: string = "prune-oldest-user-session"): Promise<number> {
     if (!Number.isFinite(limit) || limit <= 0) return 0;
-    const query = "DELETE FROM mbkcore_sessions WHERE id IN (SELECT id FROM mbkcore_sessions WHERE username = $1 ORDER BY created_at ASC LIMIT $2)";
+    const query = "DELETE FROM mbkcore_session WHERE id IN (SELECT id FROM mbkcore_session WHERE username = $1 ORDER BY created_at ASC LIMIT $2)";
     const result = await this.executeRaw({ name: query_name, text: query, values: [username, limit] });
     return result.rowCount || 0;
   }
 
-  async insertAppSession(username: string, expires_at: any, meta: any) {
+  async insertAppSession(username: string, expires_at: any, meta: any, sid?: string) {
+    if (sid) {
+      const result = await this.executeRaw({
+        name: "insert-app-session-with-sid",
+        text: "INSERT INTO mbkcore_session (sid, username, expire, meta) VALUES ($1, $2, $3, $4) RETURNING id",
+        values: [sid, username, expires_at, meta]
+      });
+      return result.rows?.[0] || null;
+    }
     const result = await this.executeRaw({
       name: "insert-app-session",
-      text: "INSERT INTO mbkcore_sessions (username, expires_at, meta) VALUES ($1, $2, $3) RETURNING id",
+      text: "INSERT INTO mbkcore_session (username, expire, meta) VALUES ($1, $2, $3) RETURNING id",
       values: [username, expires_at, meta]
     });
     return result.rows?.[0] || null;
   }
 
-  async createAppSessionWithPruning(params: { username: string; expiresAt: any; meta?: any; maxSessions?: number }) {
+  async createAppSessionWithPruning(params: { username: string; expiresAt: any; meta?: any; maxSessions?: number; sid?: string; device_id?: string | null }) {
     return this.sessions.createAppSessionWithPruning(params);
+  }
+
+  async findSessionsByDeviceId(deviceId: string) {
+    return this.sessions.findSessionsByDeviceId(deviceId);
+  }
+
+  async findDeviceSession(deviceId: string, sid: string) {
+    return this.sessions.findDeviceSession(deviceId, sid);
+  }
+
+  async deleteDeviceSession(deviceId: string, sid: string) {
+    return this.sessions.deleteDeviceSession(deviceId, sid);
+  }
+
+  async deleteAllDeviceSessions(deviceId: string) {
+    return this.sessions.deleteAllDeviceSessions(deviceId);
+  }
+
+  async touchSessionActivity(sid: string) {
+    return this.sessions.touchSessionActivity(sid);
   }
 
   async countActiveSessionsForUser(username: string, query_name: string = "count-active-sessions"): Promise<number> {
     const text = this.dialect.name === "sqlite"
-      ? "SELECT COUNT(*) AS count FROM mbkcore_sessions WHERE username = $1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)"
-      : "SELECT COUNT(*)::int AS count FROM mbkcore_sessions WHERE username = $1 AND (expires_at IS NULL OR expires_at > NOW())";
+      ? "SELECT COUNT(*) AS count FROM mbkcore_session WHERE username = $1 AND (expire IS NULL OR expire > CURRENT_TIMESTAMP)"
+      : "SELECT COUNT(*)::int AS count FROM mbkcore_session WHERE username = $1 AND (expire IS NULL OR expire > NOW())";
     const result = await this.executeRaw({ name: query_name, text, values: [username] });
     return Number(result.rows?.[0]?.count ?? 0);
   }
@@ -97,7 +143,7 @@ export class AuthRepository extends BaseRepository {
 
   async getUserWithTwoFA(username: string, query_name: string = "login-get-user"): Promise<AuthUser | null> {
     const query = `
-      SELECT u.username, u.user_id, u.password_hash, u.is_active, u.role, u.allowed_apps,
+      SELECT u.username, u.user_id, u.password_hash, u.is_active, u.is_local_only, u.role, u.allowed_apps,
              tfa.is_enabled, u.full_name, u.image
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
@@ -115,7 +161,7 @@ export class AuthRepository extends BaseRepository {
   async getApiTokenByHash(token_hash: string, query_name: string = "validate-api-token"): Promise<any> {
     const query = `
       SELECT t.id, t.username, t.expires_at, t.permissions,
-             u.user_id, u.is_active, u.role, u.allowed_apps as user_allowed_apps, u.full_name
+             u.user_id, u.is_active, u.is_local_only, u.role, u.allowed_apps as user_allowed_apps, u.full_name
       FROM mbkcore_api_tokens t
       JOIN mbkcore_users u ON t.username = u.username
       WHERE t.token_hash = $1 LIMIT 1
@@ -133,13 +179,11 @@ export class AuthRepository extends BaseRepository {
   }
 
   async getSessionAuthData(session_id: string, query_name: string = "validate-app-session"): Promise<AuthUser | null> {
-    const query = `SELECT ${this.buildSessionUserSelect({ includeProfile: true })} FROM mbkcore_sessions s JOIN mbkcore_users u ON s.username = u.username WHERE s.id = $1 LIMIT 1`;
-    const result = await this.executeRaw({ name: query_name, text: query, values: [session_id] });
-    return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
+    return this.sessions.getSessionAuthData(session_id, query_name);
   }
 
   async getSessionWithUserById(session_id: string, query_name: string = "restore-user-session"): Promise<AuthUser | null> {
-    const query = `SELECT ${this.buildSessionUserSelect({ includeProfile: true })} FROM mbkcore_sessions s JOIN mbkcore_users u ON s.username = u.username WHERE s.id = $1 LIMIT 1`;
+    const query = `SELECT ${this.buildSessionUserSelect({ includeProfile: true })} FROM mbkcore_session s JOIN mbkcore_users u ON s.username = u.username WHERE s.sid = $1 LIMIT 1`;
     const result = await this.executeRaw({ name: query_name, text: query, values: [session_id] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }
@@ -162,33 +206,33 @@ export class AuthRepository extends BaseRepository {
     if (!Array.isArray(session_ids) || session_ids.length === 0) return 0;
     if (this.dialect.name === "sqlite") {
       const placeholders = session_ids.map(() => "?").join(", ");
-      const result = await this.executeRaw({ name: query_name, text: `DELETE FROM mbkcore_sessions WHERE id IN (${placeholders})`, values: session_ids });
+      const result = await this.executeRaw({ name: query_name, text: `DELETE FROM mbkcore_session WHERE sid IN (${placeholders})`, values: session_ids });
       return result.rowCount || 0;
     }
-    const result = await this.executeRaw({ name: query_name, text: "DELETE FROM mbkcore_sessions WHERE id = ANY($1)", values: [session_ids] });
+    const result = await this.executeRaw({ name: query_name, text: "DELETE FROM mbkcore_session WHERE sid = ANY($1)", values: [session_ids] });
     return result.rowCount || 0;
   }
 
   async getSessionValidationRow(session_id: string, query_name: string = "check-session-validity-by-id"): Promise<AuthUser | null> {
-    const query = "SELECT s.expires_at, u.is_active, u.username, u.role FROM mbkcore_sessions s JOIN mbkcore_users u ON s.username = u.username WHERE s.id = $1 LIMIT 1";
+    const query = "SELECT s.expire AS expires_at, u.is_active, u.is_local_only, u.username, u.role FROM mbkcore_session s JOIN mbkcore_users u ON s.username = u.username WHERE s.sid = $1 LIMIT 1";
     const result = await this.executeRaw({ name: query_name, text: query, values: [session_id] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }
 
   async getSessionValidity(session_id: string, session_store_sid: string, query_name: string = "check-session-validity"): Promise<any> {
     const query = `
-      SELECT s.expires_at, u.is_active,
-        CASE WHEN s.expires_at IS NULL THEN (SELECT expire FROM mbkcore_session WHERE sid = $2) ELSE NULL END AS connect_expire
-      FROM mbkcore_sessions s
+      SELECT s.expire AS expires_at, u.is_active, u.is_local_only,
+        CASE WHEN s.expire IS NULL THEN (SELECT expire FROM mbkcore_session WHERE sid = $2) ELSE NULL END AS connect_expire
+      FROM mbkcore_session s
       JOIN mbkcore_users u ON s.username = u.username
-      WHERE s.id = $1 LIMIT 1
+      WHERE s.sid = $1 LIMIT 1
     `;
     const result = await this.executeRaw({ name: query_name, text: query, values: [session_id, session_store_sid] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }
 
   async deleteAllAppSessions(query_name: string = "delete-all-app-sessions"): Promise<any> {
-    return this.executeRaw({ name: query_name, text: "DELETE FROM mbkcore_sessions", values: [] });
+    return this.executeRaw({ name: query_name, text: "DELETE FROM mbkcore_session", values: [] });
   }
 
   async deleteActiveSessionStoreRows(query_name: string = "delete-active-session-store-rows"): Promise<any> {

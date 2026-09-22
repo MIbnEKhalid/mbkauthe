@@ -2,8 +2,13 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 
-const isDev = process.env.env === "dev" && process.env.dbLogs === "true";
-const requestContext = isDev ? new AsyncLocalStorage<{ req: any }>() : null;
+export const isDbLogsEnabled = (): boolean => {
+  if (process.env.dbLogs === "false" || process.env.DB_LOGS === "false") return false;
+  if (process.env.dbLogs === "true" || process.env.DB_LOGS === "true") return true;
+  return false;
+};
+
+const requestContext = new AsyncLocalStorage<{ req: any }>();
 
 const GLOBAL_MAX_QUERY_LOG_ENTRIES = 1000;
 const globalQueryState: { totalCount: number; log: any[] } = { totalCount: 0, log: [] };
@@ -170,8 +175,8 @@ export const getQueryLog = (options: { limit?: number } = {}): any[] =>
 export const resetQueryCount = (): void => { globalQueryState.totalCount = 0; };
 export const resetQueryLog = (): void => { globalQueryState.log.length = 0; };
 
-export const runWithRequestContext = (req: any, fn: () => any) => (isDev && requestContext ? requestContext.run({ req }, fn) : fn());
-export const getRequestContext = () => (isDev && requestContext ? requestContext.getStore() : undefined);
+export const runWithRequestContext = (req: any, fn: () => any) => (isDbLogsEnabled() && requestContext ? requestContext.run({ req }, fn) : fn());
+export const getRequestContext = () => (isDbLogsEnabled() && requestContext ? requestContext.getStore() : undefined);
 
 const resolveLoggerPool = (item: any) => {
   if (!item || typeof item !== "object") return null;
@@ -247,6 +252,8 @@ const attachSinglePool = (pool: any, poolName: string | null = null) => {
   };
 
   pool.query = (...args: any[]) => {
+    if (!isDbLogsEnabled()) return originalQuery(...args);
+
     const { queryText, queryName, queryValues } = parseQueryArgs(args);
     if (!queryText) return originalQuery(...args);
 
@@ -269,6 +276,22 @@ const attachSinglePool = (pool: any, poolName: string | null = null) => {
         },
       });
     };
+
+    const lastArg = args[args.length - 1];
+    if (typeof lastArg === "function") {
+      const originalCallback = lastArg;
+      args[args.length - 1] = (err: any, res: any) => {
+        if (err) finalize(false, err, null);
+        else finalize(true, null, res);
+        return originalCallback(err, res);
+      };
+      try {
+        return originalQuery(...args);
+      } catch (err) {
+        finalize(false, err, null);
+        throw err;
+      }
+    }
 
     try {
       const result = originalQuery(...args);
@@ -293,7 +316,7 @@ const attachSinglePool = (pool: any, poolName: string | null = null) => {
 };
 
 export const attachDevQueryLogger = (poolOrPools: any) => {
-  if (!isDev || !poolOrPools) return;
+  if (!poolOrPools) return;
   const inputs = Array.isArray(poolOrPools) ? poolOrPools : [poolOrPools];
   for (const item of inputs) {
     const resolved = resolveLoggerPool(item);

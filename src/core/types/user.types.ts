@@ -5,7 +5,10 @@ export interface AuthUser {
   full_name?: string;
   image?: string;
   is_active?: boolean | number;
+  is_local_only?: boolean | number;
   is_enabled?: boolean | null;
+  origin?: string;
+  domain?: string;
   allowed_apps?: string[];
   user_allowed_apps?: string[];
   permissions?: string[] | Record<string, boolean>;
@@ -19,4 +22,13 @@ export interface UserContext {
   full_name: string;
   role: string;
   allowed_apps: string[];
+  is_local_only?: boolean;
+  origin?: string;
+  domain?: string;
 }
+
+export function isLocalOnlyUser(val: unknown): boolean {
+  if (val === true || val === 1 || val === "1" || val === "true") return true;
+  return false;
+}
+

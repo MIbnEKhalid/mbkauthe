@@ -16,7 +16,7 @@
       <div class="session-hero">
         <div class="session-hero-left">
           <div class="session-avatar-wrap">
-            <img src="/mbkauthe/user/profilepic?u={{profile_pic_url}}"
+            <img src="/mbkauthe/avatar/{{#if username}}{{username}}{{else}}me{{/if}}"
               alt="Avatar for {{username}}" title="{{display_name}}" loading="lazy" decoding="async" width="72" height="72"
               class="session-avatar-img"
               onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex');" />
@@ -35,6 +35,16 @@
               <span class="role-badge role-{{role}}">
                 <i class="fas fa-shield-halved" aria-hidden="true"></i> {{role}}
               </span>
+              {{#if auth_type_label}}
+              <span class="auth-type-badge auth-type-{{auth_type}}">
+                <i class="fas {{auth_type_icon}}" aria-hidden="true"></i> {{auth_type_label}}
+              </span>
+              {{/if}}
+              {{#if login_method}}
+              <span class="login-method-badge">
+                <i class="fas fa-arrow-right-to-bracket" aria-hidden="true"></i> via {{login_method}}
+              </span>
+              {{/if}}
               {{#if appName}}
               <span class="session-app-badge">
                 <i class="fas fa-cube" aria-hidden="true"></i> {{appName}}
@@ -53,6 +63,15 @@
 
       <!-- Session Diagnostics KPI Grid -->
       <div class="session-info-grid">
+        <div class="session-info-card">
+          <div class="session-info-header">
+            <span class="session-info-label"><i class="fas fa-fingerprint" aria-hidden="true"></i> Auth Mode</span>
+          </div>
+          <div class="session-info-val">
+            <span class="auth-mode-pill auth-pill-{{auth_type}}"><i class="fas {{auth_type_icon}}"></i> {{auth_type_label}}</span>
+          </div>
+        </div>
+
         <div class="session-info-card">
           <div class="session-info-header">
             <span class="session-info-label"><i class="fas fa-id-badge" aria-hidden="true"></i> User Identifier</span>
@@ -97,6 +116,7 @@
           </div>
         </div>
       </div>
+
 
       {{#if session_expiry}}
       <!-- Live Session Countdown Banner -->
@@ -300,6 +320,7 @@
         }
       }
     }
+
 
     {{#if session_expiry}}
     (() => {

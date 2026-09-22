@@ -1,16 +1,12 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { renderError } from "../response/formatters.js";
+import { renderError, renderPage } from "../response/formatters.js";
+import { ensureSession } from "../middleware/security.js";
 import { dblogin } from "../../db/pool.js";
-import { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog } from "../../db/dbQueryLogger.js";
+import { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog, isDbLogsEnabled } from "../../db/dbQueryLogger.js";
 import { mbkautheVar } from "../../config/env.js";
 
 const router = express.Router();
-
-const isDbLogsEnabled = () => {
-  if (process.env.dbLogs === "false") return false;
-  return process.env.dbLogs === "true" || process.env.env === "dev" || process.env.NODE_ENV !== "production";
-};
 
 const clampLimit = (value: unknown, fallback = 50, max = 500) => {
   const parsed = Number(value);
@@ -162,7 +158,7 @@ const LogLimit = rateLimit({
   validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
-router.get(["/db.json"], LogLimit, async (req, res) => {
+router.get("/db.json", LogLimit, async (req, res) => {
   try {
     const isDev = isDbLogsEnabled();
     const queryLimit = clampLimit(req.query.limit);
@@ -201,7 +197,7 @@ router.get(["/db.json"], LogLimit, async (req, res) => {
   }
 });
 
-router.post(["/db/reset"], LogLimit, async (req, res) => {
+router.post("/db/reset", LogLimit, async (req, res) => {
   try {
     if (!isDbLogsEnabled()) {
       return res.status(403).json({ success: false, message: "DB logs are disabled.", isDev: false });
@@ -220,15 +216,14 @@ router.post(["/db/reset"], LogLimit, async (req, res) => {
   }
 });
 
-router.get(["/db"], LogLimit, async (req, res) => {
+router.get("/db", LogLimit, async (req, res) => {
   try {
     const isDev = isDbLogsEnabled();
     const queryLimit = clampLimit(req.query.limit);
     const resetDone = req.query.resetDone === "1";
     const successFilter = parseSuccessFilter(req.query.success);
 
-    return res.render("pages/dbLogs.handlebars", {
-      layout: false,
+    return renderPage(req, res, "pages/dbLogs.handlebars", false, {
       appName: mbkautheVar.APP_NAME,
       queryLimit,
       resetDone,

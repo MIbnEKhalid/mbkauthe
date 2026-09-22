@@ -2,21 +2,43 @@ import express from "express";
 import csurf from "csurf";
 import speakeasy from "speakeasy";
 import rateLimit from "express-rate-limit";
-import { mbkautheVar, packageJson } from "../../config/index.js";
+import { mbkautheVar, isProductionEnvironment, packageJson } from "../../config/index.js";
 import { verifyPassword } from "../../core/security/password.js";
-import { cachedCookieOptions, encryptSessionId, getCookieDomain } from "../../config/cookies.js";
-import { clearSessionCookies, readAccountListFromCookie, removeAccountFromCookie, clearAccountListCookie, upsertAccountListCookie } from "../session/accountCookies.js";
+import { getCookieOptions, getCookieDomain, clearSessionCookies, getOrCreateDeviceId, setActiveSessionCookie } from "../../config/cookies.js";
 import { ErrorCodes, createErrorResponse, logError } from "../../core/errors/catalog.js";
 import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
+import { isLocalOnlyUser } from "../../core/types/user.types.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { authService } from "../../services/AuthService.js";
 import { passkeyService } from "../../services/PasskeyService.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
-import { completeLoginProcess, clearProfilePicCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
+import { completeLoginProcess, invalidateAvatarCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
 import { createLogger } from "../../utils/logger.js";
 import { isOAuthProviderConfigured, getEnabledOAuthProvidersUI } from "../../oauth/providers/loader.js";
+import { ensureSession } from "../middleware/security.js";
+import { renderPage } from "../response/formatters.js";
 
 const router = express.Router();
+
+const authSessionPaths = [
+  "/api/passkey",
+  "/api/login",
+  "/2fa",
+  "/api/verify-2fa",
+  "/api/logout",
+  "/api/accounts",
+  "/api/accounts/switch",
+  "/api/accounts/logout",
+  "/api/accounts/logout-all",
+  "/api/account-sessions",
+  "/api/logout-account",
+  "/api/switch-session",
+  "/api/logout-all",
+  "/login",
+  "/accounts",
+];
+router.use(authSessionPaths, ensureSession);
+
 const logAuth = createLogger("auth");
 const csrfProtection = csurf({ cookie: true });
 
@@ -88,6 +110,7 @@ router.post("/api/passkey/login-verify", LoginLimit, async (req, res) => {
 
     const requested_redirect = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
     const user = result.user;
+    const isLocalOnly = isLocalOnlyUser(user.is_local_only);
     const user_for_session = {
       user_id: user.user_id || undefined,
       username: user.username,
@@ -95,6 +118,7 @@ router.post("/api/passkey/login-verify", LoginLimit, async (req, res) => {
       allowed_apps: user.allowed_apps,
       full_name: user.full_name,
       image: user.image,
+      is_local_only: isLocalOnly,
     };
 
     return completeLoginProcess(req, res, user_for_session, requested_redirect, "passkey");
@@ -244,7 +268,7 @@ router.post("/api/login", LoginLimit, async (req, res) => {
       return res.status(401).json(createErrorResponse(401, ErrorCodes.INVALID_CREDENTIALS));
     }
 
-    const { password_hash, username: auth_username, is_active, role, allowed_apps, user_id, is_enabled, full_name, image } = user;
+    const { password_hash, username: auth_username, is_active, is_local_only, role, allowed_apps, user_id, is_enabled, full_name, image } = user;
     const password_matches = password_hash ? await verifyPassword(password, auth_username, password_hash) : false;
 
     if (!password_matches) {
@@ -255,6 +279,12 @@ router.post("/api/login", LoginLimit, async (req, res) => {
     if (!is_active) {
       logError("Login attempt", ErrorCodes.ACCOUNT_INACTIVE, { username: trimmedUsername });
       return res.status(403).json(createErrorResponse(403, ErrorCodes.ACCOUNT_INACTIVE));
+    }
+
+    const isLocalOnly = isLocalOnlyUser(is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      logError("Login attempt", ErrorCodes.LOCAL_USER_PROD_RESTRICTED, { username: trimmedUsername });
+      return res.status(403).json(createErrorResponse(403, ErrorCodes.LOCAL_USER_PROD_RESTRICTED));
     }
 
     if (role !== "superadmin") {
@@ -269,7 +299,7 @@ router.post("/api/login", LoginLimit, async (req, res) => {
 
     const is_2fa_enabled = String(mbkautheVar.MBKAUTH_TWO_FA_ENABLE || "").toLowerCase() === "true" && Boolean(is_enabled);
     const requested_redirect = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
-    const user_for_session = { user_id: user_id || undefined, username: auth_username, role, allowed_apps, full_name, image };
+    const user_for_session = { user_id: user_id || undefined, username: auth_username, role, allowed_apps, full_name, image, is_local_only: isLocalOnly };
 
     if (is_2fa_enabled) {
       (req as any).session.pre_auth_user = { ...user_for_session, redirect_url: requested_redirect };
@@ -292,8 +322,7 @@ router.get("/2fa", csrfProtection, (req, res) => {
     redirectToUse = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
   }
 
-  res.render("pages/2fa.handlebars", {
-    layout: false,
+  return renderPage(req, res, "pages/2fa.handlebars", false, {
     customURL: redirectToUse,
     csrfToken: (req as any).csrfToken ? (req as any).csrfToken() : "",
     appName: mbkautheVar.APP_NAME,
@@ -356,14 +385,12 @@ router.post("/api/logout", LogoutLimit, async (req, res) => {
 
   try {
     const { username, session_id } = (req as any).session.user;
-    clearProfilePicCache(req, username);
+    invalidateAvatarCache(username);
 
     const operations = [];
     if (session_id) operations.push(authRepository.deleteAppSessionById(session_id, "logout-delete-app-session"));
     if (req.sessionID) operations.push(authRepository.deleteSessionBySid(req.sessionID, "logout-delete-session"));
     await Promise.all(operations);
-
-    if (session_id) removeAccountFromCookie(req, res, session_id);
 
     (req as any).session.destroy((err: any) => {
       if (err) {
@@ -380,46 +407,42 @@ router.post("/api/logout", LogoutLimit, async (req, res) => {
   }
 });
 
-router.get("/api/account-sessions", LoginLimit, async (req, res) => {
-  const storedAccounts = readAccountListFromCookie(req);
-  const current_session_id = (req as any).session?.user?.session_id || null;
-  if (!storedAccounts.length) return res.json({ accounts: [], current_session_id });
-
-  const validAccountEntries = storedAccounts.filter((acct) => {
-    const sid = acct.session_id;
-    if (!isUuid(sid)) {
-      if (sid) removeAccountFromCookie(req, res, sid);
-      return false;
-    }
-    return true;
-  });
+router.get(["/api/accounts", "/api/account-sessions"], LoginLimit, async (req, res) => {
+  const deviceId = getOrCreateDeviceId(req, res);
+  const current_session_id = req.sessionID || (req as any).session?.user?.session_id || null;
 
   try {
-    const sessionRows = await authRepository.getSessionsWithUsersByIds(validAccountEntries.map((a) => a.session_id!), "multi-session-fetch-many");
-    const sessionMap = new Map(sessionRows.map((row: any) => [row.sid, row]));
+    const sessionRows = await authRepository.findSessionsByDeviceId(deviceId);
     const validated = [];
 
-    for (const acct of validAccountEntries) {
-      const sid = acct.session_id!;
-      const row: any = sessionMap.get(sid);
-      const expired = row?.expires_at && new Date(row.expires_at) <= new Date();
-      const authorized = Boolean(row?.is_active && (
+    for (const row of sessionRows) {
+      const expired = row.expires_at && new Date(row.expires_at) <= new Date();
+      const isLocalOnly = isLocalOnlyUser(row.is_local_only);
+      const authorized = Boolean(row.is_active && !(isLocalOnly && isProductionEnvironment()) && (
         row.role === "superadmin" ||
         (Array.isArray(row.allowed_apps) && row.allowed_apps.some((app: any) => app?.toLowerCase() === mbkautheVar.APP_NAME))
       ));
 
-      if (!row || expired || !authorized) {
-        await invalidateDbSession(sid);
-        removeAccountFromCookie(req, res, sid);
+      if (expired || !authorized) {
+        await invalidateDbSession(row.sid);
         continue;
+      }
+
+      let parsedMeta: any = {};
+      if (typeof row.meta === "string") {
+        try { parsedMeta = JSON.parse(row.meta); } catch {}
+      } else if (row.meta && typeof row.meta === "object") {
+        parsedMeta = row.meta;
       }
 
       validated.push({
         session_id: row.sid,
         username: row.username,
-        full_name: acct.full_name || row.full_name || acct.username || row.username,
-        image: acct.image || (row.image?.trim() ? row.image : null),
+        full_name: row.full_name || row.username,
+        image: row.image?.trim() ? row.image : null,
         role: row.role || "user",
+        origin: parsedMeta.origin || null,
+        last_activity: row.last_activity || null,
         expires_at: row.expires_at || null,
         is_current: Boolean(current_session_id && row.sid === current_session_id),
       });
@@ -427,12 +450,12 @@ router.get("/api/account-sessions", LoginLimit, async (req, res) => {
 
     return res.json({ accounts: validated, current_session_id });
   } catch (err) {
-    console.error(`[mbkauthe] Error validating remembered accounts:`, err);
+    console.error(`[mbkauthe] Error retrieving device accounts:`, err);
     return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
   }
 });
 
-router.post("/api/logout-account", LoginLimit, async (req, res) => {
+router.post(["/api/accounts/logout", "/api/logout-account"], LoginLimit, async (req, res) => {
   const { session_id } = req.body || {};
   const target_session_id = session_id;
 
@@ -440,22 +463,21 @@ router.post("/api/logout-account", LoginLimit, async (req, res) => {
     return res.status(400).json(createErrorResponse(400, ErrorCodes.INVALID_TOKEN_FORMAT, { message: "Invalid session id" }));
   }
 
-  const storedAccounts = readAccountListFromCookie(req);
-  if (!storedAccounts.some((a) => a.session_id === target_session_id)) {
-    return res.status(403).json(createErrorResponse(403, ErrorCodes.SESSION_NOT_FOUND, { message: "Account not available on this device" }));
-  }
+  const deviceId = getOrCreateDeviceId(req, res);
 
   try {
-    await authRepository.deleteAppSessionById(target_session_id, "logout-single-account");
-    removeAccountFromCookie(req, res, target_session_id);
-
-    const isCurrent = (req as any).session?.user?.session_id === target_session_id;
-    if (isCurrent) {
-      if (req.sessionID) await authRepository.deleteSessionBySid(req.sessionID, "logout-single-account-current-sid");
-      clearSessionCookies(res);
-      (req as any).session.destroy(() => {});
+    const deleted = await authRepository.deleteDeviceSession(deviceId, target_session_id);
+    if (!deleted) {
+      return res.status(403).json(createErrorResponse(403, ErrorCodes.SESSION_NOT_FOUND, { message: "Account not available on this device" }));
     }
 
+    const isCurrent = req.sessionID === target_session_id || (req as any).session?.user?.session_id === target_session_id;
+    if (isCurrent) {
+      clearSessionCookies(res);
+      (req as any).session?.destroy?.(() => {});
+    }
+
+    logAuth(`Device "${deviceId}" logged out session "${target_session_id}"`);
     return res.json({ success: true, message: "Account logged out successfully", is_current_logged_out: isCurrent });
   } catch (err) {
     console.error(`[mbkauthe] Error during single account logout:`, err);
@@ -463,7 +485,7 @@ router.post("/api/logout-account", LoginLimit, async (req, res) => {
   }
 });
 
-router.post("/api/switch-session", LoginLimit, async (req, res) => {
+router.post(["/api/accounts/switch", "/api/switch-session"], LoginLimit, async (req, res) => {
   const { session_id, redirect } = req.body || {};
   const target_session_id = session_id;
 
@@ -471,67 +493,67 @@ router.post("/api/switch-session", LoginLimit, async (req, res) => {
     return res.status(400).json(createErrorResponse(400, ErrorCodes.INVALID_TOKEN_FORMAT, { message: "Invalid session id" }));
   }
 
-  const storedAccounts = readAccountListFromCookie(req);
-  if (!storedAccounts.some((a) => a.session_id === target_session_id)) {
-    return res.status(403).json(createErrorResponse(403, ErrorCodes.SESSION_NOT_FOUND, { message: "Account not available on this device" }));
-  }
+  const deviceId = getOrCreateDeviceId(req, res);
 
   try {
-    const row: any = await fetchActiveSession(target_session_id);
-    if (!row) {
-      await invalidateDbSession(target_session_id);
-      removeAccountFromCookie(req, res, target_session_id);
-      return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_EXPIRED));
+    const targetSession = await authRepository.findDeviceSession(deviceId, target_session_id);
+    if (!targetSession) {
+      return res.status(403).json(createErrorResponse(403, ErrorCodes.SESSION_NOT_FOUND, { message: "Account not available on this device" }));
     }
 
-    const full_name = row.full_name || row.username;
-    const switch_profile_image = row.image?.trim() ? row.image : null;
+    if (!targetSession.is_active) {
+      return res.status(401).json(createErrorResponse(401, ErrorCodes.ACCOUNT_INACTIVE));
+    }
 
-    await new Promise<void>((resolve, reject) => (req as any).session.regenerate((err: any) => (err ? reject(err) : resolve())));
+    const isLocalOnly = isLocalOnlyUser(targetSession.is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      return res.status(403).json(createErrorResponse(403, ErrorCodes.LOCAL_USER_PROD_RESTRICTED));
+    }
 
-    (req as any).session.user = {
-      session_id: row.sid,
-      user_id: row.user_id || undefined,
-      username: row.username,
-      full_name,
-      role: row.role,
-      allowed_apps: row.allowed_apps,
-    };
+    if (targetSession.role !== "superadmin") {
+      const allowed = targetSession.allowed_apps;
+      if (!Array.isArray(allowed) || !allowed.some((app: any) => app?.toLowerCase() === mbkautheVar.APP_NAME)) {
+        return res.status(401).json(createErrorResponse(401, ErrorCodes.APP_NOT_AUTHORIZED));
+      }
+    }
 
-    await attachSessionPermissions((req as any).session.user, row.username);
+    // Touch last activity on target session in database
+    await authRepository.touchSessionActivity(targetSession.sid);
 
-    clearProfilePicCache(req, row.username);
-    await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => (err ? reject(err) : resolve())));
+    // Set the active session cookie directly to targetSession.sid!
+    setActiveSessionCookie(res, targetSession.sid);
 
-    res.cookie("full_name", full_name, { ...cachedCookieOptions, httpOnly: false });
-    const encrypted_sid = encryptSessionId(row.sid);
-    if (encrypted_sid) res.cookie("session_id", encrypted_sid, cachedCookieOptions);
+    const fullName = targetSession.full_name || targetSession.username;
+    res.cookie("full_name", fullName, { ...getCookieOptions(), httpOnly: false });
 
-    upsertAccountListCookie(req, res, { session_id: row.sid, username: row.username, full_name, image: switch_profile_image });
+    logAuth(`Device "${deviceId}" switched active session to user "${targetSession.username}" (${targetSession.sid})`);
 
     const safe_redirect = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")
       ? redirect
       : mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
 
-    return res.json({ success: true, username: row.username, full_name, redirect: safe_redirect, session_id: row.sid });
+    return res.json({
+      success: true,
+      username: targetSession.username,
+      full_name: fullName,
+      redirect: safe_redirect,
+      session_id: targetSession.sid,
+    });
   } catch (err) {
     console.error(`[mbkauthe] Error during session switch:`, err);
     return res.status(500).json(createErrorResponse(500, ErrorCodes.INTERNAL_SERVER_ERROR));
   }
 });
 
-router.post("/api/logout-all", LoginLimit, async (req, res) => {
+router.post(["/api/accounts/logout-all", "/api/logout-all"], LoginLimit, async (req, res) => {
+  const deviceId = getOrCreateDeviceId(req, res);
+
   try {
-    const session_ids = readAccountListFromCookie(req).map((a) => a.session_id).filter((s): s is string => Boolean(s));
-    if ((req as any).session?.user?.session_id) session_ids.push((req as any).session.user.session_id);
-
-    if (session_ids.length) await authRepository.deleteSessionsByIds(session_ids, "logout-all-app-sessions");
-    if (req.sessionID) await authRepository.deleteSessionBySid(req.sessionID, "logout-all-delete-session");
-
-    clearAccountListCookie(res);
+    await authRepository.deleteAllDeviceSessions(deviceId);
     clearSessionCookies(res);
-    (req as any).session.destroy(() => {});
+    (req as any).session?.destroy?.(() => {});
 
+    logAuth(`Device "${deviceId}" logged out all sessions`);
     return res.json({ success: true, message: "All accounts logged out" });
   } catch (err) {
     console.error(`[mbkauthe] Error during logout-all:`, err);
@@ -545,6 +567,7 @@ router.get("/login", LoginLimit, csrfProtection, (req, res) => {
   const githubEnabled = isOAuthProviderConfigured("github", oauthProviders) ? "true" : "false";
   const googleEnabled = isOAuthProviderConfigured("google", oauthProviders) ? "true" : "false";
   const enabledOAuthProviders = getEnabledOAuthProvidersUI(oauthProviders, lastLogin);
+  const isAddAccount = req.query.prompt === "add_account";
 
   return res.render("pages/loginmbkauthe.handlebars", {
     layout: false,
@@ -554,8 +577,9 @@ router.get("/login", LoginLimit, csrfProtection, (req, res) => {
     hasOAuthProviders: enabledOAuthProviders.length > 0,
     customURL: mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard",
     cookieDomain: getCookieDomain() || "",
-    userLoggedIn: Boolean((req as any).session?.user),
-    username: (req as any).session?.user?.username || "",
+    userLoggedIn: isAddAccount ? false : Boolean((req as any).session?.user),
+    username: isAddAccount ? "" : ((req as any).session?.user?.username || ""),
+    isAddAccount,
     version: packageJson.version,
     appName: mbkautheVar.APP_NAME,
     csrfToken: (req as any).csrfToken ? (req as any).csrfToken() : "",

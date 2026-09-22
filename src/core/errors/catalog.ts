@@ -9,6 +9,7 @@ export const ErrorCodes = {
   INCORRECT_PASSWORD: 603,
   ACCOUNT_INACTIVE: 604,
   APP_NOT_AUTHORIZED: 605,
+  LOCAL_USER_PROD_RESTRICTED: 606,
 
   // 2FA & Passkeys (700-799)
   TWO_FA_REQUIRED: 701,
@@ -85,6 +86,11 @@ export const ErrorMessages: Record<number, ErrorDetail> = {
     message: "Not authorized for this application",
     userMessage: "You don't have permission to access this application.",
     hint: "This token may not be authorized for the requested app.",
+  },
+  [ErrorCodes.LOCAL_USER_PROD_RESTRICTED]: {
+    message: "User restricted to local environments",
+    userMessage: "This account is restricted to local development/testing environments and cannot log into production.",
+    hint: "Use a production-authorized account or test on your local environment",
   },
   [ErrorCodes.TWO_FA_REQUIRED]: {
     message: "Two-factor authentication required",

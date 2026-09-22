@@ -21,7 +21,7 @@ const {
   resolveCookieDomain,
   isAllowedOriginHostname,
   getCookieDomain,
-  cachedCookieOptions,
+  getCookieOptions,
   dblogin,
   attachDevQueryLogger,
   resetQueryCount,
@@ -745,6 +745,43 @@ describe('mbkauthe Routes', () => {
       expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
     });
+
+    test('GET /mbkauthe/avatar/:username serves avatar with ETag and Cache-Control headers', async () => {
+      const res = await request(app).get('/mbkauthe/avatar/alice');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('image/png');
+      expect(res.headers['cache-control']).toBe('public, max-age=300, stale-while-revalidate=86400');
+      expect(res.headers['etag']).toMatch(/^W\/"avatar-[0-9a-f]{32}"$/);
+
+      // 304 conditional request
+      const res304 = await request(app)
+        .get('/mbkauthe/avatar/alice')
+        .set('If-None-Match', res.headers['etag']);
+      expect(res304.status).toBe(304);
+    });
+
+    test('GET /mbkauthe/avatar/me returns default avatar with private cache when unauthenticated', async () => {
+      const res = await request(app).get('/mbkauthe/avatar/me');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('image/png');
+      expect(res.headers['cache-control']).toBe('private, no-cache');
+    });
+
+    test('concurrent avatar requests for multiple users yield isolated, unique ETags without cross-contamination', async () => {
+      const [resBob, resCharlie] = await Promise.all([
+        request(app).get('/mbkauthe/avatar/bob'),
+        request(app).get('/mbkauthe/avatar/charlie'),
+      ]);
+
+      expect(resBob.status).toBe(200);
+      expect(resCharlie.status).toBe(200);
+      expect(resBob.headers['etag']).not.toBe(resCharlie.headers['etag']);
+    });
+
+    test('legacy /mbkauthe/user/profilepic is removed (no backward compatibility)', async () => {
+      const res = await request(app).get('/mbkauthe/user/profilepic?u=alice');
+      expect(res.status).toBe(404);
+    });
   });
 
   describe('Cross-subdomain cookie sharing', () => {
@@ -763,10 +800,10 @@ describe('mbkauthe Routes', () => {
       expect(isAllowedOriginHostname('mbktech.org.evil.com', 'mbktech.org')).toBe(false);
     });
 
-    test('cached cookie options omit domain in test dev environment', () => {
+    test('cookie options omit domain in test dev environment', () => {
       expect(getCookieDomain()).toBeUndefined();
-      expect(cachedCookieOptions.domain).toBeUndefined();
-      expect(cachedCookieOptions.secure).toBe(false);
+      expect(getCookieOptions().domain).toBeUndefined();
+      expect(getCookieOptions().secure).toBe(false);
     });
   });
 });

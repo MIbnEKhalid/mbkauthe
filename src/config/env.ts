@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: Record<string, any> = {
   is_deployed: "false",
   db_type: "postgres",
   sqlite_path: "./mbkauthe.sqlite",
-  mbkauth_two_fa_enable: "false",
+  mbkauth_two_fa_enable: "true",
   cookie_expire_time: 2,
   login_redirect_url: "/dashboard",
   oauth_providers: {},
@@ -377,4 +377,14 @@ export function validateConfiguration(): MBKAuthConfig {
 }
 
 export const mbkautheVar = resolveRawConfig();
+
+export function isProductionEnvironment(): boolean {
+  return (
+    mbkautheVar.IS_DEPLOYED === "true" ||
+    mbkautheVar.IS_DEPLOYED === true ||
+    process.env.NODE_ENV === "production" ||
+    process.env.env === "prod"
+  );
+}
+
 export default mbkautheVar;

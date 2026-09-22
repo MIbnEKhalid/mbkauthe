@@ -27,7 +27,8 @@ MBKAuthe loads configuration values in the following order of precedence (highes
 | `DB_TYPE` | `string` | `"postgres"` | Database engine: `"postgres"` or `"sqlite"`. |
 | `LOGIN_DB` | `string` | `undefined` | PostgreSQL connection string URL (`postgres://user:pass@host:5432/dbname`). |
 | `SQLITE_PATH` | `string` | `"./mbkauthe.sqlite"` | Filesystem path for SQLite database file when `DB_TYPE=sqlite`. |
-| `MBKAUTH_TWO_FA_ENABLE` | `boolean` | `"false"` | Enables TOTP Two-Factor Authentication across the login flow. |
+| `MBKAUTH_TWO_FA_ENABLE` | `boolean` | `"true"` | Enables TOTP Two-Factor Authentication across the login flow (enabled by default in v6.0.1). |
+| `DB_LOGS` / `dbLogs` | `boolean` | `"false"` | Enables live in-memory SQL query logging, execution profiling, and the `/mbkauthe/db` inspection UI (recommended for local dev only). |
 | `COOKIE_EXPIRE_TIME` | `number` | `2` | Session cookie lifespan in hours. |
 | `LOGIN_REDIRECT_URL` | `string` | `"/dashboard"` | Relative path to redirect users after successful login. Must start with `/`. |
 | `MAX_SESSIONS_PER_USER` | `number` | `5` | Maximum active concurrent sessions allowed per user before oldest session eviction. |

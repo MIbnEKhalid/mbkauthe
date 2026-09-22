@@ -7,7 +7,8 @@ import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
 import { emitAuthEvent } from "../core/events/index.js";
 import { validateLoginDto, validateTotpDto, LoginDto, VerifyTotpDto } from "../core/validation/authDto.js";
-import { AuthUser } from "../core/types/user.types.js";
+import { mbkautheVar, isProductionEnvironment } from "../config/index.js";
+import { AuthUser, isLocalOnlyUser } from "../core/types/user.types.js";
 import { createLogger } from "../utils/logger.js";
 import { TokenEngine } from "../core/tokens/TokenEngine.js";
 
@@ -19,6 +20,7 @@ export interface LoginOptions {
   appKey?: string;
   maxSessions?: number;
   sessionDurationDays?: number;
+  origin?: string;
 }
 
 export interface LoginResult {
@@ -66,6 +68,12 @@ export class AuthService {
       throw new MbkAuthError(ErrorCodes.ACCOUNT_INACTIVE, 403, "User account is inactive");
     }
 
+    const isLocalOnly = isLocalOnlyUser(user.is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      emitAuthEvent("auth:login:failed", { username, reason: "LOCAL_USER_PROD_RESTRICTED", ip, userAgent, appKey });
+      throw new MbkAuthError(ErrorCodes.LOCAL_USER_PROD_RESTRICTED, 403, "User account is restricted to local environments");
+    }
+
     if (!authorizationService.canAccessApp(user, appKey)) {
       emitAuthEvent("auth:login:failed", { username, reason: "APP_NOT_AUTHORIZED", ip, userAgent, appKey });
       throw new MbkAuthError(ErrorCodes.APP_NOT_AUTHORIZED, 403, "User not authorized for this application");
@@ -86,7 +94,7 @@ export class AuthService {
     const sessionRow = await this.repo.createAppSessionWithPruning({
       username,
       expiresAt,
-      meta: { ip, userAgent, appKey },
+      meta: { ip, userAgent, appKey, ...(options.origin ? { origin: options.origin, domain: options.origin } : {}) },
       maxSessions,
     });
 

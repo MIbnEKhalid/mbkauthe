@@ -89,7 +89,7 @@ router.get("/refresh-profile", sessVal, reloadSessionUser, (req, res) => {
 
 ## 4. Multi-Session Management & Auto-Pruning
 
-MBKAuthe tracks all active sessions in the database (`app_sessions` table).
+MBKAuthe tracks all active sessions in the database (`mbkcore_session` unified session table).
 
 - When a user logs in, the engine checks their total active session count.
 - If it exceeds `MAX_SESSIONS_PER_USER` (default: `5`), the oldest active sessions are automatically destroyed.

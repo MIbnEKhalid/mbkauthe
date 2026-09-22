@@ -104,8 +104,8 @@ if (user) {
   console.log(`User ID: ${user.id}, Role: ${user.role}`);
 }
 
-// Prune expired sessions for a user
-await sessionRepository.pruneUserSessions(user.id, 5);
+// Prune oldest sessions or fetch active session
+await sessionRepository.deleteOldestSessionsForUser(user.username, 2);
 ```
 
 ---

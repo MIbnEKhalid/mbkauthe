@@ -52,7 +52,7 @@ export class PasskeyRepository extends BaseRepository {
 
       const userRes = await this.executeRaw({
         name: "find-user-for-passkey",
-        text: `SELECT user_id, username, full_name, image, is_active, role, allowed_apps
+        text: `SELECT user_id, username, full_name, image, is_active, is_local_only, role, allowed_apps
                FROM mbkcore_users
                WHERE username = $1`,
         values: [row.username],
@@ -68,7 +68,7 @@ export class PasskeyRepository extends BaseRepository {
 
     const query = `
       SELECT p.id, p.username, p.credential_id, p.public_key, p.counter, p.device_type, p.backed_up, p.transports, p.name, p.aaguid, p.created_at, p.last_used_at,
-             u.user_id, u.full_name, u.image, u.is_active, u.role, u.allowed_apps
+             u.user_id, u.full_name, u.image, u.is_active, u.is_local_only, u.role, u.allowed_apps
       FROM mbkcore_passkeys p
       JOIN mbkcore_users u ON p.username = u.username
       WHERE p.credential_id = $1

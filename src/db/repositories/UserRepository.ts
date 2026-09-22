@@ -13,6 +13,7 @@ export function normalizeUserRow(row: any): AuthUser | null {
     ...row,
     role: typeof row.role === "string" ? row.role.toLowerCase() : row.role,
     is_active: row.is_active !== undefined ? Boolean(row.is_active) : undefined,
+    is_local_only: row.is_local_only !== undefined ? Boolean(row.is_local_only && row.is_local_only !== "0" && row.is_local_only !== "false") : undefined,
     is_enabled: row.is_enabled !== undefined && row.is_enabled !== null ? Boolean(row.is_enabled) : null,
     user_allowed_apps: row.user_allowed_apps !== undefined ? row.user_allowed_apps : row.allowed_apps,
     permissions,
@@ -27,7 +28,7 @@ export class UserRepository extends BaseRepository {
   async getUserWithTwoFA(username: string): Promise<AuthUser | null> {
     const query = `
       SELECT u.user_id, u.username, u.password_hash, u.full_name, u.image,
-             u.role, u.allowed_apps, u.is_active, tfa.is_enabled
+             u.role, u.allowed_apps, u.is_active, u.is_local_only, tfa.is_enabled
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
       WHERE u.username = $1
@@ -39,7 +40,7 @@ export class UserRepository extends BaseRepository {
 
   async getUserById(userId: string | number): Promise<AuthUser | null> {
     const query = `
-      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active
+      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only
       FROM mbkcore_users u
       WHERE u.user_id = $1
       LIMIT 1
@@ -50,7 +51,7 @@ export class UserRepository extends BaseRepository {
 
   async getUserByUsername(username: string): Promise<AuthUser | null> {
     const query = `
-      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active
+      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only
       FROM mbkcore_users u
       WHERE u.username = $1
       LIMIT 1

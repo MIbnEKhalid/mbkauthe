@@ -8,12 +8,13 @@ import { mbkautheVar, packageJson, appVersion } from "../../config/index.js";
 import { renderError, renderPage } from "../response/formatters.js";
 import { authenticate, sessPerm, sessRole } from "../middleware/authMiddleware.js";
 import { ErrorCodes, ErrorMessages, createErrorResponse } from "../../core/errors/catalog.js";
-import { decryptSessionId, cachedCookieOptions, getCookieDomain } from "../../config/cookies.js";
-import { clearSessionCookies } from "../session/accountCookies.js";
+import { decryptSessionId, getCookieDomain, clearSessionCookies } from "../../config/cookies.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { isSafeFetchUrl } from "../utils/urlSafety.js";
 import { createLogger } from "../../utils/logger.js";
 import { getAuthHealthReport } from "../../diagnostics/index.js";
+import { ensureSession } from "../middleware/security.js";
+import { avatarService } from "../../services/AvatarService.js";
 
 dotenv.config();
 
@@ -21,7 +22,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 const logMisc = createLogger("misc");
 
-const PROFILE_IMAGE_CACHE_CONTROL = "private, max-age=300, stale-while-revalidate=300";
 const LATEST_VERSION_CACHE_TTL_MS = 10 * 60 * 1000;
 const LATEST_VERSION_FAILURE_CACHE_TTL_MS = 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,11 +32,6 @@ const latestVersionCache: { value: string | null; expiresAt: number; pending: Pr
   expiresAt: 0,
   pending: null,
 };
-
-function setProfileImageCacheHeaders(res: express.Response, etag: string | null = null) {
-  res.setHeader("Cache-Control", PROFILE_IMAGE_CACHE_CONTROL);
-  if (etag) res.setHeader("ETag", etag);
-}
 
 const LoginLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -79,51 +74,60 @@ router.get("/bg.webp", (req, res) => {
     .pipe(res);
 });
 
-router.get("/user/profilepic", async (req, res) => {
-  const serveDefaultIcon = () => {
-    res.setHeader("Content-Type", "image/png");
-    if (!res.getHeader("Cache-Control")) setProfileImageCacheHeaders(res);
-    fs.createReadStream(path.join(__dirname, "..", "..", "..", "public", "M.png"))
-      .on("error", () => res.status(404).send("Icon not found"))
-      .pipe(res);
-  };
+const AVATAR_USERNAME_REGEX = /^[a-zA-Z0-9_.-]{1,64}$/;
+
+router.get("/avatar/:username", async (req, res) => {
+  const rawParam = req.params.username;
+  let targetUsername: string | null = null;
+  let isMe = false;
+
+  if (rawParam === "me") {
+    isMe = true;
+    const sessionUser = (req as any).session?.user || (req as any).auth?.user;
+    targetUsername = sessionUser?.username ? sessionUser.username.trim().toLowerCase() : null;
+  } else if (typeof rawParam === "string" && AVATAR_USERNAME_REGEX.test(rawParam.trim())) {
+    targetUsername = rawParam.trim().toLowerCase();
+  }
+
+  // If "me" was requested without an active session, or invalid username provided
+  if (!targetUsername) {
+    const result = await avatarService.getAvatarImage("default");
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Cache-Control", isMe ? "private, no-cache" : "public, max-age=300, stale-while-revalidate=86400");
+    if (result.etag) res.setHeader("ETag", result.etag);
+    if (req.headers["if-none-match"] === result.etag) {
+      return res.status(304).end();
+    }
+    return res.status(200).send(result.buffer);
+  }
+
+  // If logged-in session user matches the target and has image, prime cache
+  const sessionUser = (req as any).session?.user || (req as any).auth?.user;
+  if (sessionUser?.username?.toLowerCase() === targetUsername && sessionUser.image) {
+    avatarService.warmCache(targetUsername, sessionUser.image);
+  }
 
   try {
-    const sessionUser = (req as any).session?.user || (req as any).auth?.user;
-    if (!sessionUser?.username) return serveDefaultIcon();
+    const meta = await avatarService.getAvatarMetadata(targetUsername);
 
-    const username = sessionUser.username;
-    let image_url = sessionUser.image?.trim() ? sessionUser.image : null;
-
-    if (!image_url) {
-      const profile = await authRepository.getUserImageByUsername(username, "get-user-profile-pic");
-      image_url = profile?.image?.trim() ? profile.image : "default";
+    // Fast-path 304 response on ETag match
+    if (req.headers["if-none-match"] === meta.etag) {
+      res.setHeader("ETag", meta.etag);
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
+      return res.status(304).end();
     }
 
-    const etag = `"${Buffer.from(username + ":" + image_url).toString("base64")}"`;
-    setProfileImageCacheHeaders(res, etag);
-
-    if (req.headers["if-none-match"] === etag) return res.status(304).end();
-    if (image_url === "default") return serveDefaultIcon();
-
-    if (!isSafeFetchUrl(image_url)) {
-      console.warn(`[mbkauthe] Blocked unsafe profile image URL for user ${username}`);
-      return serveDefaultIcon();
-    }
-
-    try {
-      const imageResponse = await fetch(image_url, { headers: { "User-Agent": "mbkauthe/1.0" }, signal: AbortSignal.timeout(5000) });
-      if (!imageResponse.ok) {
-        return serveDefaultIcon();
-      }
-      res.setHeader("Content-Type", imageResponse.headers.get("content-type") || "image/jpeg");
-      const buffer = Buffer.from(await imageResponse.arrayBuffer());
-      return res.send(buffer);
-    } catch {
-      return serveDefaultIcon();
-    }
-  } catch {
-    return serveDefaultIcon();
+    const result = await avatarService.getAvatarImage(targetUsername, meta);
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
+    res.setHeader("ETag", result.etag);
+    return res.status(200).send(result.buffer);
+  } catch (err) {
+    console.warn(`[mbkauthe] Error serving avatar for ${targetUsername}:`, err);
+    const result = await avatarService.getAvatarImage("default");
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Cache-Control", "public, max-age=60");
+    return res.status(200).send(result.buffer);
   }
 });
 
@@ -143,8 +147,27 @@ if (process.env.env === "dev") {
 }
 
 const buildTestViewData = (req: express.Request) => {
-  const { username, full_name, role, user_id, session_id, allowed_apps, permissions } = (req as any).session.user;
-  const session_expiry = (req as any).session.cookie?.expires ? new Date((req as any).session.cookie.expires).toISOString() : null;
+  const user = (req as any).session?.user || (req as any).user || (req as any).authContext?.principal || {};
+  const { username, full_name, role, user_id, session_id, allowed_apps, permissions } = user;
+  const session_expiry = (req as any).session?.cookie?.expires ? new Date((req as any).session.cookie.expires).toISOString() : null;
+
+  const authContext = (req as any).authContext;
+  const authMethod = authContext?.authMethod || (req.headers.authorization ? "api-token" : "session");
+  const loginMethod = (req as any).cookies?.last_login_method || "password";
+
+  let auth_type_label = "Session (Cookie)";
+  let auth_type_icon = "fa-cookie-bite";
+  if (authMethod === "api-token") {
+    auth_type_label = "API Token (PAT)";
+    auth_type_icon = "fa-key";
+  } else if (authMethod === "passkey" || loginMethod === "passkey") {
+    auth_type_label = "Passkey (WebAuthn)";
+    auth_type_icon = "fa-fingerprint";
+  } else if (authMethod === "oauth" || ["github", "google", "discord", "microsoft"].includes(loginMethod)) {
+    auth_type_label = `OAuth (${loginMethod})`;
+    auth_type_icon = "fa-brands fa-" + (loginMethod === "microsoft" ? "windows" : loginMethod);
+  }
+
   return {
     username,
     full_name: full_name || "N/A",
@@ -154,10 +177,14 @@ const buildTestViewData = (req: express.Request) => {
     session_id_short: session_id ? session_id.slice(0, 8) : "",
     profile_pic_url: encodeURIComponent(username),
     display_name: full_name || username,
-    initial: (full_name && full_name[0]) || username[0],
-    allowed_apps: Array.isArray(allowed_apps) ? allowed_apps.join(", ") : "N/A",
+    initial: (full_name && full_name[0]) || (username && username[0]) || "U",
+    allowed_apps: Array.isArray(allowed_apps) ? allowed_apps.join(", ") : (allowed_apps || "N/A"),
     session_expiry,
     permissions,
+    auth_type: authMethod,
+    auth_type_label,
+    auth_type_icon,
+    login_method: loginMethod,
   };
 };
 
@@ -170,10 +197,12 @@ router.get("/test.json", sessPerm("basic.access"), LoginLimit, async (req, res) 
 });
 
 router.post("/test", sessPerm("basic.access"), LoginLimit, async (req, res) => {
-  if ((req as any).session?.user) return res.json({ success: true, message: "You are logged in" });
+  const user = (req as any).session?.user || (req as any).user || (req as any).authContext?.principal;
+  if (user) return res.json({ success: true, message: "You are logged in" });
+  return res.status(401).json({ success: false, message: "Authentication required" });
 });
 
-router.get("/api/checkSession", LoginLimit, async (req, res) => {
+router.get("/api/checkSession", ensureSession, LoginLimit, async (req, res) => {
   try {
     if (!(req as any).session?.user?.session_id) {
       (req as any).session?.destroy?.(() => {});
@@ -244,7 +273,7 @@ router.post("/api/verifySession", LoginLimit, async (req, res) => {
   }
 });
 
-router.get("/ErrorCode", (req, res) => {
+router.get("/ErrorCode", ensureSession, (req, res) => {
   try {
     const getErrorName = (code: number) => Object.keys(ErrorCodes).find((key) => (ErrorCodes as any)[key] === code) || "UNKNOWN_ERROR";
     const errorCategories = [
@@ -325,7 +354,7 @@ const { APP_NAME, DOMAIN, IS_DEPLOYED } = mbkautheVar;
 const loginRedirectUrl = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
 const safe_mbkautheVar = { APP_NAME, DOMAIN, IS_DEPLOYED, login_redirect_url: loginRedirectUrl };
 
-router.get(["/info", "/i"], LoginLimit, async (req, res) => {
+router.get(["/info", "/i"], ensureSession, LoginLimit, async (req, res) => {
   let latestVersion: string | null = null;
   try { latestVersion = await getLatestVersion(); } catch {}
   try {
@@ -375,12 +404,18 @@ router.post("/api/terminateAllSessions", AdminOperationLimit, authenticate(mbkau
       authRepository.deleteActiveSessionStoreRows("terminate-all-db-sessions"),
     ]);
 
-    (req as any).session.destroy((err: any) => {
-      if (err) return res.status(500).json({ success: false, message: "Failed to terminate sessions" });
+    if (typeof (req as any).session?.destroy === "function") {
+      (req as any).session.destroy((err: any) => {
+        if (err) return res.status(500).json({ success: false, message: "Failed to terminate sessions" });
+        clearSessionCookies(res);
+        logMisc(`All sessions terminated successfully`);
+        res.status(200).json({ success: true, message: "All sessions terminated successfully" });
+      });
+    } else {
       clearSessionCookies(res);
       logMisc(`All sessions terminated successfully`);
       res.status(200).json({ success: true, message: "All sessions terminated successfully" });
-    });
+    }
   } catch (err) {
     console.error(`[mbkauthe] Database query error during session termination:`, err);
     res.status(500).json({ success: false, message: "Internal Server Error" });

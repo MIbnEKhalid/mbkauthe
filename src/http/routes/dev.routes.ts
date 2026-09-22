@@ -1,8 +1,10 @@
 import express from "express";
 import { renderError, renderPage } from "../response/formatters.js";
+import { ensureSession } from "../middleware/security.js";
 import { mbkautheVar } from "../../config/index.js";
 
 const router = express.Router();
+router.use(ensureSession);
 
 const renderDevError = (res: express.Response, req: express.Request, code: number, error: string, message: string, page = "/mbkauthe/login", details?: string) =>
   renderError(res, req, {

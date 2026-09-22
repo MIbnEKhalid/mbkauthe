@@ -1,23 +1,11 @@
-import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-  type GenerateRegistrationOptionsOpts,
-  type GenerateAuthenticationOptionsOpts,
-  type VerifyRegistrationResponseOpts,
-  type VerifyAuthenticationResponseOpts,
-  type RegistrationResponseJSON,
-  type AuthenticationResponseJSON,
-  type AuthenticatorTransport,
-} from "@simplewebauthn/server";
+import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, type GenerateRegistrationOptionsOpts, type GenerateAuthenticationOptionsOpts, type VerifyRegistrationResponseOpts, type VerifyAuthenticationResponseOpts, type RegistrationResponseJSON, type AuthenticationResponseJSON, type AuthenticatorTransport } from "@simplewebauthn/server";
 import { AuthRepository, authRepository } from "../db/repositories/AuthRepository.js";
 import { PasskeyRepository, passkeyRepository } from "../db/repositories/PasskeyRepository.js";
-import { mbkautheVar } from "../config/index.js";
+import { mbkautheVar, isProductionEnvironment } from "../config/index.js";
 import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
 import { emitAuthEvent } from "../core/events/index.js";
-import { AuthUser } from "../core/types/user.types.js";
+import { AuthUser, isLocalOnlyUser } from "../core/types/user.types.js";
 import { createLogger } from "../utils/logger.js";
 import { authorizationService } from "../core/permissions/AuthorizationService.js";
 
@@ -260,6 +248,12 @@ export class PasskeyService {
     if (user.is_active === false) {
       emitAuthEvent("auth:login:failed", { username: user.username, reason: "ACCOUNT_INACTIVE", ip, userAgent, appKey });
       throw new MbkAuthError(ErrorCodes.ACCOUNT_INACTIVE, 403, "User account is inactive");
+    }
+
+    const isLocalOnly = isLocalOnlyUser(user.is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      emitAuthEvent("auth:login:failed", { username: user.username, reason: "LOCAL_USER_PROD_RESTRICTED", ip, userAgent, appKey });
+      throw new MbkAuthError(ErrorCodes.LOCAL_USER_PROD_RESTRICTED, 403, "User account is restricted to local environments");
     }
 
     if (!authorizationService.canAccessApp(user, appKey)) {

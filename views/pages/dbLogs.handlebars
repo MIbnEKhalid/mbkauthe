@@ -92,9 +92,9 @@
         </div>
         {{/unless}}
 
-        <div class="alert-banner alert-info" id="reset-notice" {{#unless resetDone}}hidden{{/unless}}>
+        <div class="alert-banner alert-info" id="reset-notice" {{#unless resetDone}}hidden style="display: none;"{{/unless}}>
           <div class="alert-icon"><i class="fas fa-check"></i></div>
-          <div class="alert-body">Query logs have been cleared successfully.</div>
+          <div class="alert-body" id="reset-notice-body">Query logs have been cleared successfully.</div>
         </div>
 
         <div class="db-insights-grid">
@@ -374,8 +374,10 @@
         }
         const result = await response.json().catch(() => ({}));
         if (resetNoticeEl) {
-          resetNoticeEl.textContent = result.message || 'Query log and count have been reset.';
+          const bodyEl = document.getElementById('reset-notice-body') || resetNoticeEl;
+          bodyEl.textContent = result.message || 'Query log and count have been reset.';
           resetNoticeEl.hidden = false;
+          resetNoticeEl.style.display = 'flex';
         }
         loadLog();
       } catch {

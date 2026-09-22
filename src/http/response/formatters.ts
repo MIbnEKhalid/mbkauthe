@@ -3,14 +3,52 @@ import { mbkautheVar, packageJson } from "../../config/index.js";
 import { getErrorByCode } from "../../core/errors/catalog.js";
 
 export function getUserContext(req?: Request | null) {
-  const user = (req as any)?.session?.user || (req as any)?.auth?.user || {};
+  const user = (req as any)?.session?.user || (req as any)?.auth?.user;
+  const cookieUsername = (req as any)?.cookies?.username;
+  const cookieFullName = (req as any)?.cookies?.full_name;
+
+  if (user?.username) {
+    return {
+      userLoggedIn: true,
+      user_id: user.user_id || "mbk_notfound",
+      username: user.username,
+      full_name: user.full_name || user.username,
+      role: user.role || "N/A",
+      allowed_apps: Array.isArray(user.allowed_apps) ? user.allowed_apps : [],
+    };
+  }
+
+  if (cookieUsername && typeof cookieUsername === "string" && cookieUsername.trim()) {
+    const cleanUsername = cookieUsername.trim();
+    return {
+      userLoggedIn: true,
+      user_id: "mbk_notfound",
+      username: cleanUsername,
+      full_name: (cookieFullName && typeof cookieFullName === "string") ? cookieFullName.trim() : cleanUsername,
+      role: "N/A",
+      allowed_apps: [],
+    };
+  }
+
+  if (cookieFullName && typeof cookieFullName === "string" && cookieFullName.trim()) {
+    const cleanFullName = cookieFullName.trim();
+    return {
+      userLoggedIn: true,
+      user_id: "mbk_notfound",
+      username: cleanFullName,
+      full_name: cleanFullName,
+      role: "N/A",
+      allowed_apps: [],
+    };
+  }
+
   return {
-    userLoggedIn: Boolean(user.username),
-    user_id: user.user_id || "mbk_notfound",
-    username: user.username || "N/A",
-    full_name: user.full_name || "N/A",
-    role: user.role || "N/A",
-    allowed_apps: Array.isArray(user.allowed_apps) ? user.allowed_apps : [],
+    userLoggedIn: false,
+    user_id: "mbk_notfound",
+    username: "N/A",
+    full_name: "N/A",
+    role: "N/A",
+    allowed_apps: [],
   };
 }
 
@@ -152,9 +190,15 @@ export const renderError = (res: Response, req: Request, { code, error, message,
 };
 
 export async function renderPage(req: Request, res: Response, fileLocation: string, layout: boolean = true, data: Record<string, any> = {}) {
+  const userCtx = getUserContext(req);
+  const userLoggedIn = userCtx.userLoggedIn || Boolean(data.userLoggedIn);
+  const username = userCtx.userLoggedIn ? userCtx.username : (data.username || userCtx.username);
+
   return res.render(fileLocation, {
+    ...userCtx,
     ...data,
-    ...getUserContext(req),
+    userLoggedIn,
+    username,
     ...(!layout && { layout: false }),
   });
 }

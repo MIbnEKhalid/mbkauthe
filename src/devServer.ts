@@ -3,7 +3,11 @@
  * Runs on http://localhost:5555
  */
 
+process.env.env = process.env.env || "dev";
+process.env.dbLogs = process.env.dbLogs || "false";
+
 import express from "express";
+import cookieParser from "cookie-parser";
 import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -14,9 +18,6 @@ import { createNotFoundHandler, createErrorHandler } from "./http/response/handl
 import { apiTokensRouter } from "./http/routes/apiToken.routes.js";
 import { adminApiTokensRouter } from "./http/routes/adminApiToken.routes.js";
 import { devRouter } from "./http/routes/dev.routes.js";
-
-process.env.env = process.env.env || "dev";
-process.env.dbLogs = process.env.dbLogs || "true";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -44,6 +45,10 @@ app.set("views", path.join(rootDir, "views"));
 app.use("/public", express.static(path.join(rootDir, "public")));
 app.use("/assets", express.static(path.join(rootDir, "public")));
 app.use("/Assets", express.static(path.join(rootDir, "public")));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // API Tokens & Admin API Tokens Routers
 app.use(apiTokensRouter);

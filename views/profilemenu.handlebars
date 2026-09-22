@@ -1,33 +1,58 @@
 <div class="mbkauthe-header-actions">
-    {{#if userLoggedIn}}
-    <div class="mbkauthe-profile-menu">
-        <button class="mbkauthe-profile-trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-label="User profile menu">
-            <img src="/mbkauthe/user/profilepic?u={{username}}" alt="{{username}}" class="avatar-img mbkauthe-profile-avatar" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <span class="mbkauthe-avatar-fallback" style="display: none;"><i class="fas fa-user"></i></span>
+    <div class="mbkauthe-profile-menu" id="mbkautheProfileMenu" style="{{#unless userLoggedIn}}display: none;{{/unless}}">
+        <button class="mbkauthe-profile-trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-label="User profile menu" style="width:38px;height:38px;min-width:38px;min-height:38px;max-width:38px;max-height:38px;border-radius:9999px;overflow:hidden;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
+            <img src="/mbkauthe/avatar/{{#if username}}{{username}}{{else}}me{{/if}}" alt="{{username}}" width="38" height="38" class="avatar-img mbkauthe-profile-avatar" style="width:38px;height:38px;max-width:38px;max-height:38px;border-radius:9999px;object-fit:cover;display:block;" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="mbkauthe-avatar-fallback" style="display: none; width:100%; height:100%; border-radius:9999px;"><i class="fas fa-user"></i></span>
         </button>
 
         <div class="mbkauthe-profile-dropdown" role="menu" hidden>
             <div class="mbkauthe-profile-header">
-                <div class="mbkauthe-profile-header-avatar">
-                    <img src="/mbkauthe/user/profilepic?u={{username}}" alt="{{username}}" class="avatar-img mbkauthe-profile-header-img" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <span class="mbkauthe-avatar-fallback small" style="display: none;"><i class="fas fa-user"></i></span>
+                <div class="mbkauthe-profile-header-avatar" style="width:38px;height:38px;min-width:38px;min-height:38px;max-width:38px;max-height:38px;border-radius:9999px;overflow:hidden;flex-shrink:0;">
+                    <img src="/mbkauthe/avatar/{{#if username}}{{username}}{{else}}me{{/if}}" alt="{{username}}" width="38" height="38" class="avatar-img mbkauthe-profile-header-img" style="width:38px;height:38px;max-width:38px;max-height:38px;border-radius:9999px;object-fit:cover;display:block;" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span class="mbkauthe-avatar-fallback small" style="display: none; width:100%; height:100%; border-radius:9999px;"><i class="fas fa-user"></i></span>
                 </div>
                 <div class="mbkauthe-profile-header-meta">
-                    <span class="mbkauthe-profile-signed-in">Signed in as</span>
-                    <span class="mbkauthe-profile-username">@{{username}}</span>
+                    <span class="mbkauthe-profile-signed-in">
+                        <span class="mbkauthe-status-dot"></span> Signed in as
+                    </span>
+                    <span class="mbkauthe-profile-username" id="mbkautheProfileUsernameText">@{{username}}</span>
                 </div>
             </div>
 
             <div class="mbkauthe-dropdown-divider"></div>
+
+            <div id="mbkautheOtherAccountsSection" class="mbkauthe-accounts-preview" style="display:none;">
+                <div class="mbkauthe-accounts-header">
+                    <span class="mbkauthe-accounts-title">Switch Account</span>
+                    <span id="mbkautheAccountsLoader" class="mbkauthe-accounts-loader" style="display:none;">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                    </span>
+                </div>
+                <div id="mbkautheAccountsList" class="mbkauthe-accounts-list">
+                    <!-- Shimmer skeleton displayed while loading -->
+                    <div class="mbkauthe-skeleton-item">
+                        <div class="mbkauthe-skeleton-avatar"></div>
+                        <div class="mbkauthe-skeleton-meta">
+                            <div class="mbkauthe-skeleton-bar short"></div>
+                            <div class="mbkauthe-skeleton-bar tiny"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mbkauthe-dropdown-divider"></div>
+            </div>
 
             <div class="mbkauthe-profile-body">
                 <a class="mbkauthe-profile-item" href="https://portal.mbktech.org/user/settings" role="menuitem" title="Account Settings">
                     <span class="mbkauthe-item-icon"><i class="fas fa-cog"></i></span>
                     <span class="mbkauthe-item-text">Settings</span>
                 </a>
-                <a class="mbkauthe-profile-item" href="/mbkauthe/accounts" role="menuitem" title="Switch or Add another Account">
-                    <span class="mbkauthe-item-icon"><i class="fas fa-users"></i></span>
-                    <span class="mbkauthe-item-text">Switch Account</span>
+                <a class="mbkauthe-profile-item" id="mbkautheAddAccountLink" href="/mbkauthe/login?prompt=add_account" role="menuitem" title="Add another Account to this device">
+                    <span class="mbkauthe-item-icon"><i class="fas fa-user-plus"></i></span>
+                    <span class="mbkauthe-item-text">Add Account</span>
+                </a>
+                <a class="mbkauthe-profile-item" id="mbkautheManageAccountsLink" href="/mbkauthe/accounts" role="menuitem" title="Manage Accounts on this device">
+                    <span class="mbkauthe-item-icon"><i class="fas fa-users-gear"></i></span>
+                    <span class="mbkauthe-item-text">Manage Accounts</span>
                 </a>
             </div>
 
@@ -41,43 +66,182 @@
             </div>
         </div>
     </div>
-    {{else}}
-    <a class="btn btn-primary mbkauthe-btn-login-header" href="/mbkauthe/login">
+    <a class="btn btn-primary mbkauthe-btn-login-header" id="mbkautheLoginBtn" href="/mbkauthe/login" style="{{#if userLoggedIn}}display: none;{{/if}}">
         <i class="fas fa-sign-in-alt"></i>
         <span>Login</span>
     </a>
-    {{/if}}
 </div>
-
 
 <script>
     (() => {
+        // Client-side detection for unprotected routes where server didn't run session store queries
+        const getCookie = (name) => {
+            const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return m ? decodeURIComponent(m[1]) : null;
+        };
+        const cUsername = getCookie('username');
+        const cFullName = getCookie('full_name');
+        if (cUsername || cFullName) {
+            const menuEl = document.getElementById('mbkautheProfileMenu');
+            const loginBtn = document.getElementById('mbkautheLoginBtn');
+            if (menuEl && loginBtn) {
+                menuEl.style.display = 'inline-block';
+                loginBtn.style.display = 'none';
+                const userDisplay = cUsername || cFullName;
+                const userText = document.getElementById('mbkautheProfileUsernameText');
+                if (userText && (userText.textContent === '@N/A' || !userText.textContent || userText.textContent === '@')) {
+                    userText.textContent = '@' + userDisplay;
+                }
+                document.querySelectorAll('.avatar-img.mbkauthe-profile-avatar, .avatar-img.mbkauthe-profile-header-img').forEach((img) => {
+                    if (cUsername && (img.src.includes('avatar/N%2FA') || img.src.includes('avatar/N/A') || img.src.includes('avatar/me'))) {
+                        img.src = '/mbkauthe/avatar/' + encodeURIComponent(cUsername);
+                    }
+                });
+            }
+        }
+
         const mbkTrigger = document.querySelector('.mbkauthe-profile-trigger');
         const mbkDropdown = document.querySelector('.mbkauthe-profile-dropdown');
         if (!mbkTrigger || !mbkDropdown) return;
+
+        let cachedAccounts = null;
+        let accountsPromise = null;
+        let rendered = false;
+
+        const fetchAccounts = () => {
+            if (cachedAccounts !== null) return Promise.resolve(cachedAccounts);
+            if (accountsPromise) return accountsPromise;
+
+            accountsPromise = fetch('/mbkauthe/api/accounts', { credentials: 'include' })
+                .then(async (res) => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    cachedAccounts = Array.isArray(data.accounts) ? data.accounts : [];
+                    return cachedAccounts;
+                })
+                .catch((err) => {
+                    console.warn('[mbkauthe] Failed to load accounts:', err);
+                    cachedAccounts = [];
+                    return cachedAccounts;
+                });
+
+            return accountsPromise;
+        };
+
+        const renderAccounts = (accounts) => {
+            const section = document.getElementById('mbkautheOtherAccountsSection');
+            const list = document.getElementById('mbkautheAccountsList');
+            const loader = document.getElementById('mbkautheAccountsLoader');
+            if (!section || !list) return;
+
+            if (loader) loader.style.display = 'none';
+
+            const others = accounts.filter((a) => !a.is_current);
+            if (others.length === 0) {
+                section.style.display = 'none';
+                rendered = true;
+                return;
+            }
+
+            list.innerHTML = '';
+            others.forEach((acct) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'mbkauthe-profile-item mbkauthe-switch-item';
+                item.title = `Switch to @${acct.username}`;
+                item.innerHTML = `
+                    <span class="mbkauthe-switch-avatar" style="width:32px;height:32px;min-width:32px;min-height:32px;max-width:32px;max-height:32px;border-radius:9999px;overflow:hidden;flex-shrink:0;">
+                        <img src="/mbkauthe/avatar/${encodeURIComponent(acct.username)}" alt="${acct.username}" width="32" height="32" style="width:32px;height:32px;max-width:32px;max-height:32px;border-radius:9999px;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span class="mbkauthe-switch-fallback" style="display:none;width:100%;height:100%;border-radius:9999px;">${(acct.full_name || acct.username).charAt(0).toUpperCase()}</span>
+                    </span>
+                    <span class="mbkauthe-switch-meta">
+                        <span class="mbkauthe-switch-name">${acct.full_name || acct.username}</span>
+                        <span class="mbkauthe-switch-handle">@${acct.username}</span>
+                    </span>
+                    <span class="mbkauthe-switch-action-icon"><i class="fas fa-right-left"></i></span>
+                `;
+
+                item.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    item.classList.add('is-switching');
+                    item.disabled = true;
+                    const actionIcon = item.querySelector('.mbkauthe-switch-action-icon');
+                    if (actionIcon) actionIcon.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+
+                    try {
+                        const switchRes = await fetch('/mbkauthe/api/accounts/switch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ session_id: acct.session_id, redirect: window.location.href })
+                        });
+                        const switchData = await switchRes.json();
+                        if (switchRes.ok && switchData.success) {
+                            window.location.reload();
+                        } else {
+                            alert(switchData.error || switchData.message || 'Could not switch account.');
+                            item.classList.remove('is-switching');
+                            item.disabled = false;
+                            if (actionIcon) actionIcon.innerHTML = '<i class="fas fa-right-left"></i>';
+                        }
+                    } catch {
+                        alert('Network error switching account.');
+                        item.classList.remove('is-switching');
+                        item.disabled = false;
+                        if (actionIcon) actionIcon.innerHTML = '<i class="fas fa-right-left"></i>';
+                    }
+                });
+
+                list.appendChild(item);
+            });
+
+            section.style.display = 'block';
+            rendered = true;
+        };
+
+        const loadOtherAccounts = async () => {
+            if (rendered && cachedAccounts !== null) {
+                renderAccounts(cachedAccounts);
+                return;
+            }
+
+            const section = document.getElementById('mbkautheOtherAccountsSection');
+            const loader = document.getElementById('mbkautheAccountsLoader');
+
+            // If we don't have cached data yet, show the skeleton preview + spinner
+            if (cachedAccounts === null && section) {
+                section.style.display = 'block';
+                if (loader) loader.style.display = 'inline-block';
+            }
+
+            try {
+                const accounts = await fetchAccounts();
+                renderAccounts(accounts);
+            } catch {
+                if (section) section.style.display = 'none';
+            }
+        };
 
         const closeMenu = () => {
             if (!mbkDropdown.classList.contains('open')) return;
             mbkDropdown.classList.remove('open');
             mbkTrigger.setAttribute('aria-expanded', 'false');
-            const onTransition = (e) => {
-                if (e.propertyName === 'opacity') {
+            setTimeout(() => {
+                if (!mbkDropdown.classList.contains('open')) {
                     mbkDropdown.setAttribute('hidden', '');
-                    mbkDropdown.removeEventListener('transitionend', onTransition);
                 }
-            };
-            mbkDropdown.addEventListener('transitionend', onTransition);
-            setTimeout(() => { if (!mbkDropdown.classList.contains('open')) mbkDropdown.setAttribute('hidden', ''); }, 300);
+            }, 200);
         };
 
         mbkTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!mbkDropdown.classList.contains('open')) {
                 mbkDropdown.removeAttribute('hidden');
-                requestAnimationFrame(() => {
-                    mbkDropdown.classList.add('open');
-                    mbkTrigger.setAttribute('aria-expanded', 'true');
-                });
+                // Force reflow for silky smooth entrance transition
+                void mbkDropdown.offsetHeight;
+                mbkDropdown.classList.add('open');
+                mbkTrigger.setAttribute('aria-expanded', 'true');
+                loadOtherAccounts();
             } else {
                 closeMenu();
             }
@@ -96,7 +260,7 @@
             logoutBtn.addEventListener('click', async () => {
                 const orig = logoutBtn.innerHTML;
                 logoutBtn.disabled = true;
-                logoutBtn.innerHTML = '<span class="mbkauthe-item-icon"><i class="fas fa-spinner fa-spin"></i></span><span class="mbkauthe-item-text">Logging out...</span>';
+                logoutBtn.innerHTML = '<span class="mbkauthe-item-icon"><i class="fas fa-circle-notch fa-spin"></i></span><span class="mbkauthe-item-text">Logging out...</span>';
                 try {
                     await window.mbkauthe?.logout?.();
                 } catch (err) {
@@ -110,11 +274,16 @@
             });
         }
 
-        const switchLink = mbkDropdown.querySelector('a[href^="/mbkauthe/accounts"]');
-        if (switchLink) {
+        const addLink = document.getElementById('mbkautheAddAccountLink');
+        if (addLink) {
             try {
-                const base = switchLink.href.split('?redirect=')[0] + '?redirect=';
-                switchLink.href = base + encodeURIComponent(window.location.href);
+                addLink.href = `/mbkauthe/login?prompt=add_account&redirect=${encodeURIComponent(window.location.href)}`;
+            } catch {}
+        }
+        const manageLink = document.getElementById('mbkautheManageAccountsLink');
+        if (manageLink) {
+            try {
+                manageLink.href = `/mbkauthe/accounts?redirect=${encodeURIComponent(window.location.href)}`;
             } catch {}
         }
     })();
@@ -122,7 +291,7 @@
 
 <style>
 /* ==========================================================================
-   ProfileMenu Component — MBKTech.org Design System Edition
+   ProfileMenu Component — MBKTech.org Premium Design System
    ========================================================================== */
 .mbkauthe-header-actions {
     display: inline-flex;
@@ -171,14 +340,14 @@
     width: 38px;
     height: 38px;
     border-radius: 9999px;
-    border: 1.5px solid rgba(15, 118, 110, 0.2);
+    border: 1.5px solid rgba(15, 118, 110, 0.25);
     background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     padding: 0;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 2px 6px rgba(15, 118, 110, 0.08);
     position: relative;
     overflow: hidden;
@@ -186,7 +355,7 @@
 
 .mbkauthe-profile-trigger:hover {
     border-color: #0f766e;
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
     transform: translateY(-1px);
 }
 
@@ -196,8 +365,10 @@
 }
 
 .avatar-img, .mbkauthe-profile-avatar {
-    width: 100%;
-    height: 100%;
+    width: 38px;
+    height: 38px;
+    max-width: 38px;
+    max-height: 38px;
     border-radius: 9999px;
     object-fit: cover;
     display: block;
@@ -226,25 +397,28 @@
     position: absolute;
     right: 0;
     top: calc(100% + 0.65rem);
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(15, 118, 110, 0.18);
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(15, 118, 110, 0.16);
     border-radius: 14px;
-    min-width: 240px;
-    box-shadow: 0 12px 30px rgba(15, 42, 42, 0.14), 0 4px 10px rgba(0, 0, 0, 0.05);
+    min-width: 250px;
+    max-width: 290px;
+    box-shadow: 0 16px 36px -4px rgba(15, 42, 42, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-6px) scale(0.98);
-    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.97);
+    transform-origin: top right;
+    transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s ease;
     z-index: 10000;
-    padding: 0.5rem;
+    padding: 0.55rem;
 }
 
 .mbkauthe-profile-dropdown.open {
-    display: block;
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
     transform: translateY(0) scale(1);
 }
 
@@ -259,15 +433,18 @@
     width: 38px;
     height: 38px;
     border-radius: 9999px;
-    border: 1.5px solid rgba(15, 118, 110, 0.2);
+    border: 1.5px solid rgba(15, 118, 110, 0.25);
     overflow: hidden;
     flex-shrink: 0;
     background: #f0fdfa;
 }
 
 .mbkauthe-profile-header-img {
-    width: 100%;
-    height: 100%;
+    width: 38px;
+    height: 38px;
+    max-width: 38px;
+    max-height: 38px;
+    border-radius: 9999px;
     object-fit: cover;
     display: block;
 }
@@ -285,6 +462,18 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mbkauthe-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: #10b981;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
 .mbkauthe-profile-username {
@@ -364,5 +553,167 @@
 .mbkauthe-profile-item:focus-visible {
     outline: 2px solid #0f766e;
     outline-offset: 1px;
+}
+
+.mbkauthe-accounts-preview {
+    padding: 0.25rem 0.35rem;
+}
+
+.mbkauthe-accounts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem 0.35rem;
+}
+
+.mbkauthe-accounts-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: #667c79;
+}
+
+.mbkauthe-accounts-loader {
+    font-size: 0.72rem;
+    color: #0f766e;
+    opacity: 0.85;
+}
+
+.mbkauthe-accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mbkauthe-switch-item {
+    padding: 0.45rem 0.65rem;
+    gap: 0.65rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 118, 110, 0.08);
+    transition: all 0.15s ease;
+}
+
+.mbkauthe-switch-item:hover {
+    background: #f0fdfa;
+    border-color: rgba(15, 118, 110, 0.25);
+}
+
+.mbkauthe-switch-item.is-switching {
+    pointer-events: none;
+    opacity: 0.7;
+    background: #f0fdfa;
+    border-color: #0f766e;
+}
+
+.mbkauthe-switch-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(15, 118, 110, 0.15);
+}
+
+.mbkauthe-switch-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mbkauthe-switch-fallback {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0f766e;
+}
+
+.mbkauthe-switch-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    line-height: 1.25;
+}
+
+.mbkauthe-switch-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mbkauthe-switch-handle {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-family: var(--font-mono, monospace);
+}
+
+.mbkauthe-switch-action-icon {
+    font-size: 0.78rem;
+    color: #0f766e;
+    opacity: 0.7;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.mbkauthe-switch-item:hover .mbkauthe-switch-action-icon {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+/* Shimmer animation for loading states */
+@keyframes mbkShimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.mbkauthe-skeleton-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 118, 110, 0.08);
+}
+
+.mbkauthe-skeleton-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: mbkShimmer 1.5s infinite;
+    flex-shrink: 0;
+}
+
+.mbkauthe-skeleton-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mbkauthe-skeleton-bar {
+    height: 9px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: mbkShimmer 1.5s infinite;
+}
+
+.mbkauthe-skeleton-bar.short {
+    width: 60%;
+}
+
+.mbkauthe-skeleton-bar.tiny {
+    width: 40%;
+    height: 7px;
 }
 </style>

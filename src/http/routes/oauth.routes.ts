@@ -8,20 +8,13 @@
 import express, { Router } from "express";
 import { mbkautheVar } from "../../config/index.js";
 import { createLogger } from "../../utils/logger.js";
-import { OAuthFlowService } from "../../oauth/OAuthFlowService.js";
-import { loadOAuthProvidersFromConfig } from "../../oauth/providers/loader.js";
+import { oAuthFlowService as defaultFlowService } from "../../oauth/OAuthFlowService.js";
 import { createOAuthRouter } from "../../express/oauth.router.js";
+import { ensureSession } from "../middleware/security.js";
 
 const router = express.Router();
+router.use("/oauth", ensureSession);
 const logOAuth = createLogger("oauth");
-
-// Setup default flow service with providers auto-loaded from OAUTH_PROVIDERS config
-const configuredProviders = loadOAuthProvidersFromConfig(mbkautheVar.OAUTH_PROVIDERS || mbkautheVar.oauth_providers);
-
-const defaultFlowService = new OAuthFlowService({
-  providers: configuredProviders,
-  appName: mbkautheVar.APP_NAME || "mbkauthe",
-});
 
 const enabledProvidersList = defaultFlowService.listProviders().map((p) => p.name);
 if (enabledProvidersList.length > 0) {

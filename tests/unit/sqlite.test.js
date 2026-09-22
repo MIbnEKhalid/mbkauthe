@@ -64,19 +64,19 @@ describe('translatePgToSqlite', () => {
 
   test('expands = ANY($1) with an array into IN (?, ?, ...)', () => {
     const { text, values } = translatePgToSqlite(
-      'DELETE FROM mbkcore_sessions WHERE id = ANY($1)',
+      'DELETE FROM mbkcore_session WHERE id = ANY($1)',
       [['a', 'b', 'c']]
     );
-    expect(text).toBe('DELETE FROM mbkcore_sessions WHERE id IN (?, ?, ?)');
+    expect(text).toBe('DELETE FROM mbkcore_session WHERE id IN (?, ?, ?)');
     expect(values).toEqual(['a', 'b', 'c']);
   });
 
   test('expands = ANY($1) with an empty array into IN (NULL)', () => {
     const { text, values } = translatePgToSqlite(
-      'DELETE FROM mbkcore_sessions WHERE id = ANY($1)',
+      'DELETE FROM mbkcore_session WHERE id = ANY($1)',
       [[]]
     );
-    expect(text).toBe('DELETE FROM mbkcore_sessions WHERE id IN (NULL)');
+    expect(text).toBe('DELETE FROM mbkcore_session WHERE id IN (NULL)');
     expect(values).toEqual([]);
   });
 
@@ -126,13 +126,13 @@ describe('SqlitePool bind-value coercion', () => {
     await insertUser(pool, { username: 'u1' });
     const expiresAt = new Date('2030-01-02T03:04:05.678Z');
     await pool.query({
-      text: 'INSERT INTO mbkcore_sessions (username, expires_at) VALUES ($1, $2)',
+      text: 'INSERT INTO mbkcore_session (username, expire) VALUES ($1, $2)',
       values: ['u1', expiresAt]
     });
 
     // Read the raw stored text via a column normalizeRow does not touch.
     const raw = await pool.query(
-      'SELECT CAST(expires_at AS TEXT) AS raw_expires FROM mbkcore_sessions'
+      'SELECT CAST(expire AS TEXT) AS raw_expires FROM mbkcore_session'
     );
     expect(raw.rows[0].raw_expires).toBe('2030-01-02 03:04:05');
   });
@@ -152,11 +152,11 @@ describe('SqlitePool bind-value coercion', () => {
     await insertUser(pool, { username: 'u1' });
     const meta = { ip: '::1', nested: { depth: 2 } };
     const inserted = await pool.query({
-      text: 'INSERT INTO mbkcore_sessions (username, meta) VALUES ($1, $2) RETURNING id',
+      text: 'INSERT INTO mbkcore_session (username, meta) VALUES ($1, $2) RETURNING id',
       values: ['u1', meta]
     });
     const row = (await pool.query({
-      text: 'SELECT meta FROM mbkcore_sessions WHERE id = $1',
+      text: 'SELECT meta FROM mbkcore_session WHERE id = $1',
       values: [inserted.rows[0].id]
     })).rows[0];
     expect(row.meta).toEqual(meta);
@@ -208,10 +208,10 @@ describe('SqlitePool row normalization (pg result-shape parity)', () => {
     await insertUser(pool, { username: 'u1' });
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await pool.query({
-      text: 'INSERT INTO mbkcore_sessions (username, expires_at) VALUES ($1, $2)',
+      text: 'INSERT INTO mbkcore_session (username, expire) VALUES ($1, $2)',
       values: ['u1', expiresAt]
     });
-    const row = (await pool.query('SELECT expires_at, created_at FROM mbkcore_sessions')).rows[0];
+    const row = (await pool.query('SELECT expire AS expires_at, created_at FROM mbkcore_session')).rows[0];
 
     expect(row.expires_at).toBeInstanceOf(Date);
     expect(row.created_at).toBeInstanceOf(Date);
@@ -380,7 +380,7 @@ describe('AuthRepository against the SQLite schema', () => {
     for (let i = 0; i < 3; i += 1) {
       const inserted = await repo.insertAppSession('normal', null, null);
       await pool.query({
-        text: 'UPDATE mbkcore_sessions SET created_at = $1 WHERE id = $2',
+        text: 'UPDATE mbkcore_session SET created_at = $1 WHERE id = $2',
         values: [new Date(Date.UTC(2030, 0, 1, 0, 0, i)), inserted.id]
       });
     }

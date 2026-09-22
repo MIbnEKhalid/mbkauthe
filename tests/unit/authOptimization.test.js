@@ -1,15 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  attachSessionPermissions,
-  hasNoSessionPermissions,
-  SUPERADMIN_PERMISSIONS,
-  checkPermission,
-  checkRolePermission,
-  permissionMatches,
-  AuthorizationService,
-  defaultRoleRegistry,
-  RoleRegistry,
-} from "../../dist/index.js";
+import { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS, checkPermission, checkRolePermission, permissionMatches, AuthorizationService, defaultRoleRegistry, RoleRegistry, ensureSession, ensureSessionAsync, hasSessionCookie } from "../../dist/index.js";
 
 describe("Authentication & Authorization Speed Optimizations", () => {
   describe("Superadmin Zero-DB Fast Path", () => {
@@ -142,6 +132,52 @@ describe("Authentication & Authorization Speed Optimizations", () => {
       };
 
       expect(authService.hasPermission(user, "blog:posts:delete", registry)).toBe(false);
+    });
+  });
+
+  describe("On-Demand Protected-Routes-Only Session Architecture", () => {
+    it("hasSessionCookie detects presence of session cookies accurately", () => {
+      expect(hasSessionCookie({ headers: {} })).toBe(false);
+      expect(hasSessionCookie({ headers: { cookie: "other=123" } })).toBe(false);
+      expect(hasSessionCookie({ headers: { cookie: "mbkauthe.sid=s%3Axyz" } })).toBe(true);
+      expect(hasSessionCookie({ headers: { cookie: "session_id=encrypted-uuid" } })).toBe(true);
+    });
+
+    it("ensureSession bypasses store initialization when Authorization header is present", () => {
+      const req = {
+        headers: { authorization: "Bearer mbk_pat_1234567890" },
+      };
+      let calledNext = false;
+      ensureSession(req, {}, () => {
+        calledNext = true;
+      });
+      expect(calledNext).toBe(true);
+      expect(req.session).toBeUndefined();
+    });
+
+    it("ensureSession immediately calls next() if session is already initialized", () => {
+      const req = {
+        headers: {},
+        session: { user: { username: "existing" } },
+      };
+      let calledNext = false;
+      ensureSession(req, {}, () => {
+        calledNext = true;
+      });
+      expect(calledNext).toBe(true);
+    });
+
+    it("ensureSessionAsync resolves immediately if session or Authorization header exists", async () => {
+      const reqWithBearer = {
+        headers: { authorization: "Bearer mbk_pat_test" },
+      };
+      await expect(ensureSessionAsync(reqWithBearer, {})).resolves.toBeUndefined();
+
+      const reqWithSession = {
+        headers: {},
+        session: { user: { username: "bob" } },
+      };
+      await expect(ensureSessionAsync(reqWithSession, {})).resolves.toBeUndefined();
     });
   });
 });

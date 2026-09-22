@@ -10,7 +10,7 @@ import session from "express-session";
 import cookieParser from "cookie-parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { sessionConfig, corsMiddleware, securityHeadersMiddleware, sessionRestorationMiddleware, sessionCookieSyncMiddleware, requestContextMiddleware } from "./middleware/index.js";
+import { corsMiddleware, securityHeadersMiddleware, requestContextMiddleware } from "./middleware/index.js";
 import authRoutes from "./routes/auth.routes.js";
 import oauthRoutes from "./routes/oauth.routes.js";
 import miscRoutes, { checkVersion } from "./routes/misc.routes.js";
@@ -34,7 +34,7 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
     enableStaticAssets = true,
     enableCliAuth = true,
     enableOAuth = true,
-    enableDbLogs = process.env.env === "dev" || process.env.dbLogs === "true" || process.env.NODE_ENV !== "production",
+    enableDbLogs = process.env.dbLogs === "true" || process.env.DB_LOGS === "true",
     enableDevRoutes = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV !== "production",
   } = options;
 
@@ -51,14 +51,9 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
   router.use(securityHeadersMiddleware);
   router.use(corsMiddleware);
 
-  if (process.env.env === "dev" || process.env.NODE_ENV !== "production" || process.env.dbLogs === "true") {
+  if (enableDbLogs) {
     router.use(requestContextMiddleware);
   }
-
-  router.use(session(sessionConfig));
-  router.use(sessionRestorationMiddleware);
-  router.use(sessionCookieSyncMiddleware);
-
 
   router.use("/mbkauthe", authRoutes);
   if (enableOAuth) router.use("/mbkauthe", oauthRoutes);

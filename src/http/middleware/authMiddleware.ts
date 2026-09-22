@@ -1,10 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
-import { mbkautheVar } from "../../config/env.js";
+import { mbkautheVar, isProductionEnvironment } from "../../config/env.js";
 import { hashApiToken } from "../../config/security.js";
 import { renderError } from "../response/formatters.js";
 import { isJsonRequest } from "../response/contentNegotiation.js";
-import { clearSessionCookies } from "../session/accountCookies.js";
-import { cachedCookieOptions, encryptSessionId, decryptSessionId } from "../../config/cookies.js";
+import { getCookieOptions, encryptSessionId, decryptSessionId, clearSessionCookies } from "../../config/cookies.js";
 import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
 import { extractAuthorizationToken, timingSafeTokenMatch } from "../../core/tokens/index.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
@@ -14,7 +13,8 @@ import { authorizationService } from "../../core/permissions/AuthorizationServic
 import { AuthContext, createSessionAuthContext, createTokenAuthContext, createAnonymousContext, principalFromUser } from "../../core/context/AuthContext.js";
 import { attachSessionPermissions, hasNoSessionPermissions } from "../session/sessionPermissions.js";
 import { createLogger } from "../../utils/logger.js";
-import type { AuthUser } from "../../core/types/user.types.js";
+import { type AuthUser, isLocalOnlyUser } from "../../core/types/user.types.js";
+import { ensureSessionAsync } from "./security.js";
 
 // Re-export AuthContext for backwards compatibility
 export { AuthContext };
@@ -173,7 +173,10 @@ function attachAuthContextToRequest(req: Request, context: AuthContext): void {
   (req as any).user = context.principal;
   (req as any).userRole = context.principal?.role || (context.principal as any)?.owner_role || "";
 
-  if ((req as any).session && !(req as any).session.user && context.principal) {
+  if (!(req as any).session) {
+    (req as any).session = {};
+  }
+  if (!(req as any).session.user && context.principal) {
     (req as any).session.user = context.principal;
   }
 }
@@ -193,19 +196,32 @@ function respondSessionFailure(req: Request, res: Response, { prefersJson, code,
  * Validates cookie session authentication.
  */
 async function validateCookieSession(req: Request, res: Response, next: NextFunction, { prefersJson }: { prefersJson: boolean }) {
-  let session_id = (req as any).session?.user?.session_id;
-  let username = (req as any).session?.user?.username;
-
-  if (!session_id && (req as any).cookies?.session_id) {
-    const decrypted = decryptSessionId((req as any).cookies.session_id);
-    if (decrypted) {
-      session_id = decrypted;
-    }
-  }
+  await ensureSessionAsync(req, res);
+  const session_id = (req as any).session?.user?.session_id;
+  const username = (req as any).session?.user?.username;
 
   const loginRedirect = `/mbkauthe/login?redirect=${encodeURIComponent(req.originalUrl)}`;
 
   if (!session_id) {
+    const rawCookieHeader = (req.headers && req.headers.cookie) ? String(req.headers.cookie) : "";
+    const presentedSessionCookie = Boolean(
+      (req as any).cookies?.["mbkauthe.sid"] ||
+      (req as any).signedCookies?.["mbkauthe.sid"] ||
+      rawCookieHeader.includes("mbkauthe.sid=")
+    );
+
+    if (presentedSessionCookie) {
+      logAuth(`Presented session cookie not found or invalid in store`);
+      return respondSessionFailure(req, res, {
+        prefersJson,
+        code: 401,
+        errorCode: ErrorCodes.SESSION_INVALID,
+        error: "Session Expired",
+        message: "Your Session Has Expired. Please Log In Again.",
+        page: loginRedirect,
+      });
+    }
+
     if (IS_DEV) {
       logAuth(`User not authenticated (no session)`);
       logAuth(`req.session.user: %O`, (req as any).session?.user);
@@ -227,7 +243,10 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
   }
 
   try {
-    const sessionRow = await authRepository.getSessionAuthData(session_id, prefersJson ? "validate-app-session-for-api" : "validate-app-session");
+    const liveAuth = (req as any).session?._liveAuth;
+    const sessionRow = liveAuth !== undefined
+      ? liveAuth
+      : await authRepository.getSessionAuthData(session_id, prefersJson ? "validate-app-session-for-api" : "validate-app-session");
 
     if (!sessionRow) {
       logAuth(`Session not found for session_id "${session_id}"`);
@@ -269,6 +288,19 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       });
     }
 
+    const isLocalOnly = isLocalOnlyUser(sessionRow.is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      logAuth(`Account restricted to local environments for user "${sessionRow.username || username}" on production`);
+      return respondSessionFailure(req, res, {
+        prefersJson,
+        code: 403,
+        errorCode: ErrorCodes.LOCAL_USER_PROD_RESTRICTED,
+        error: "User Restricted To Local",
+        message: "This account is restricted to local development/testing environments and cannot log into production.",
+        page: loginRedirect,
+      });
+    }
+
     const userForSession = {
       session_id: String(session_id),
       user_id: sessionRow.user_id || undefined,
@@ -277,6 +309,7 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       role: sessionRow.role,
       allowed_apps: sessionRow.allowed_apps,
       image: sessionRow.image || undefined,
+      is_local_only: isLocalOnly,
     };
 
     const isSuper = sessionRow.role === "superadmin";
@@ -392,6 +425,12 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
       return false;
     }
 
+    const isLocalOnly = isLocalOnlyUser(row.is_local_only);
+    if (isLocalOnly && isProductionEnvironment()) {
+      destroySessionCookies(req, res);
+      return false;
+    }
+
     if (!authorizationService.canAccessApp(row, mbkautheVar.APP_NAME)) {
       destroySessionCookies(req, res);
       return false;
@@ -412,9 +451,9 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
     await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => (err ? reject(err) : resolve())));
 
     try {
-      res.cookie("full_name", (req as any).session.user.full_name || (req as any).session.user.username, { ...cachedCookieOptions, httpOnly: false });
+      res.cookie("full_name", (req as any).session.user.full_name || (req as any).session.user.username, { ...getCookieOptions(), httpOnly: false });
       const encryptedSid = encryptSessionId((req as any).session.user.session_id);
-      if (encryptedSid) res.cookie("session_id", encryptedSid, cachedCookieOptions);
+      if (encryptedSid) res.cookie("session_id", encryptedSid, getCookieOptions());
     } catch (cookieErr) {
       console.error(`[mbkauthe] Error syncing cookies during reload:`, cookieErr);
     }
@@ -435,6 +474,9 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
   next: NextFunction
 ): Promise<any> => {
   try {
+    if (!(req as any).authContext && !(req as any).session?.user) {
+      await ensureSessionAsync(req, res);
+    }
     const authContext = getOrDeriveAuthContext(req);
     if (!authContext.isAuthenticated || !authContext.username) {
       logAuth(`User not authenticated`);
@@ -506,6 +548,9 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
  */
 export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    if (!(req as any).authContext && !(req as any).session?.user) {
+      await ensureSessionAsync(req, res);
+    }
     const authContext = getOrDeriveAuthContext(req);
     if (!authContext.isAuthenticated || !authContext.username) {
       logAuth(`User not authenticated`);

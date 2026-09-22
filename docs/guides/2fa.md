@@ -4,23 +4,23 @@ MBKAuthe v6 includes RFC 6238 Time-based One-Time Password (TOTP) two-factor aut
 
 ---
 
-## 1. Enabling 2FA
+## 1. Enabling / Disabling 2FA
 
-Enable 2FA globally in `.env`:
+Starting in v6.0.1, 2FA support is enabled by default (`MBKAUTH_TWO_FA_ENABLE=true`). You can override or disable it in `.env`:
 
 ```env
-MBKAUTH_TWO_FA_ENABLE=true
+MBKAUTH_TWO_FA_ENABLE=false
 ```
 
 ---
 
 ## 2. 2FA Setup Flow
 
-1. User initiates 2FA setup in user security settings.
+1. User initiates 2FA setup in their security settings.
 2. Server generates a base32 secret and `otpauth://` URI using `speakeasy`.
 3. Server returns QR code data or setup key to the frontend.
 4. User enters the 6-digit confirmation code from their authenticator app.
-5. Server verifies the code and sets `two_factor_enabled = true` on the user record.
+5. Server verifies the code and records `{ is_enabled: true, two_fa_secret }` in the dedicated `mbkcore_two_factor` table linked to the user.
 
 ---
 

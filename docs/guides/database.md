@@ -93,7 +93,7 @@ MBKAuthe automatically wraps query execution with exponential backoff and jitter
 import { withQueryRetry } from "mbkauthe/db";
 
 const result = await withQueryRetry(
-  () => dblogin.query("SELECT * FROM users WHERE username = $1", ["alice"]),
+  () => dblogin.query("SELECT * FROM mbkcore_users WHERE username = $1", ["alice"]),
   { maxAttempts: 3, baseDelayMs: 150, maxDelayMs: 2000 }
 );
 ```
@@ -102,7 +102,7 @@ const result = await withQueryRetry(
 
 ## 5. Live Query Logging & Diagnostics
 
-For debugging and performance monitoring in development mode, MBKAuthe includes an in-memory query logger:
+For debugging and performance profiling in development mode, MBKAuthe includes an in-memory query logger (enabled when `DB_LOGS=true` or `process.env.dbLogs="true"`):
 
 ```typescript
 import { getQueryLog, getQueryCount, resetQueryLog } from "mbkauthe/db";

@@ -20,7 +20,6 @@
     'profile_image_user',
     'profileImageUrl',
     'profile_image_url',
-    'device_token',
     'lastLoginMethod',
     'last_login_method',
     'mbkauthe_accounts'

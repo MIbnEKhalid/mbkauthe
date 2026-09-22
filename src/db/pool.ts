@@ -5,6 +5,7 @@ import { postgresDialect } from "./dialects/PostgresDialect.js";
 import { sqliteDialect } from "./dialects/SqliteDialect.js";
 import { SqlitePool } from "./adapters/SqliteAdapter.js";
 import { wrapPoolWithRetry } from "./retry.js";
+import { attachDevQueryLogger } from "./dbQueryLogger.js";
 
 dotenv.config();
 const { Pool } = pkg;
@@ -46,6 +47,8 @@ export function getDbLogin(): any {
         maxRetries: Number(process.env.DB_MAX_RETRIES) || 3,
       });
     }
+
+    attachDevQueryLogger(_dbloginInstance);
   }
   return _dbloginInstance;
 }
@@ -64,5 +67,5 @@ export const dblogin: any = new Proxy({}, {
   }
 });
 
-export { runWithRequestContext, getRequestContext } from "./dbQueryLogger.js";
+export { runWithRequestContext, getRequestContext, attachDevQueryLogger } from "./dbQueryLogger.js";
 export default dblogin;

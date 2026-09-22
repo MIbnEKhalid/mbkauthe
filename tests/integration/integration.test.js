@@ -160,6 +160,7 @@ class CookieJar {
 async function createUser(username, {
   role = 'normaluser',
   active = 1,
+  isLocalOnly = 0,
   allowedApps = ['Portal', 'mbkauthe'],
   fullName = null,
   twoFASecret = null,
@@ -167,9 +168,9 @@ async function createUser(username, {
   permissions = ['global:basic:access']
 } = {}) {
   await dblogin.query(
-    `INSERT INTO mbkcore_users (username, password_hash, role, is_active, allowed_apps, full_name)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [username, hashPassword(PASSWORD, username), role, active, JSON.stringify(allowedApps), fullName || `Full ${username}`]
+    `INSERT INTO mbkcore_users (username, password_hash, role, is_active, is_local_only, allowed_apps, full_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [username, hashPassword(PASSWORD, username), role, active, isLocalOnly, JSON.stringify(allowedApps), fullName || `Full ${username}`]
   );
   if (permissions && permissions.length > 0) {
     for (const perm of permissions) {
@@ -226,7 +227,7 @@ function jsonGet(pathname, jar, opts = {}) {
 
 async function getAppSessionId(username) {
   const result = await dblogin.query(
-    'SELECT id FROM mbkcore_sessions WHERE username = $1 ORDER BY created_at DESC',
+    'SELECT id FROM mbkcore_session WHERE username = $1 ORDER BY created_at DESC',
     [username]
   );
   return result.rows[0]?.id || null;
@@ -234,7 +235,7 @@ async function getAppSessionId(username) {
 
 async function countAppSessions(username) {
   const result = await dblogin.query(
-    'SELECT COUNT(*) AS count FROM mbkcore_sessions WHERE username = $1',
+    'SELECT COUNT(*) AS count FROM mbkcore_session WHERE username = $1',
     [username]
   );
   return Number(result.rows[0].count);
@@ -268,7 +269,7 @@ describe('Login API with seeded users', () => {
 
     const setCookies = (res.headers['set-cookie'] || []).join('\n');
     expect(setCookies).toContain('mbkauthe.sid=');
-    expect(setCookies).toContain('session_id=');
+    expect(setCookies).toContain('mbk_device_id=');
     expect(setCookies).toContain('full_name=');
 
     expect(await countAppSessions('flow.valid')).toBe(1);
@@ -351,6 +352,31 @@ describe('Login API with seeded users', () => {
     expect(after.headers.location).toContain('/mbkauthe/login');
   });
 
+  test('protected route request executes exactly 1 database query', async () => {
+    await createUser('flow.singlequery');
+    const { jar, ua } = await login('flow.singlequery');
+
+    const queries = [];
+    const origQuery = dblogin.query.bind(dblogin);
+    dblogin.query = async (...args) => {
+      queries.push(args[0]);
+      return origQuery(...args);
+    };
+
+    try {
+      const res = await jarGet('/mbkauthe/test', jar, { ua });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('flow.singlequery');
+
+      const appQueries = queries.filter((q) => typeof q === 'string' && !q.includes('PRAGMA'));
+      expect(appQueries.length).toBe(1);
+      expect(appQueries[0]).toContain('mbkcore_session');
+      expect(appQueries[0]).toContain('mbkcore_users');
+    } finally {
+      dblogin.query = origQuery;
+    }
+  });
+
   test('POST /api/checkSession and /api/verifySession accept a real session id (raw and encrypted)', async () => {
     await createUser('flow.verify');
     const { jar } = await login('flow.verify');
@@ -369,13 +395,13 @@ describe('Login API with seeded users', () => {
     expect(encVerify.body.valid).toBe(true);
   });
 
-  test('session restoration middleware rebuilds the session from the encrypted session_id cookie', async () => {
+  test('device id cookie persists and identifies device across sessions', async () => {
     await createUser('flow.restore');
     const { jar, ua } = await login('flow.restore');
 
-    // Drop the express-session cookie, keep the encrypted session_id cookie.
-    jar.delete('mbkauthe.sid');
-    expect(jar.has('session_id')).toBe(true);
+    expect(jar.has('mbk_device_id')).toBe(true);
+    const deviceId = jar.cookies.get('mbk_device_id');
+    expect(deviceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 
     const page = await jarGet('/mbkauthe/test', jar, { ua });
     expect(page.status).toBe(200);
@@ -401,7 +427,7 @@ describe('Session validation edge cases', () => {
     const { jar } = await login('edge.expired');
 
     await dblogin.query(
-      `UPDATE mbkcore_sessions SET expires_at = '2020-01-01 00:00:00' WHERE username = $1`,
+      `UPDATE mbkcore_session SET expire = '2020-01-01 00:00:00' WHERE username = $1`,
       ['edge.expired']
     );
 
@@ -414,7 +440,7 @@ describe('Session validation edge cases', () => {
     await createUser('edge.deleted');
     const { jar } = await login('edge.deleted');
 
-    await dblogin.query('DELETE FROM mbkcore_sessions WHERE username = $1', ['edge.deleted']);
+    await dblogin.query('DELETE FROM mbkcore_session WHERE username = $1', ['edge.deleted']);
 
     const res = await jsonGet('/mbkauthe/test', jar);
     expect(res.status).toBe(401);
@@ -467,7 +493,7 @@ describe('Session validation edge cases', () => {
     await createUser('edge.browser');
     const { jar, ua } = await login('edge.browser');
 
-    await dblogin.query('DELETE FROM mbkcore_sessions WHERE username = $1', ['edge.browser']);
+    await dblogin.query('DELETE FROM mbkcore_session WHERE username = $1', ['edge.browser']);
 
     const res = await jarGet('/mbkauthe/test', jar, { ua });
     // HTML clients get the rendered "Session Expired" error page (401)
@@ -794,11 +820,13 @@ describe('Multi-account session management', () => {
     expect(res.body.accounts[0]).toMatchObject({ username: 'multi.list', is_current: true });
   });
 
-  test('a different user-agent invalidates the account-list fingerprint', async () => {
+  test('a different device does not see accounts from another device', async () => {
     await createUser('multi.fingerprint');
-    const { jar } = await login('multi.fingerprint', { ua: 'Mozilla/5.0 (device-one)' });
+    await login('multi.fingerprint');
 
-    const res = await jsonGet('/mbkauthe/api/account-sessions', jar, { ua: 'Mozilla/5.0 (device-two)' });
+    // Separate cookie jar (different device ID)
+    const otherDeviceJar = new CookieJar();
+    const res = await jsonGet('/mbkauthe/api/accounts', otherDeviceJar);
     expect(res.status).toBe(200);
     expect(res.body.accounts).toHaveLength(0);
   });
@@ -902,3 +930,67 @@ describe('Admin session termination', () => {
     expect(await countAppSessions('admin.wipe')).toBe(0);
   });
 });
+
+describe('Session Origin and Local-Only User Restrictions', () => {
+  test('login captures origin header and stores it in session meta', async () => {
+    await createUser('origin.user');
+    const res = await request(app)
+      .post('/mbkauthe/api/login')
+      .set('X-Forwarded-For', nextIp())
+      .set('User-Agent', BROWSER_UA)
+      .set('Origin', 'https://portal.mbktech.org')
+      .send({ username: 'origin.user', password: PASSWORD });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, username: 'origin.user' });
+
+    const sessionRes = await dblogin.query('SELECT meta FROM mbkcore_session WHERE username = $1', ['origin.user']);
+    expect(sessionRes.rows.length).toBeGreaterThan(0);
+    const meta = typeof sessionRes.rows[0].meta === 'string' ? JSON.parse(sessionRes.rows[0].meta) : sessionRes.rows[0].meta;
+    expect(meta.origin).toBe('portal.mbktech.org');
+    expect(meta.domain).toBe('portal.mbktech.org');
+  });
+
+  test('local-only user can log in when not in production environment', async () => {
+    await createUser('local.dev.user', { isLocalOnly: 1 });
+    const originalDeployed = mbkautheVar.IS_DEPLOYED;
+    const originalNodeEnv = process.env.NODE_ENV;
+    mbkautheVar.IS_DEPLOYED = 'false';
+    process.env.NODE_ENV = 'development';
+
+    try {
+      const res = await request(app)
+        .post('/mbkauthe/api/login')
+        .set('X-Forwarded-For', nextIp())
+        .set('User-Agent', BROWSER_UA)
+        .send({ username: 'local.dev.user', password: PASSWORD });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ success: true, username: 'local.dev.user' });
+    } finally {
+      mbkautheVar.IS_DEPLOYED = originalDeployed;
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  test('local-only user is rejected with LOCAL_USER_PROD_RESTRICTED (606) when environment is production', async () => {
+    await createUser('local.prod.blocked', { isLocalOnly: 1 });
+    const originalDeployed = mbkautheVar.IS_DEPLOYED;
+    mbkautheVar.IS_DEPLOYED = 'true';
+
+    try {
+      const res = await request(app)
+        .post('/mbkauthe/api/login')
+        .set('X-Forwarded-For', nextIp())
+        .set('User-Agent', BROWSER_UA)
+        .send({ username: 'local.prod.blocked', password: PASSWORD });
+
+      expect(res.status).toBe(403);
+      expect(res.body.errorCode).toBe(ErrorCodes.LOCAL_USER_PROD_RESTRICTED);
+      expect(res.body.message).toContain('restricted to local');
+    } finally {
+      mbkautheVar.IS_DEPLOYED = originalDeployed;
+    }
+  });
+});
+

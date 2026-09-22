@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     username VARCHAR(50) UNIQUE,
     password TEXT DEFAULT '12345670',
     is_active INTEGER DEFAULT 0,
+    is_local_only INTEGER DEFAULT 0,
     role TEXT DEFAULT 'normaluser' REFERENCES mbkcore_roles(name) ON DELETE RESTRICT ON UPDATE CASCADE,
     have_mail_account INTEGER DEFAULT 0,
     allowed_apps TEXT DEFAULT '["Portal", "mbkauthe"]',
@@ -55,6 +56,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     perm_version INTEGER DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users (is_active);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_local_only ON mbkcore_users (is_local_only);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_email ON mbkcore_users (email);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_last_login ON mbkcore_users (last_login);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_role ON mbkcore_users (role);
@@ -127,23 +129,6 @@ CREATE TABLE IF NOT EXISTS mbkcore_password_resets (
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_password_resets_token ON mbkcore_password_resets (reset_token);
 
--- Table: mbkcore_sessions (mbkauthe's app session table)
-CREATE TABLE IF NOT EXISTS mbkcore_sessions (
-    id TEXT PRIMARY KEY DEFAULT (
-        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
-        substr(lower(hex(randomblob(2))), 2) || '-' ||
-        substr('89ab', (abs(random()) % 4) + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' ||
-        lower(hex(randomblob(6)))
-    ),
-    username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    expires_at TEXT,
-    meta TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_expires ON mbkcore_sessions (expires_at) WHERE expires_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_user_created ON mbkcore_sessions (username, created_at);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_sessions_username_expires ON mbkcore_sessions (username, expires_at);
-
 -- Table: mbkcore_passkeys
 CREATE TABLE IF NOT EXISTS mbkcore_passkeys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,15 +155,26 @@ CREATE TABLE IF NOT EXISTS mbkcore_two_factor (
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_two_factor_username_status ON mbkcore_two_factor (username, is_enabled);
 
--- Table: mbkcore_session (express-session store)
+-- Table: mbkcore_session (unified session store)
 CREATE TABLE IF NOT EXISTS mbkcore_session (
-    sid TEXT PRIMARY KEY,
-    sess TEXT NOT NULL,
-    expire TEXT NOT NULL,
+    sid TEXT PRIMARY KEY DEFAULT (
+        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
+        substr(lower(hex(randomblob(2))), 2) || '-' ||
+        substr('89ab', (abs(random()) % 4) + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' ||
+        lower(hex(randomblob(6)))
+    ),
+    id TEXT GENERATED ALWAYS AS (sid) VIRTUAL,
+    sess TEXT DEFAULT '{}' NOT NULL,
+    expire TEXT,
     username VARCHAR(50) REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    last_activity TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_activity TEXT DEFAULT CURRENT_TIMESTAMP,
+    meta TEXT,
+    device_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_expire ON mbkcore_session (expire);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_session_username ON mbkcore_session (username);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_session_device_id ON mbkcore_session (device_id);
 
 -- Table: mbkcore_permission_catalog
 CREATE TABLE IF NOT EXISTS mbkcore_permission_catalog (

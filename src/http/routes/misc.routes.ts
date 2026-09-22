@@ -9,7 +9,7 @@ import { renderError, renderPage } from "../response/formatters.js";
 import { authenticate, sessPerm, sessRole } from "../middleware/authMiddleware.js";
 import { ErrorCodes, ErrorMessages, createErrorResponse } from "../../core/errors/catalog.js";
 import { decryptSessionId, getCookieDomain, clearSessionCookies } from "../../config/cookies.js";
-import { authRepository } from "../../db/repositories/AuthRepository.js";
+import { authService } from "../../services/AuthService.js";
 import { isSafeFetchUrl } from "../utils/urlSafety.js";
 import { createLogger } from "../../utils/logger.js";
 import { getAuthHealthReport } from "../../diagnostics/index.js";
@@ -204,21 +204,21 @@ router.post("/test", sessPerm("basic.access"), LoginLimit, async (req, res) => {
 
 router.get("/api/checkSession", ensureSession, LoginLimit, async (req, res) => {
   try {
-    if (!(req as any).session?.user?.session_id) {
+    const sessionId = (req as any).session?.user?.session_id;
+    if (!sessionId) {
       (req as any).session?.destroy?.(() => {});
       clearSessionCookies(res);
       return res.status(200).json({ session_valid: false, expiry: null });
     }
 
-    const row = await authRepository.getSessionValidity((req as any).session.user.session_id, req.sessionID, "check-session-validity");
-    if (!row || (row.expires_at && new Date(row.expires_at) <= new Date()) || !row.is_active) {
-      (req as any).session.destroy(() => {});
+    const result = await authService.validateSessionWithSid(sessionId, req.sessionID);
+    if (!result.valid) {
+      (req as any).session?.destroy?.(() => {});
       clearSessionCookies(res);
       return res.status(200).json({ session_valid: false, expiry: null });
     }
 
-    const expiry_source = row.expires_at || row.connect_expire || null;
-    return res.status(200).json({ session_valid: true, expiry: expiry_source ? new Date(expiry_source).toISOString() : null });
+    return res.status(200).json({ session_valid: true, expiry: result.expiry });
   } catch (err) {
     console.error(`[mbkauthe] checkSession error:`, err);
     return res.status(200).json({ session_valid: false, expiry: null });
@@ -239,18 +239,14 @@ function normalizeSessionIdFromBody(body: any = {}) {
   return decrypted && isUuid(decrypted) ? { session_id: decrypted, error: null } : { session_id: null, error: "INVALID" };
 }
 
-const isSessionRowValid = (row: any) => Boolean(row && !((row.expires_at && new Date(row.expires_at) <= new Date()) || !row.is_active));
-
 router.post("/api/checkSession", LoginLimit, async (req, res) => {
   try {
     const { session_id, error } = normalizeSessionIdFromBody(req.body || {});
     if (error === "MISSING") return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD));
     if (error === "INVALID" || !session_id || !isUuid(session_id)) return res.status(400).json(createErrorResponse(400, ErrorCodes.SESSION_INVALID));
 
-    const row = await authRepository.getSessionValidationRow(session_id, "check-session-validity-by-id");
-    if (!isSessionRowValid(row)) return res.status(200).json({ session_valid: false, expiry: null });
-
-    return res.status(200).json({ session_valid: true, expiry: row.expires_at ? new Date(row.expires_at).toISOString() : null });
+    const result = await authService.validateSession(session_id, "check-session-validity-by-id");
+    return res.status(200).json({ session_valid: result.valid, expiry: result.expiry });
   } catch (err) {
     console.error(`[mbkauthe] checkSession (body) error:`, err);
     return res.status(200).json({ session_valid: false, expiry: null });
@@ -263,10 +259,8 @@ router.post("/api/verifySession", LoginLimit, async (req, res) => {
     if (error === "MISSING") return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD));
     if (error === "INVALID" || !session_id || !isUuid(session_id)) return res.status(400).json(createErrorResponse(400, ErrorCodes.SESSION_INVALID));
 
-    const row = await authRepository.getSessionValidationRow(session_id, "verify-session");
-    if (!isSessionRowValid(row)) return res.status(200).json({ valid: false, expiry: null });
-
-    return res.status(200).json({ valid: true, expiry: row.expires_at ? new Date(row.expires_at).toISOString() : null });
+    const result = await authService.validateSession(session_id, "verify-session");
+    return res.status(200).json({ valid: result.valid, expiry: result.expiry });
   } catch (err) {
     console.error(`[mbkauthe] verifySession error:`, err);
     return res.status(200).json({ valid: false, expiry: null });
@@ -399,10 +393,7 @@ router.get(["/api/health", "/health", "/health.json", "/api/health.json"], async
 
 router.post("/api/terminateAllSessions", AdminOperationLimit, authenticate(mbkautheVar.MAIN_SECRET_TOKEN), async (req, res) => {
   try {
-    await Promise.all([
-      authRepository.deleteAllAppSessions("terminate-all-app-sessions"),
-      authRepository.deleteActiveSessionStoreRows("terminate-all-db-sessions"),
-    ]);
+    await authService.terminateAllSessions();
 
     if (typeof (req as any).session?.destroy === "function") {
       (req as any).session.destroy((err: any) => {

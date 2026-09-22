@@ -1,13 +1,12 @@
 import express from "express";
 import { renderError, renderPage } from "../response/formatters.js";
 import { sessRole, sessPerm } from "../middleware/authMiddleware.js";
-import { hashApiToken, generatePrefixedToken } from "../../config/security.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 import { apiTokenService } from "../../services/ApiTokenService.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
 import { normalizePermission } from "../../core/permissions/matcher.js";
 import { hasPermission } from "../../core/permissions/roleRegistry.js";
-import { TokenEngine } from "../../core/tokens/TokenEngine.js";
+import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 
 const router = express.Router();
 
@@ -106,20 +105,22 @@ router.post("/api/token", sessPerm("basic.access"), async (req, res) => {
       });
     }
 
-    if (role !== "superadmin") {
-      const token_count = await apiTokenRepository.countForUser(username);
-      if (token_count >= 10) return res.status(403).json({ success: false, message: "Token limit reached (max 10)." });
-    }
-
     const expiresInDays = expires_days && parseInt(expires_days, 10) > 0 ? parseInt(expires_days, 10) : null;
-    const { token: raw_token, tokenRecord: meta } = await apiTokenService.createToken(username, {
-      name: name.trim(),
-      scopes: requested,
-      expiresInDays,
-    });
+    const { token: raw_token, tokenRecord: meta } = await apiTokenService.createToken(
+      username,
+      {
+        name: name.trim(),
+        scopes: requested,
+        expiresInDays,
+      },
+      { userRole: role }
+    );
 
     res.json({ success: true, token: raw_token, meta, message: "Token created. Copy it now - you won't see it again!" });
   } catch (err: any) {
+    if (err instanceof MbkAuthError) {
+      return res.status(err.statusCode).json({ success: false, message: err.message });
+    }
     console.error("Error creating API token:", err);
     res.status(500).json({ success: false, message: "Failed to create token", error: err.message });
   }
@@ -132,15 +133,10 @@ router.delete("/api/tokens/:id", sessRole("any"), async (req, res) => {
     if (Number.isNaN(token_id)) return res.status(400).json({ success: false, message: "Invalid token ID" });
 
     const username = (req as any).session.user.username;
-    const info = await apiTokenRepository.findInfoById(token_id);
-    if (!info || info.username !== username) {
-      return res.status(404).json({ success: false, message: "Token not found or not owned." });
-    }
-
     const success = await apiTokenService.revokeToken(token_id, username);
     if (!success) return res.status(404).json({ success: false, message: "Token not found or not owned." });
 
-    res.json({ success: true, message: `Token "${info.name}" deleted.` });
+    res.json({ success: true, message: "Token deleted successfully." });
   } catch (err) {
     console.error("Error deleting API token:", err);
     res.status(500).json({ success: false, message: "Failed to delete token" });
@@ -150,29 +146,26 @@ router.delete("/api/tokens/:id", sessRole("any"), async (req, res) => {
 router.post("/api/tokens/verify", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
+    const rawToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : (typeof req.body?.token === "string" ? req.body.token : null);
+
+    if (!rawToken) {
       return res.status(401).json({ success: false, message: "No token provided" });
     }
 
-    const rawToken = authHeader.split(" ")[1];
-    const token_hash = TokenEngine.hashToken(rawToken)!;
-    const rows = await apiTokenRepository.findByTokenHash(token_hash);
-    if (rows.length === 0) return res.status(401).json({ success: false, message: "Invalid token" });
-
-    const token_data = rows[0];
-    if (token_data.expires_at && new Date(token_data.expires_at) < new Date()) {
-      return res.status(401).json({ success: false, message: "Token expired" });
-    }
-
-    await apiTokenRepository.updateLastUsedByHash(token_hash).catch(() => {});
+    const result = await apiTokenService.verifyToken(rawToken);
 
     res.json({
       success: true,
-      username: token_data.username,
-      permissions: token_data.token_permissions || [],
+      username: result.username,
+      permissions: result.permissions,
       message: "Token is valid",
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof MbkAuthError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
     console.error("Token verification error:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }

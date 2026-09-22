@@ -2,7 +2,6 @@ import express from "express";
 import { renderPage } from "../response/formatters.js";
 import { sessRole } from "../middleware/authMiddleware.js";
 import { apiTokenService } from "../../services/ApiTokenService.js";
-import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 
 const router = express.Router();
 
@@ -38,7 +37,7 @@ router.get("/api/admin/api-tokens/stats", sessRole("superadmin"), async (req, re
 router.get("/api/admin/api-tokens/:username", sessRole("superadmin"), async (req, res) => {
   try {
     const username = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
-    const tokens = await apiTokenRepository.listForUserAdmin(String(username));
+    const tokens = await apiTokenService.listTokensForUserAdmin(String(username));
     res.json({ success: true, tokens });
   } catch (error: any) {
     console.error("Error fetching user tokens:", error);
@@ -54,11 +53,11 @@ router.delete("/api/admin/api-tokens/bulk", sessRole("superadmin"), async (req, 
 
     if (ids.length === 0) return res.status(400).json({ success: false, message: "No valid token IDs provided" });
 
-    const result = await apiTokenRepository.deleteByIds(ids);
+    const count = await apiTokenService.bulkRevokeTokens(ids);
     res.json({
       success: true,
-      message: `Successfully revoked ${result.rowCount} token(s)`,
-      count: result.rowCount,
+      message: `Successfully revoked ${count} token(s)`,
+      count,
     });
   } catch (error: any) {
     console.error("Error bulk revoking API tokens:", error);
@@ -72,13 +71,10 @@ router.delete("/api/admin/api-tokens/:id", sessRole("superadmin"), async (req, r
     const token_id = parseInt(String(rawId), 10);
     if (Number.isNaN(token_id)) return res.status(400).json({ success: false, message: "Invalid token ID" });
 
-    const token_info = await apiTokenRepository.findInfoById(token_id);
-    if (!token_info) return res.status(404).json({ success: false, message: "Token not found" });
-
     const success = await apiTokenService.adminDeleteToken(token_id);
     if (!success) return res.status(404).json({ success: false, message: "Token not found" });
 
-    console.log(`[Admin] Token revoked by ${(req as any).session.user.username}: ${token_info.name} (User: ${token_info.username})`);
+    console.log(`[Admin] Token revoked by ${(req as any).session?.user?.username || "unknown"}: ID ${token_id}`);
     res.json({ success: true, message: "Token revoked successfully" });
   } catch (error: any) {
     console.error("Error revoking API token:", error);
@@ -92,7 +88,7 @@ router.delete("/api/admin/api-tokens/user/:username", sessRole("superadmin"), as
     const username = String(rawUsername);
     const count = await apiTokenService.revokeAllUserTokens(username);
 
-    console.log(`[Admin] All tokens revoked for user ${username} by ${(req as any).session.user.username} (${count} tokens)`);
+    console.log(`[Admin] All tokens revoked for user ${username} by ${(req as any).session?.user?.username || "unknown"} (${count} tokens)`);
     res.json({
       success: true,
       message: `Successfully revoked ${count} token(s)`,

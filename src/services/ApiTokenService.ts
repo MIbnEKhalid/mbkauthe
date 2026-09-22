@@ -15,6 +15,17 @@ export interface CreateTokenResult {
   tokenRecord: ApiTokenRecord;
 }
 
+export interface CreateTokenOptions {
+  userRole?: string;
+  maxTokensPerUser?: number;
+}
+
+export interface VerifyTokenResult {
+  valid: boolean;
+  username: string;
+  permissions: string[];
+}
+
 export class ApiTokenService {
   constructor(
     private tokenRepo: ApiTokenRepository = apiTokenRepository,
@@ -24,12 +35,24 @@ export class ApiTokenService {
   /**
    * Generates and stores a new API Personal Access Token
    */
-  async createToken(username: string, dto: CreateApiTokenDto): Promise<CreateTokenResult> {
+  async createToken(
+    username: string,
+    dto: CreateApiTokenDto,
+    options?: CreateTokenOptions
+  ): Promise<CreateTokenResult> {
     const validated = validateCreateApiTokenDto(dto);
     const { name, scopes, expiresInDays } = validated;
 
     if (!username) {
       throw new MbkAuthError(ErrorCodes.SESSION_NOT_FOUND, 401, "User is required to create API token");
+    }
+
+    if (options?.userRole !== "superadmin") {
+      const limit = options?.maxTokensPerUser ?? 10;
+      const tokenCount = await this.tokenRepo.countForUser(username);
+      if (tokenCount >= limit) {
+        throw new MbkAuthError(ErrorCodes.INSUFFICIENT_PERMISSIONS, 403, `Token limit reached (max ${limit}).`);
+      }
     }
 
     const rawToken = TokenEngine.createApiToken();
@@ -69,6 +92,46 @@ export class ApiTokenService {
     return {
       token: rawToken,
       tokenRecord,
+    };
+  }
+
+  /**
+   * Validates a raw API token and updates its last_used timestamp.
+   * Returns token user & permissions or throws MbkAuthError.
+   */
+  async verifyToken(rawToken: string): Promise<VerifyTokenResult> {
+    if (!rawToken || typeof rawToken !== "string") {
+      throw new MbkAuthError(ErrorCodes.INVALID_TOKEN_FORMAT, 401, "No token provided");
+    }
+
+    const tokenHash = TokenEngine.hashToken(rawToken);
+    if (!tokenHash) {
+      throw new MbkAuthError(ErrorCodes.INVALID_TOKEN_FORMAT, 401, "Invalid token");
+    }
+
+    const rows = await this.tokenRepo.findByTokenHash(tokenHash);
+    if (!rows || rows.length === 0) {
+      throw new MbkAuthError(ErrorCodes.INVALID_AUTH_TOKEN, 401, "Invalid token");
+    }
+
+    const tokenData = rows[0];
+    if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+      throw new MbkAuthError(ErrorCodes.API_TOKEN_EXPIRED, 401, "Token expired");
+    }
+
+    // Touch last used asynchronously
+    this.tokenRepo.updateLastUsedByHash(tokenHash).catch((err) => {
+      debug("Failed to touch token last_used: %s", err?.message || err);
+    });
+
+    const permissions = Array.isArray(tokenData.permissions)
+      ? tokenData.permissions
+      : (tokenData.permissions as any)?.permissions || [];
+
+    return {
+      valid: true,
+      username: tokenData.username,
+      permissions,
     };
   }
 
@@ -143,6 +206,47 @@ export class ApiTokenService {
    */
   async listAllTokens(): Promise<ApiTokenRecord[]> {
     return this.tokenRepo.listAll();
+  }
+
+  /**
+   * Admin: List tokens for a specific user
+   */
+  async listTokensForUserAdmin(username: string): Promise<ApiTokenRecord[]> {
+    if (!username) return [];
+    return this.tokenRepo.listForUserAdmin(username);
+  }
+
+  /**
+   * Admin: Bulk revoke tokens by ID and emit revocation audit events
+   */
+  async bulkRevokeTokens(ids: Array<string | number>): Promise<number> {
+    const validIds = (Array.isArray(ids) ? ids : [])
+      .map((id) => parseInt(String(id), 10))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (validIds.length === 0) return 0;
+
+    // Retrieve usernames for audit before deletion
+    const usernames = await Promise.all(
+      validIds.map(async (id) => {
+        const info = await this.tokenRepo.findInfoById(id);
+        return { id, username: info?.username };
+      })
+    );
+
+    const result = await this.tokenRepo.deleteByIds(validIds);
+    const count = result.rowCount || 0;
+
+    for (const { id, username } of usernames) {
+      if (username) {
+        emitAuthEvent("auth:token:revoked", {
+          tokenId: id,
+          userId: username,
+        });
+      }
+    }
+
+    return count;
   }
 
   /**

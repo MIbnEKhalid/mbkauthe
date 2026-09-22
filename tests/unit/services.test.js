@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import { fileURLToPath } from "url";
 import { readFile } from "fs/promises";
-import { SqlitePool, AuthRepository, ApiTokenRepository, CliAuthSessionRepository, AuthService, ApiTokenService, OAuthService, CliAuthService, getAuthHealthReport, hashPassword } from "../../dist/index.js";
+import { SqlitePool, AuthRepository, ApiTokenRepository, CliAuthSessionRepository, AuthService, ApiTokenService, OAuthFlowService, CliAuthService, getAuthHealthReport, hashPassword } from "../../dist/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +16,7 @@ describe("Service Layer & Diagnostics", () => {
   let authService;
   let apiTokenService;
   let cliAuthService;
-  let oAuthService;
+  let oAuthFlowService;
 
   beforeAll(async () => {
     const schemaSql = await readFile(SCHEMA_PATH, "utf8");
@@ -31,7 +31,7 @@ describe("Service Layer & Diagnostics", () => {
     authService = new AuthService(authRepo);
     apiTokenService = new ApiTokenService(tokenRepo, authRepo);
     cliAuthService = new CliAuthService(cliRepo, apiTokenService);
-    oAuthService = new OAuthService(authRepo);
+    oAuthFlowService = new OAuthFlowService({ authRepo });
   });
 
   afterAll(async () => {
@@ -45,8 +45,8 @@ describe("Service Layer & Diagnostics", () => {
     expect(report.dialect).toBeDefined();
   });
 
-  test("OAuthService resolves enabled providers", () => {
-    const providers = oAuthService.getEnabledProviders();
+  test("OAuthFlowService resolves enabled providers", () => {
+    const providers = oAuthFlowService.listProviders();
     expect(Array.isArray(providers)).toBe(true);
   });
 
@@ -91,6 +91,20 @@ describe("Service Layer & Diagnostics", () => {
     expect(authedUser).toBeDefined();
     expect(authedUser.username).toBe(username);
 
+    // Verify token via verifyToken
+    const verified = await apiTokenService.verifyToken(tokenResult.token);
+    expect(verified.valid).toBe(true);
+    expect(verified.username).toBe(username);
+    expect(verified.permissions).toEqual(["portal:read"]);
+
+    // List tokens for user admin
+    const adminTokens = await apiTokenService.listTokensForUserAdmin(username);
+    expect(adminTokens.length).toBeGreaterThanOrEqual(1);
+
+    // Bulk revoke tokens
+    const revokedCount = await apiTokenService.bulkRevokeTokens([tokenResult.tokenRecord.id]);
+    expect(revokedCount).toBe(1);
+
     // 3. CliAuthService initiate and poll
     const cliInit = await cliAuthService.initiate({ clientName: "Test CLI", profileKey });
     expect(cliInit.device_code).toBeDefined();
@@ -107,7 +121,12 @@ describe("Service Layer & Diagnostics", () => {
     expect(pollApproved.status).toBe("approved");
     expect(pollApproved.access_token).toBeDefined();
 
-    // 4. Cleanup
+    // 4. AuthService session validation and device operations
+    const sessionValidity = await authService.validateSession(loginResult.appSessionId);
+    expect(sessionValidity.valid).toBe(true);
+    expect(sessionValidity.expiry).toBeDefined();
+
+    // 5. Cleanup
     await authService.logoutSession(loginResult.appSessionId, username);
   });
 });

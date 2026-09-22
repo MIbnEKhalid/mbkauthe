@@ -28,21 +28,24 @@ export interface CliDeviceCodeDto {
  */
 export function validateLoginDto(input: any): LoginDto {
   if (!input || typeof input !== "object") {
-    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Missing credentials payload");
+    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Username and password are required");
   }
 
-  const username = typeof input.username === "string" ? input.username.trim() : "";
-  const password = typeof input.password === "string" ? input.password : "";
-
-  if (!username) {
-    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Username is required");
+  const { username, password } = input;
+  if (!username || !password) {
+    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Username and password are required");
   }
-  if (!password) {
-    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Password is required");
+
+  if (typeof username !== "string" || username.trim().length === 0 || username.length > 255) {
+    throw new MbkAuthError(ErrorCodes.INVALID_USERNAME_FORMAT, 400, "Invalid username format");
+  }
+
+  if (typeof password !== "string" || password.length < 8 || password.length > 255) {
+    throw new MbkAuthError(ErrorCodes.INVALID_PASSWORD_LENGTH, 400, "Password must be between 8 and 255 characters");
   }
 
   return {
-    username,
+    username: username.trim(),
     password,
     rememberMe: Boolean(input.rememberMe ?? input.remember_me),
   };
@@ -56,8 +59,14 @@ export function validateTotpDto(input: any): VerifyTotpDto {
     throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Missing 2FA payload");
   }
 
-  const token = typeof input.token === "string" ? input.token.trim().replace(/\s+/g, "") : "";
-  if (!token || !/^\d{6,8}$/.test(token)) {
+  const rawToken = typeof input.token === "string" ? input.token : "";
+  const token = rawToken.replace(/\s+/g, "");
+
+  if (!token) {
+    throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "2FA token is required");
+  }
+
+  if (!/^\d{6,8}$/.test(token)) {
     throw new MbkAuthError(ErrorCodes.INVALID_TOKEN_FORMAT, 400, "Invalid 2FA token format");
   }
 

@@ -189,16 +189,25 @@ export const renderError = (res: Response, req: Request, { code, error, message,
   });
 };
 
-export async function renderPage(req: Request, res: Response, fileLocation: string, layout: boolean = true, data: Record<string, any> = {}) {
+export async function renderPage(
+  req: Request,
+  res: Response,
+  fileLocation: string,
+  layout: boolean | string = true,
+  data: Record<string, any> = {}
+) {
   const userCtx = getUserContext(req);
   const userLoggedIn = userCtx.userLoggedIn || Boolean(data.userLoggedIn);
   const username = userCtx.userLoggedIn ? userCtx.username : (data.username || userCtx.username);
+
+  const layoutOption = typeof layout === "string" ? { layout } : (layout === false ? { layout: false } : {});
 
   return res.render(fileLocation, {
     ...userCtx,
     ...data,
     userLoggedIn,
     username,
-    ...(!layout && { layout: false }),
+    ...layoutOption,
   });
 }
+

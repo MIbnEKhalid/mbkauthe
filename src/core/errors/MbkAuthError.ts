@@ -12,7 +12,8 @@ export class MbkAuthError extends Error {
 
   constructor(errorCode: number, statusCode: number = 400, details?: unknown) {
     const errorInfo = getErrorByCode(errorCode);
-    super(errorInfo.message);
+    const message = typeof details === "string" ? details : errorInfo.message;
+    super(message);
     this.name = "MbkAuthError";
     this.statusCode = statusCode;
     this.errorCode = errorCode;

@@ -7,6 +7,11 @@ export interface BaseRepositoryOptions {
   db?: any;
   adapter?: any;
   dialect?: IDialect;
+  defaultTable?: string;
+  tableName?: string;
+  jsonColumns?: string[];
+  dateColumns?: string[];
+  booleanColumns?: string[];
 }
 
 const isPlainObject = (val: any) => Boolean(val && typeof val === "object" && !Array.isArray(val));
@@ -16,18 +21,87 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
   public adapter: any;
   public dialect: IDialect;
   public defaultTable: string | null = null;
+  public jsonColumns: Set<string> = new Set();
+  public dateColumns: Set<string> = new Set();
+  public booleanColumns: Set<string> = new Set();
 
-  constructor(adapterOrOptions: any = {}) {
+  constructor(adapterOrOptions: any = {}, options: BaseRepositoryOptions = {}) {
+    let resolvedOptions: BaseRepositoryOptions = {};
     if (adapterOrOptions && typeof adapterOrOptions.query === "function") {
       this.db = adapterOrOptions;
       this.adapter = adapterOrOptions;
       this.dialect = adapterOrOptions.dialect || defaultDialect || postgresDialect;
+      resolvedOptions = options || {};
     } else {
-      this.db = adapterOrOptions?.db || adapterOrOptions?.adapter || dblogin;
+      resolvedOptions = adapterOrOptions || {};
+      this.db = resolvedOptions.db || resolvedOptions.adapter || dblogin;
       this.adapter = this.db;
-      this.dialect = adapterOrOptions?.dialect || this.db?.dialect || defaultDialect || postgresDialect;
-      this.defaultTable = adapterOrOptions?.defaultTable || adapterOrOptions?.tableName || null;
+      this.dialect = resolvedOptions.dialect || this.db?.dialect || defaultDialect || postgresDialect;
     }
+
+    this.defaultTable = resolvedOptions.defaultTable || resolvedOptions.tableName || null;
+    if (resolvedOptions.jsonColumns) {
+      this.jsonColumns = new Set(resolvedOptions.jsonColumns);
+    }
+    if (resolvedOptions.dateColumns) {
+      this.dateColumns = new Set(resolvedOptions.dateColumns);
+    }
+    if (resolvedOptions.booleanColumns) {
+      this.booleanColumns = new Set(resolvedOptions.booleanColumns);
+    }
+  }
+
+  normalizeEntity<T = any>(row: any): T {
+    if (!row || typeof row !== "object") return row;
+    const result: any = { ...row };
+    for (const key of Object.keys(result)) {
+      const val = result[key];
+      if (this.jsonColumns.has(key)) {
+        if (typeof val === "string") {
+          try {
+            result[key] = JSON.parse(val);
+          } catch {}
+        }
+      }
+      if (this.dateColumns.has(key)) {
+        if (typeof val === "string" || typeof val === "number") {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) {
+            result[key] = d;
+          }
+        }
+      }
+      if (this.booleanColumns.has(key)) {
+        if (val !== null && val !== undefined) {
+          result[key] = Boolean(val);
+        }
+      }
+    }
+    return result as T;
+  }
+
+  serializeEntity<T = any>(data: any): T {
+    if (!data || typeof data !== "object") return data;
+    const result: any = { ...data };
+    for (const key of Object.keys(result)) {
+      if (this.jsonColumns.has(key)) {
+        const val = result[key];
+        if (val !== undefined && val !== null && typeof val !== "string") {
+          if (this.dialect.name === "sqlite") {
+            result[key] = JSON.stringify(val);
+          }
+        }
+      }
+      if (this.booleanColumns.has(key)) {
+        const val = result[key];
+        if (val !== undefined && val !== null) {
+          if (this.dialect.name === "sqlite") {
+            result[key] = val ? 1 : 0;
+          }
+        }
+      }
+    }
+    return result as T;
   }
 
   setDb(db: any, dialect: IDialect | null = null): void {
@@ -96,26 +170,30 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
   }
 
   renderToken(token: any, values: any[]): string {
-    if (token == null) return "";
-    if (!isPlainObject(token) || !token.kind) return String(token);
-
-    switch (token.kind) {
-      case "raw":
-        return token.text;
-      case "ident":
-        return this.quoteIdentifier(token.name);
-      case "param":
-        values.push(token.value);
-        return this.dialect.param(values.length);
-      case "list":
-        if (!Array.isArray(token.values) || token.values.length === 0) return "(NULL)";
-        return `(${token.values.map((item: any) => {
-          values.push(item);
+    if (token == null) return "NULL";
+    if (isPlainObject(token) && token.kind) {
+      switch (token.kind) {
+        case "raw":
+          return token.text;
+        case "ident":
+          return this.quoteIdentifier(token.name);
+        case "param":
+          values.push(token.value);
           return this.dialect.param(values.length);
-        }).join(", ")})`;
-      default:
-        return "";
+        case "list":
+          if (!Array.isArray(token.values) || token.values.length === 0) return "(NULL)";
+          return `(${token.values.map((item: any) => {
+            values.push(item);
+            return this.dialect.param(values.length);
+          }).join(", ")})`;
+        default:
+          return "";
+      }
     }
+
+    // Automatically convert primitive / bind values to parameterized tokens
+    values.push(token);
+    return this.dialect.param(values.length);
   }
 
   async execute<T = any>(queryOrTextOrName: any, valuesOrQuery: any = [], executorOrName: any = this.db, name?: string): Promise<QueryResult<T>> {
@@ -161,7 +239,8 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
     const query = this.sql`SELECT * FROM ${this.table(table)} WHERE ${this.ident(idColumn)} = ${this.value(id)} ${this.limit(1, 0)}`;
     const result = await this.execute<TEntity>(query);
-    return result.rows[0] || null;
+    const row = result.rows[0] || null;
+    return row ? this.normalizeEntity<TEntity>(row) : null;
   }
 
   /**
@@ -174,7 +253,8 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     if (entries.length === 0) {
       const query = this.sql`SELECT * FROM ${this.table(table)} ${this.limit(1, 0)}`;
       const result = await this.execute<TEntity>(query);
-      return result.rows[0] || null;
+      const row = result.rows[0] || null;
+      return row ? this.normalizeEntity<TEntity>(row) : null;
     }
 
     const values: any[] = [];
@@ -186,7 +266,8 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     });
     sqlText += ` ${this.dialect.limitOffset({ limit: 1 })}`;
     const result = await this.execute<TEntity>({ text: sqlText, values });
-    return result.rows[0] || null;
+    const row = result.rows[0] || null;
+    return row ? this.normalizeEntity<TEntity>(row) : null;
   }
 
   /**
@@ -220,7 +301,7 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     }
 
     const result = await this.execute<TEntity>({ text: sqlText, values });
-    return result.rows;
+    return result.rows.map((row) => this.normalizeEntity<TEntity>(row));
   }
 
   /**
@@ -253,7 +334,8 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
   async create(data: TCreateInput, tableName?: string): Promise<TEntity> {
     const table = tableName || this.defaultTable;
     if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
-    const entries = Object.entries(data as Record<string, any>).filter(([_, v]) => v !== undefined);
+    const serializedData = this.serializeEntity(data);
+    const entries = Object.entries(serializedData as Record<string, any>).filter(([_, v]) => v !== undefined);
     if (entries.length === 0) {
       throw new Error("[BaseRepository] Cannot create record with empty data");
     }
@@ -270,13 +352,13 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     const result = await this.execute<TEntity>({ text: sqlText, values });
 
     if (result.rows && result.rows.length > 0) {
-      return result.rows[0];
+      return this.normalizeEntity<TEntity>(result.rows[0]);
     }
     if (result.lastInsertRowid) {
       const inserted = await this.findById(result.lastInsertRowid as any, "id", table);
       if (inserted) return inserted;
     }
-    return data as any;
+    return this.normalizeEntity<TEntity>(data as any);
   }
 
   /**
@@ -290,7 +372,8 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     const table = options.tableName || this.defaultTable;
     const idColumn = options.idColumn || "id";
     if (!table) throw new Error("[BaseRepository] Table name must be specified or configured as defaultTable");
-    const entries = Object.entries(data as Record<string, any>).filter(([_, v]) => v !== undefined);
+    const serializedData = this.serializeEntity(data);
+    const entries = Object.entries(serializedData as Record<string, any>).filter(([_, v]) => v !== undefined);
     if (entries.length === 0) return this.findById(id, idColumn, table);
 
     const values: any[] = [];
@@ -306,7 +389,7 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
 
     const result = await this.execute<TEntity>({ text: sqlText, values });
     if (result.rows && result.rows.length > 0) {
-      return result.rows[0];
+      return this.normalizeEntity<TEntity>(result.rows[0]);
     }
     return this.findById(id, idColumn, table);
   }
@@ -329,6 +412,9 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     instance.adapter = db;
     instance.dialect = db?.dialect || this.dialect;
     instance.defaultTable = this.defaultTable;
+    instance.jsonColumns = new Set(this.jsonColumns);
+    instance.dateColumns = new Set(this.dateColumns);
+    instance.booleanColumns = new Set(this.booleanColumns);
     return instance;
   }
 
@@ -339,6 +425,9 @@ export class BaseRepository<TEntity = any, TCreateInput = Partial<TEntity>, TUpd
     instance.adapter = adapter;
     instance.dialect = adapter?.dialect || this.dialect;
     instance.defaultTable = this.defaultTable;
+    instance.jsonColumns = new Set(this.jsonColumns);
+    instance.dateColumns = new Set(this.dateColumns);
+    instance.booleanColumns = new Set(this.booleanColumns);
     return instance;
   }
 

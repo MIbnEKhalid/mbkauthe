@@ -15,7 +15,6 @@ export function normalizeUserRow(row: any): AuthUser | null {
     is_active: row.is_active !== undefined ? Boolean(row.is_active) : undefined,
     is_local_only: row.is_local_only !== undefined ? Boolean(row.is_local_only && row.is_local_only !== "0" && row.is_local_only !== "false") : undefined,
     is_enabled: row.is_enabled !== undefined && row.is_enabled !== null ? Boolean(row.is_enabled) : null,
-    user_allowed_apps: row.user_allowed_apps !== undefined ? row.user_allowed_apps : row.allowed_apps,
     permissions,
   };
 }
@@ -65,12 +64,11 @@ export class UserRepository extends BaseRepository {
     return result.rows?.[0] || null;
   }
 
-  async getTwoFASecret(username: string): Promise<{ secret: string; two_fa_secret?: string; is_enabled: boolean } | null> {
+  async getTwoFASecret(username: string): Promise<{ two_fa_secret: string; is_enabled: boolean } | null> {
     const query = `SELECT two_fa_secret, is_enabled FROM mbkcore_two_factor WHERE username = $1 LIMIT 1`;
     const result = await this.executeRaw({ name: "get-user-2fa-secret", text: query, values: [username] });
     if (!result.rows?.[0]) return null;
     return {
-      secret: result.rows[0].two_fa_secret,
       two_fa_secret: result.rows[0].two_fa_secret,
       is_enabled: result.rows[0].is_enabled,
     };

@@ -676,5 +676,62 @@ describe('SqliteSessionStore', () => {
 
       expect(result).toBe('normal');
     });
+
+    test('BaseRepository smart sql template automatically treats primitives as bind parameters', () => {
+      const repo = new BaseRepository(pool);
+      const email = 'test@example.com';
+      const active = true;
+      const query = repo.sql`SELECT * FROM mbkcore_users WHERE email = ${email} AND is_active = ${active}`;
+      expect(query.text).toBe('SELECT * FROM mbkcore_users WHERE email = ? AND is_active = ?');
+      expect(query.values).toEqual(['test@example.com', true]);
+    });
+
+    test('BaseRepository normalizes jsonColumns, dateColumns, and booleanColumns', async () => {
+      class TestCustomRepo extends BaseRepository {
+        constructor(db) {
+          super({
+            db,
+            defaultTable: 'mbkcore_users',
+            jsonColumns: ['allowed_apps', 'custom_meta'],
+            dateColumns: ['custom_date'],
+            booleanColumns: ['custom_bool'],
+          });
+        }
+      }
+
+      const repo = new TestCustomRepo(pool);
+      const rawRow = {
+        username: 'norm_user',
+        allowed_apps: '["app1","app2"]',
+        custom_meta: '{"setting":true}',
+        custom_date: '2026-09-23T18:00:00.000Z',
+        custom_bool: 1,
+      };
+
+      const normalized = repo.normalizeEntity(rawRow);
+      expect(Array.isArray(normalized.allowed_apps)).toBe(true);
+      expect(normalized.allowed_apps).toEqual(['app1', 'app2']);
+      expect(normalized.custom_meta).toEqual({ setting: true });
+      expect(normalized.custom_date instanceof Date).toBe(true);
+      expect(normalized.custom_bool).toBe(true);
+
+      // Serialization
+      const serialized = repo.serializeEntity({
+        allowed_apps: ['x', 'y'],
+        custom_bool: false,
+      });
+      expect(typeof serialized.allowed_apps).toBe('string');
+      expect(serialized.allowed_apps).toBe('["x","y"]');
+      expect(serialized.custom_bool).toBe(0);
+    });
+
+    test('SqliteAdapter registerColumns allows dynamic column registration', () => {
+      const adapter = new SqlitePool(':memory:');
+      adapter.registerColumns({ jsonColumns: ['extra_json'], booleanColumns: ['extra_flag'] });
+      const row = adapter['_normalizeRow']({ extra_json: '{"k":"v"}', extra_flag: 1 });
+      expect(row.extra_json).toEqual({ k: 'v' });
+      expect(row.extra_flag).toBe(true);
+    });
   });
 });
+

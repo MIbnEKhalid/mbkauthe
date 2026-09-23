@@ -16,9 +16,6 @@ import { createLogger } from "../../utils/logger.js";
 import { type AuthUser, isLocalOnlyUser } from "../../core/types/user.types.js";
 import { ensureSessionAsync } from "./security.js";
 
-// Re-export AuthContext for backwards compatibility
-export { AuthContext };
-
 const IS_DEV = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV === "development";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (val: unknown): val is string => typeof val === "string" && UUID_RE.test(val);
@@ -443,8 +440,6 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
 
     if (typeof row.full_name === "string" && row.full_name.trim() !== "") {
       (req as any).session.user.full_name = row.full_name;
-    } else if (typeof (req as any).cookies?.full_name === "string") {
-      (req as any).session.user.full_name = (req as any).cookies.full_name;
     }
 
     await attachSessionPermissions((req as any).session.user, row.username, row.role);

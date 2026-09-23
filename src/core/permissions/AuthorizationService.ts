@@ -193,7 +193,7 @@ export class AuthorizationService {
     const targetApp = (appKey || mbkautheVar.APP_NAME || "").toLowerCase().trim();
     if (!targetApp) return true;
 
-    const allowed = principal.allowed_apps || principal.user_allowed_apps || [];
+    const allowed = principal.allowed_apps || [];
     return Array.isArray(allowed) && allowed.some((app: any) => String(app).toLowerCase().trim() === targetApp);
   }
 

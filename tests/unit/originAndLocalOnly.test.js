@@ -1,12 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
-import {
-  extractRequestOrigin,
-  isLocalOnlyUser,
-  isProductionEnvironment,
-  ErrorCodes,
-  ErrorMessages,
-  mbkautheVar,
-} from "../../dist/index.js";
+import { extractRequestOrigin, isLocalOnlyUser, isProductionEnvironment, ErrorCodes, ErrorMessages, mbkautheVar } from "../../dist/index.js";
 
 describe("Origin Extraction and Local-Only User Restrictions", () => {
   describe("extractRequestOrigin", () => {

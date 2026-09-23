@@ -10,7 +10,6 @@ export interface AuthUser {
   origin?: string;
   domain?: string;
   allowed_apps?: string[];
-  user_allowed_apps?: string[];
   permissions?: string[] | Record<string, boolean>;
   [key: string]: any;
 }

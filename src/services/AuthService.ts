@@ -169,7 +169,7 @@ export class AuthService {
     const targetAppKey = appKey || mbkautheVar.APP_NAME;
 
     const twoFaRecord = await this.repo.getTwoFASecret(user.username);
-    const secret = twoFaRecord?.two_fa_secret || (twoFaRecord as any)?.secret;
+    const secret = twoFaRecord?.two_fa_secret;
 
     if (!secret) {
       throw new MbkAuthError(ErrorCodes.TWO_FA_NOT_CONFIGURED, 500, "Two-factor authentication is not configured for this user");

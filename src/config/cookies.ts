@@ -156,7 +156,7 @@ export const setActiveSessionCookie = (res: any, sid: string): void => {
 
 export const clearSessionCookies = (res: any): void => {
   const cookieName = mbkautheVar.SESSION_COOKIE_NAME || "mbkauthe.sid";
-  [cookieName, "mbkauthe.sid", "session_id", "username", "full_name", "last_login_method"]
+  [cookieName, "mbkauthe.sid", "session_id"]
     .forEach((cookie) => res.clearCookie(cookie, getClearCookieOptions() as any));
 };
 

@@ -103,6 +103,9 @@ export class SqliteAdapter implements IDatabaseAdapter {
   public db: any;
   public filePath: string | null = null;
   private _mutex: Mutex = new Mutex();
+  private _jsonColumns: Set<string>;
+  private _booleanColumns: Set<string>;
+  private _timestampColumns: Set<string>;
   private _normalizeRow: (row: any) => any;
 
   constructor(filePathOrDb: string | any, options: SqliteAdapterOptions = {}) {
@@ -124,10 +127,31 @@ export class SqliteAdapter implements IDatabaseAdapter {
       this.filePath = options.filePath || null;
     }
 
+    this._jsonColumns = new Set([...DEFAULT_JSON_COLUMNS, ...(options.jsonColumns || [])]);
+    this._booleanColumns = new Set(options.booleanColumns || []);
+    this._timestampColumns = new Set([...DEFAULT_TIMESTAMP_COLUMNS, ...(options.timestampColumns || [])]);
+
     this._normalizeRow = createRowNormalizer({
-      jsonColumns: new Set([...DEFAULT_JSON_COLUMNS, ...(options.jsonColumns || [])]),
-      booleanColumns: new Set(options.booleanColumns || []),
-      timestampColumns: new Set([...DEFAULT_TIMESTAMP_COLUMNS, ...(options.timestampColumns || [])]),
+      jsonColumns: this._jsonColumns,
+      booleanColumns: this._booleanColumns,
+      timestampColumns: this._timestampColumns,
+    });
+  }
+
+  registerColumns(options: { jsonColumns?: string[]; booleanColumns?: string[]; timestampColumns?: string[] }) {
+    if (options.jsonColumns) {
+      for (const col of options.jsonColumns) this._jsonColumns.add(col);
+    }
+    if (options.booleanColumns) {
+      for (const col of options.booleanColumns) this._booleanColumns.add(col);
+    }
+    if (options.timestampColumns) {
+      for (const col of options.timestampColumns) this._timestampColumns.add(col);
+    }
+    this._normalizeRow = createRowNormalizer({
+      jsonColumns: this._jsonColumns,
+      booleanColumns: this._booleanColumns,
+      timestampColumns: this._timestampColumns,
     });
   }
 

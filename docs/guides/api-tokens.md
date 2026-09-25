@@ -42,21 +42,38 @@ console.log("Token type:", parsed.type); // "pat"
 ```typescript
 import { apiTokenService } from "mbkauthe/services";
 
-// Create a new API token for a user
-const { token, tokenRecord } = await apiTokenService.createToken("alice", {
-  name: "GitHub Actions CI",
-  scopes: ["portal:build:trigger", "portal:deploy:write"],
-  expiresInDays: 90,
-});
+// 1. Create a new API token for a user with optional role/limit options
+const { token, tokenRecord } = await apiTokenService.createToken(
+  "alice",
+  {
+    name: "GitHub Actions CI",
+    scopes: ["portal:build:trigger", "portal:deploy:write"],
+    expiresInDays: 90,
+  },
+  {
+    userRole: "normaluser",
+    maxTokensPerUser: 10,
+  }
+);
 
 console.log("Raw Bearer Token (display once):", token);
 console.log("Token Record ID:", tokenRecord.id);
 
-// List user tokens
+// 2. Programmatically verify an incoming raw Bearer token
+const verified = await apiTokenService.verifyToken(token);
+console.log("Valid:", verified.valid, "User:", verified.username, "Permissions:", verified.permissions);
+
+// 3. List user tokens
 const tokens = await apiTokenService.listUserTokens("alice");
 
-// Revoke a token
+// 4. Revoke a token
 await apiTokenService.revokeToken(tokenRecord.id, "alice");
+
+// 5. Admin: List tokens for a specific user
+const userTokens = await apiTokenService.listTokensForUserAdmin("alice");
+
+// 6. Admin: Bulk revoke multiple tokens
+const revokedCount = await apiTokenService.bulkRevokeTokens([1, 2, 3]);
 ```
 
 ---
@@ -95,13 +112,20 @@ app.get("/api/deployments", sessVal, permChk("portal:deploy:write"), (req, res) 
 
 ## 4. User and Admin REST Endpoints
 
-MBKAuthe provides endpoints for token management:
+MBKAuthe provides comprehensive REST endpoints for token management:
 
+### User Endpoints
 - `GET /user/api-tokens`: List active tokens for the logged-in user.
 - `POST /api/token`: Create a new PAT with name, scopes, and expiration.
 - `DELETE /api/tokens/:id`: Revoke a PAT owned by the user.
-- `POST /api/tokens/verify`: Test PAT validity programmatically.
+- `POST /api/tokens/verify`: Test PAT validity and view associated scopes.
+
+### Admin Endpoints (Superadmin Only)
 - `GET /dashboard/admin/api-tokens`: Admin dashboard listing all tokens.
-- `GET /api/admin/api-tokens/stats`: Admin token statistics.
-- `DELETE /api/admin/api-tokens/:id`: Admin revocation by ID.
+- `GET /api/admin/api-tokens/stats`: Token metrics (total, active, expired).
+- `GET /api/admin/api-tokens/user/:username`: List tokens for a specific user.
+- `DELETE /api/admin/api-tokens/:id`: Revoke any token by ID.
+- `POST /api/admin/api-tokens/bulk-revoke`: Bulk revoke multiple tokens by ID array (`{ "token_ids": [1, 2, 3] }`).
+- `DELETE /api/admin/api-tokens/user/:username`: Revoke all tokens for a user.
+
 

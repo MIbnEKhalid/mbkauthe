@@ -68,7 +68,7 @@ MBKAuthe provides clean TypeScript subpath exports for modular tree-shaking and 
 | `mbkauthe/core` | Core domain logic: `TokenEngine`, `RoleRegistry`, `AuthorizationService`, `AuthContext`, `authEvents`, `MbkAuthError`, `ErrorCodes`. |
 | `mbkauthe/db` | Database layer: `PostgresAdapter`, `SqliteAdapter`, `dblogin`, `dialect`, `wrapPoolWithRetry`, `BaseRepository`. |
 | `mbkauthe/repositories` | Typed data repositories: `UserRepository`, `SessionRepository`, `PasskeyRepository`, `AuthRepository`, `PermissionRepository`, `ApiTokenRepository`, `OAuthAccountRepository`. |
-| `mbkauthe/services` | Domain services: `AuthService`, `PasskeyService`, `ApiTokenService`, `CliAuthService`, `OAuthService`, `PermissionSyncService`. |
+| `mbkauthe/services` | Domain services: `AuthService`, `PasskeyService`, `ApiTokenService`, `CliAuthService`, `OAuthFlowService`, `AvatarService`, `PermissionSyncService`. |
 | `mbkauthe/oauth` | Provider-neutral OAuth/OIDC engine: `createOAuthFlowService`, `OAuthStateStore`, `OAuthTokenEncryption`. |
 | `mbkauthe/oauth/presets` | Built-in identity provider presets: `googleProvider`, `githubProvider`, `microsoftProvider`, `discordProvider`, `appleProvider`, `customOIDCProvider`. |
 | `mbkauthe/express` | Express router adapter: `createOAuthRouter`. |

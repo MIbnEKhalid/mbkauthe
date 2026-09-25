@@ -46,13 +46,15 @@ Logs out active session and clears session cookies.
 ### `POST /mbkauthe/api/logout-all`
 Destroys all active sessions across all devices for the authenticated user.
 
+### `POST /mbkauthe/api/terminate-all-sessions`
+Administrative endpoint to terminate all active sessions system-wide. Requires superadmin role.
+
 ### `POST /mbkauthe/api/switch-session`
 Switches active account on a multi-session device.
 - **Request Body**:
   ```json
   {
-    "target_username": "bob",
-    "target_sid": "98a7b6c5-4321-..."
+    "target_sid": "98a7b6c5-4321-4def-9abc-1234567890ab"
   }
   ```
 
@@ -61,6 +63,11 @@ Lists all active remembered accounts stored in the device cookie.
 
 ### `POST /mbkauthe/api/logout-account`
 Logs out a specific remembered account from the device without affecting other accounts.
+
+### `GET /avatar/:username`
+Generates an SVG initials avatar or redirects to the user's custom profile avatar.
+- **Query Params**: `size` (optional, default `96`)
+- **Public**: Yes (cached)
 
 ### `POST /mbkauthe/api/checkSession` or `POST /mbkauthe/api/verifySession`
 Validates a session token or current cookie session.
@@ -241,17 +248,20 @@ Accessible to `superadmin` users:
 
 - `GET /dashboard/admin/api-tokens`: Renders token administration dashboard.
 - `GET /api/admin/api-tokens/stats`: Returns token metrics (total, active, expired).
-- `GET /api/admin/api-tokens/:username`: Lists all tokens created by a specific user.
+- `GET /api/admin/api-tokens/user/:username` or `GET /api/admin/api-tokens/:username`: Lists all tokens created by a specific user.
 - `DELETE /api/admin/api-tokens/:id`: Revokes any token by ID.
+- `POST /api/admin/api-tokens/bulk-revoke`: Bulk revokes multiple tokens by ID array (`{ "token_ids": [1, 2, 3] }`).
 - `DELETE /api/admin/api-tokens/user/:username`: Revokes all tokens for a user.
 
 ---
 
 ## 7. RFC 8628 CLI Device Login
 
-### `POST /api/cli/device`
+Mounted under `/mbkauthe/api/cli-auth/*` (with `/api/cli/*` compatibility aliases):
+
+### `POST /mbkauthe/api/cli-auth/device-code` (or `POST /api/cli/device`)
 Initiates a new CLI device authorization session.
-- **Request Body**: `{ "client_name": "My CLI Tool" }`
+- **Request Body**: `{ "client_name": "My CLI Tool", "profile_key": "optional_profile" }`
 - **Response (200 OK)**:
   ```json
   {
@@ -263,15 +273,27 @@ Initiates a new CLI device authorization session.
   }
   ```
 
-### `POST /api/cli/device/token`
+### `POST /mbkauthe/api/cli-auth/poll` (or `POST /api/cli/device/token`)
 CLI polls for authorization status using `device_code`.
+- **Request Body**: `{ "device_code": "d8f7e6..." }`
 - **Response (200 OK)**:
-  - `{ "status": "pending" }` (User hasn't approved yet)
-  - `{ "status": "approved", "token": "mbk_cli_...", "user": { ... } }`
-  - `{ "status": "denied" }`
+  - `{ "success": false, "status": "pending", "interval": 5 }` (User hasn't approved yet)
+  - `{ "success": true, "status": "approved", "token": "mbk_cli_...", "access_token": "mbk_cli_...", "username": "alice" }`
+  - `{ "success": false, "status": "denied", "message": "Login request denied" }`
+  - `{ "success": false, "status": "expired", "message": "Login request expired" }`
 
-### `POST /api/cli/device/approve`
+### `POST /mbkauthe/api/cli-auth/approve` (or `POST /api/cli/device/approve`)
 Approves the CLI session from the browser interface.
+- **Auth Required**: Session Cookie.
+- **Request Body**: `{ "user_code": "RRR2-L9QJ" }`
+
+### `POST /mbkauthe/api/cli-auth/deny`
+Denies the CLI session from the browser interface.
+- **Auth Required**: Session Cookie.
+- **Request Body**: `{ "user_code": "RRR2-L9QJ" }`
+
+### `GET /mbkauthe/cli-auth/verify` & `GET /mbkauthe/cli-auth/success`
+Browser pages for user code entry and confirmation.
 
 ---
 

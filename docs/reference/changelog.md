@@ -4,6 +4,39 @@ All notable changes and architectural releases for MBKAuthe are documented here.
 
 ---
 
+## [6.2.0] - 2026-09-25
+
+### Service Layer Optimization & Flow Refactoring
+- **Centralized Service Layer**: Consolidated business logic from route handlers into dedicated service methods:
+  - `AuthService`: Added `listDeviceAccounts()`, `switchDeviceSession()`, `logoutDeviceAccount()`, `logoutAllDeviceAccounts()`, `validateSession()`, `validateSessionWithSid()`, and administrative `terminateAllSessions()`.
+  - `ApiTokenService`: Added `verifyToken()` for direct programmatic token validation with automatic last-used tracking, `listTokensForUserAdmin()`, `bulkRevokeTokens()`, and enforced user token quotas (`maxTokensPerUser`).
+  - `CliAuthService`: Streamlined RFC 8628 lifecycle with `initiate()`, `poll()`, `approve()`, `deny()`, `findSessionByUserCode()`, and automated stale session expiration.
+  - `OAuthFlowService`: Replaced legacy `OAuthService` export with unified `OAuthFlowService` from the provider-neutral OAuth module.
+- **Database & Query Enhancements**:
+  - `SqliteAdapter`: Added support for positional SQL parameter binding arrays `[...args]` and development query logging hooks.
+  - `BaseRepository`: Enhanced JSON array querying with `_isJsonArrayContains` helper for seamless JSON containment checks across PostgreSQL and SQLite.
+- **View Engine & Template Migration**:
+  - Migrated view templates from `.handlebars` to `.hbs` extension across all pages, modals, and error views.
+  - Updated `scripts/publish.js` and build scripts for packaging `.hbs` template assets.
+- **Official SQL Schema Definitions**:
+  - Added clean standalone DDL files in `docs/schema/postgres.sql` and `docs/schema/sqlite.sql` with full table, index, and trigger specifications.
+- **Admin REST API Extensions**:
+  - Added `POST /api/admin/api-tokens/bulk-revoke` for bulk token invalidation.
+  - Added `GET /api/admin/api-tokens/user/:username` for superadmin user token audits.
+
+---
+
+## [6.1.0] - 2026-09-20
+
+### Device-Based Accounts, Local Protection & Avatar Service
+- **Unified Session Store**: Consolidated session storage into `mbkcore_session` table with optimized indices and reduced query overhead.
+- **Device-Based Multi-Account Management**: Added first-class support for multi-account switching on shared devices, individual account logouts, and device session enumeration.
+- **Local-Only User Guard**: Added `is_local_only` column flag on `mbkcore_users` to restrict test/dev accounts from logging in when `IS_DEPLOYED=true` or in production environments (`LOCAL_USER_PROD_RESTRICTED`).
+- **User Avatar Service**: Added built-in `AvatarService` and `/avatar/:username` endpoint supporting initials SVG generation, custom avatars, and SVG caching.
+- **Performance Optimizations**: Streamlined session validation query counts (single-query auth checks) and improved response serialization.
+
+---
+
 ## [6.0.0] - 2026-09-14
 
 ### Major Architecture Overhaul

@@ -97,30 +97,64 @@ MBKAuthe tracks all active sessions in the database (`mbkcore_session` unified s
 
 ---
 
-## 5. Multi-Account Cookie Management
+## 5. Device-Based Account Management (`AuthService`)
 
-MBKAuthe supports multiple active accounts on a single browser device via the `mbkauth_accounts` cookie:
+MBKAuthe provides comprehensive device session management via `AuthService` and client cookies:
 
 ```typescript
-import {
-  readAccountListFromCookie,
-  upsertAccountListCookie,
-  removeAccountFromCookie,
-  clearAccountListCookie,
-} from "mbkauthe";
+import { authService } from "mbkauthe/services";
 
-// Inspect active accounts on device
-const accounts = readAccountListFromCookie(req);
-console.log("Active accounts on device:", accounts);
+// 1. List all active accounts on a specific device
+const { accounts, current_session_id } = await authService.listDeviceAccounts(deviceId, currentSid);
+
+// 2. Switch device session to a specific remembered account
+const switched = await authService.switchDeviceSession(deviceId, targetSid, currentUserId);
+
+// 3. Logout a single account on this device
+await authService.logoutDeviceAccount(deviceId, targetSid);
+
+// 4. Logout all accounts from this device
+await authService.logoutAllDeviceAccounts(deviceId);
+
+// 5. Check session validity programmatically
+const status = await authService.validateSession(sessionId);
+console.log("Valid:", status.valid, "Expires:", status.expiry);
 ```
 
-### Switching Active Session
+### Switching Active Session via REST API
 
 Send a `POST` request to `/mbkauthe/api/switch-session`:
 
 ```json
 {
-  "target_username": "alice",
-  "target_sid": "98a7b6c5..."
+  "target_sid": "98a7b6c5-4321-4def-9abc-1234567890ab"
 }
+```
+
+---
+
+## 6. Local-Only User Guard
+
+For development and staging workflows, test accounts can be flagged with `is_local_only = true` in the database.
+
+When `IS_DEPLOYED=true` or in production environments:
+- Local-only accounts are **strictly blocked** from authenticating or switching sessions.
+- Login attempts immediately return HTTP 403 with `LOCAL_USER_PROD_RESTRICTED` error code.
+- This prevents accidental leakage or usage of mock/developer credentials in production deployments.
+
+---
+
+## 7. User Avatar Service (`AvatarService`)
+
+MBKAuthe includes a built-in avatar generation and proxy service:
+
+- **Endpoint**: `GET /avatar/:username`
+- If the user has a custom profile image URL, it redirects to the image or delivers the cached asset.
+- If no image is configured, `AvatarService` generates a crisp, personalized SVG avatar using the user's initials with consistent background hashing.
+
+```typescript
+import { avatarService } from "mbkauthe/services";
+
+// Generate SVG string directly
+const svg = avatarService.generateInitialsSvg("Alice Smith", 96);
 ```

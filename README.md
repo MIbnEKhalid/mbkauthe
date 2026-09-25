@@ -151,7 +151,7 @@ import { dblogin, dialect, applySchema, withQueryRetry, BaseRepository, Postgres
 import { userRepository, sessionRepository, passkeyRepository, authRepository, permissionRepository, apiTokenRepository, oAuthAccountRepository } from "mbkauthe/repositories";
 
 // 5. Domain Services
-import { authService, passkeyService, apiTokenService, cliAuthService, oAuthService, syncAppPermissions } from "mbkauthe/services";
+import { authService, passkeyService, apiTokenService, cliAuthService, oAuthFlowService, avatarService, syncAppPermissions } from "mbkauthe/services";
 
 // 6. Provider-Neutral OAuth & Presets
 import { createOAuthFlowService } from "mbkauthe/oauth";

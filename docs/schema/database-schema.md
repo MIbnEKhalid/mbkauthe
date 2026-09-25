@@ -23,6 +23,7 @@ Core user credentials, profiles, and application permissions.
 - `password` (TEXT DEFAULT '12345670') — Legacy password compatibility field
 - `password_hash` (VARCHAR(255)) — Scrypt or PBKDF2 hashed password
 - `is_active` (BOOLEAN DEFAULT false / INTEGER DEFAULT 0) — Account activation state
+- `is_local_only` (BOOLEAN DEFAULT false / INTEGER DEFAULT 0) — Local-only development user guard (restricted from production)
 - `role` (VARCHAR(50) DEFAULT 'normaluser' REFERENCES mbkcore_roles(name))
 - `have_mail_account` (BOOLEAN DEFAULT false / INTEGER DEFAULT 0)
 - `allowed_apps` (JSONB / TEXT DEFAULT '["Portal", "mbkauthe"]') — Permitted ecosystem apps
@@ -182,5 +183,5 @@ Linked third-party OAuth and OIDC provider identities.
 ## DDL Schema Files
 
 The executable DDL scripts can be found in the schema directory:
-- **PostgreSQL**: [`db.sql`](db.sql)
-- **SQLite**: [`db.sqlite.sql`](db.sqlite.sql)
+- **PostgreSQL**: [`postgres.sql`](postgres.sql) (or legacy [`db.sql`](db.sql))
+- **SQLite**: [`sqlite.sql`](sqlite.sql) (or legacy [`db.sqlite.sql`](db.sqlite.sql))

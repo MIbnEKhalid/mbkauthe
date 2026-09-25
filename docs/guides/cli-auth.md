@@ -87,8 +87,52 @@ async function loginCLI() {
     }
   }
 
-  console.error("⌛ Device code expired. Please try again.");
+---
+
+## 4. Programmatic Usage via `CliAuthService`
+
+You can integrate and drive CLI device authentication flows programmatically using `CliAuthService`:
+
+```typescript
+import { cliAuthService } from "mbkauthe/services";
+
+// 1. Initiate a CLI device authorization flow
+const initResult = await cliAuthService.initiate({
+  clientName: "Deploy CLI",
+  profileKey: "default", // optional permission profile key
+});
+
+console.log("Device Code:", initResult.device_code);
+console.log("User Code (formatted):", initResult.user_code); // e.g. "ABCD-1234"
+console.log("Verification URI:", initResult.verification_uri);
+
+// 2. Look up session by user code
+const lookup = await cliAuthService.findSessionByUserCode("ABCD-1234");
+if (lookup) {
+  console.log("Client requesting access:", lookup.session.client_name);
 }
 
-loginCLI();
+// 3. User approves in web browser
+await cliAuthService.approve("ABCD-1234", "alice");
+
+// 4. CLI client polls for authorization token
+const pollResult = await cliAuthService.poll(initResult.device_code);
+if (pollResult.status === "approved") {
+  console.log("Access Token:", pollResult.access_token);
+  console.log("Username:", pollResult.username);
+}
+
+// 5. User denies authorization
+await cliAuthService.deny("ABCD-1234");
 ```
+
+### CLI Polling Lifecycle States
+
+| Status | Meaning | Response Fields |
+|---|---|---|
+| `pending` | Authorization pending user approval. | `{ success: false, status: "pending", interval: 5 }` |
+| `approved` | Authorization approved; single-use token delivered. | `{ success: true, status: "approved", token, access_token, username }` |
+| `completed` | Token was already polled and delivered. | `{ success: false, status: "completed", message: "Token already delivered" }` |
+| `denied` | Authorization denied by user. | `{ success: false, status: "denied", message: "Login request denied" }` |
+| `expired` | Device code or user code expired. | `{ success: false, status: "expired", message: "Login request expired" }` |
+

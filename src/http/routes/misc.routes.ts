@@ -189,7 +189,7 @@ const buildTestViewData = (req: express.Request) => {
 };
 
 router.get(["/test", "/"], sessPerm("basic.access"), LoginLimit, async (req, res) => {
-  return renderPage(req, res, "pages/test.handlebars", false, buildTestViewData(req));
+  return renderPage(req, res, "pages/test.hbs", false, buildTestViewData(req));
 });
 
 router.get("/test.json", sessPerm("basic.access"), LoginLimit, async (req, res) => {
@@ -287,7 +287,7 @@ router.get("/ErrorCode", ensureSession, (req, res) => {
 
     const totalErrors = categoriesWithErrors.reduce((acc, cat) => acc + cat.errors.length, 0);
 
-    return renderPage(req, res, "pages/errorCodes.handlebars", false, {
+    return renderPage(req, res, "pages/errorCodes.hbs", false, {
       pageTitle: "Error Codes",
       appName: mbkautheVar.APP_NAME,
       errorCategories: categoriesWithErrors,
@@ -352,7 +352,7 @@ router.get(["/info", "/i"], ensureSession, LoginLimit, async (req, res) => {
   let latestVersion: string | null = null;
   try { latestVersion = await getLatestVersion(); } catch {}
   try {
-    renderPage(req, res, "pages/info_mbkauthe.handlebars", false, {
+    renderPage(req, res, "pages/info_mbkauthe.hbs", false, {
       mbkautheVar: safe_mbkautheVar,
       CurrentVersion: packageJson.version,
       APP_VERSION: appVersion,

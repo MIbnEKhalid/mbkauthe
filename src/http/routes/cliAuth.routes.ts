@@ -31,7 +31,7 @@ function getBaseUrl(req: express.Request): string {
 }
 
 const renderCliError = (res: express.Response, req: express.Request, message: string) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     pagename: "Approve CLI Login",
     pageTitle: "Approve CLI Login",
     status: "notfound",
@@ -63,7 +63,7 @@ router.get("/mbkauthe/cli/device/:user_code", sessRole("any"), async (req, res) 
     const rawUserCode = Array.isArray(req.params.user_code) ? req.params.user_code[0] : req.params.user_code;
     const { session, profile, user_code, expires_in_seconds } = await cliAuthService.getSessionByUserCode(String(rawUserCode || ""));
 
-    return renderPage(req, res, "cli/device-approval.handlebars", false, {
+    return renderPage(req, res, "cli/device-approval.hbs", false, {
       pagename: "Approve CLI Login",
       pageTitle: "Approve CLI Login",
       ogUrl: `/mbkauthe/cli/device/${user_code}`,

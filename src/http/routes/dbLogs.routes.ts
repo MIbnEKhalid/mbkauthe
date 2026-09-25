@@ -223,7 +223,7 @@ router.get("/db", LogLimit, async (req, res) => {
     const resetDone = req.query.resetDone === "1";
     const successFilter = parseSuccessFilter(req.query.success);
 
-    return renderPage(req, res, "pages/dbLogs.handlebars", false, {
+    return renderPage(req, res, "pages/dbLogs.hbs", false, {
       appName: mbkautheVar.APP_NAME,
       queryLimit,
       resetDone,

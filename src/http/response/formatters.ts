@@ -175,7 +175,7 @@ export interface RenderErrorOptions {
 export const renderError = (res: Response, req: Request, { code, error, message, page, pagename, details }: RenderErrorOptions) => {
   res.status(parseInt(String(code), 10));
   const sanitizedDetails = details !== undefined && details !== null ? sanitizeErrorDetails(details) : undefined;
-  return res.render("Error/dError.handlebars", {
+  return res.render("Error/dError.hbs", {
     layout: false,
     code,
     error,

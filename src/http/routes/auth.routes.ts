@@ -299,7 +299,7 @@ router.get("/2fa", csrfProtection, (req, res) => {
     redirectToUse = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
   }
 
-  return renderPage(req, res, "pages/2fa.handlebars", false, {
+  return renderPage(req, res, "pages/2fa.hbs", false, {
     customURL: redirectToUse,
     csrfToken: (req as any).csrfToken ? (req as any).csrfToken() : "",
     appName: mbkautheVar.APP_NAME,
@@ -484,7 +484,7 @@ router.get("/login", LoginLimit, csrfProtection, (req, res) => {
   const enabledOAuthProviders = getEnabledOAuthProvidersUI(oauthProviders, lastLogin);
   const isAddAccount = req.query.prompt === "add_account";
 
-  return renderPage(req, res, "pages/loginmbkauthe.handlebars", false, {
+  return renderPage(req, res, "pages/loginmbkauthe.hbs", false, {
     githubLoginEnabled: githubEnabled,
     googleLoginEnabled: googleEnabled,
     enabledOAuthProviders,
@@ -512,7 +512,7 @@ router.get("/accounts", LoginLimit, csrfProtection, (req, res) => {
     ? redirectFromQuery
     : mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
 
-  return renderPage(req, res, "pages/accountSwitch.handlebars", false, {
+  return renderPage(req, res, "pages/accountSwitch.hbs", false, {
     customURL: safeRedirect,
     version: packageJson.version,
     appName: mbkautheVar.APP_NAME,

@@ -18,7 +18,7 @@ const renderDevError = (res: express.Response, req: express.Request, code: numbe
 
 // 2FA Preview
 router.get("/2fa", (req, res) =>
-  renderPage(req, res, "pages/2fa.handlebars", false, {
+  renderPage(req, res, "pages/2fa.hbs", false, {
     pagename: "Two-Factor Authentication",
     page: "/home",
   })
@@ -34,7 +34,7 @@ router.get("/showmessage", (req, res) =>
 
 // Account Switch Preview
 router.get(["/accounts", "/switch"], (req, res) =>
-  renderPage(req, res, "pages/accountSwitch.handlebars", false, {
+  renderPage(req, res, "pages/accountSwitch.hbs", false, {
     pagename: "Switch Account",
     page: "/home",
     appName: mbkautheVar.APP_NAME || "portal",
@@ -43,7 +43,7 @@ router.get(["/accounts", "/switch"], (req, res) =>
 
 // Session Test Preview
 router.get("/test", (req, res) =>
-  renderPage(req, res, "pages/test.handlebars", false, {
+  renderPage(req, res, "pages/test.hbs", false, {
     username: "dev.tester",
     full_name: "Developer Tester",
     role: "superadmin",
@@ -95,7 +95,7 @@ router.get("/device-approval/pending", (req, res) => {
     "mbkorg:members:invite", "mbkorg:members:remove", "mbkorg:roles:manage", "mbkorg:billing:view"
   ];
 
-  return renderPage(req, res, "cli/device-approval.handlebars", false, {
+  return renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "pending",
     client_name: "MBK CLI (macOS / arm64)",
     user_code: "WXYZ-9876",
@@ -112,7 +112,7 @@ router.get("/device-approval/pending", (req, res) => {
 });
 
 router.get("/device-approval/approved", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "approved",
     pagename: "Login Approved",
     page: "/home",
@@ -120,7 +120,7 @@ router.get("/device-approval/approved", (req, res) =>
 );
 
 router.get("/device-approval/completed", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "completed",
     pagename: "Token Delivered",
     page: "/home",
@@ -128,7 +128,7 @@ router.get("/device-approval/completed", (req, res) =>
 );
 
 router.get("/device-approval/denied", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "denied",
     pagename: "Login Denied",
     page: "/home",
@@ -136,7 +136,7 @@ router.get("/device-approval/denied", (req, res) =>
 );
 
 router.get("/device-approval/expired", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "expired",
     pagename: "Request Expired",
     page: "/home",
@@ -144,7 +144,7 @@ router.get("/device-approval/expired", (req, res) =>
 );
 
 router.get("/device-approval/notfound", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "notfound",
     error: "This login request could not be found or has already been processed.",
     pagename: "Request Not Found",
@@ -153,7 +153,7 @@ router.get("/device-approval/notfound", (req, res) =>
 );
 
 router.get("/device-approval/unknown", (req, res) =>
-  renderPage(req, res, "cli/device-approval.handlebars", false, {
+  renderPage(req, res, "cli/device-approval.hbs", false, {
     status: "unknown",
     pagename: "Unknown Request",
     page: "/home",

@@ -8,14 +8,14 @@ const router = express.Router();
 router.get("/dashboard/admin/api-tokens", sessRole("superadmin"), async (req, res) => {
   try {
     const tokens = await apiTokenService.listAllTokens();
-    renderPage(req, res, "dashboard/admin/api-tokens.handlebars", true, {
+    renderPage(req, res, "dashboard/admin/api-tokens.hbs", true, {
       page: "Admin API Tokens",
       tokens,
       totalTokens: tokens.length,
     });
   } catch (error) {
     console.error("Error fetching API tokens:", error);
-    renderPage(req, res, "dashboard/admin/api-tokens.handlebars", true, {
+    renderPage(req, res, "dashboard/admin/api-tokens.hbs", true, {
       page: "Admin API Tokens",
       tokens: [],
       totalTokens: 0,

@@ -54,7 +54,8 @@ app.set('views', [
   viewsPath,
   path.join(__dirname, '../../views')
 ]);
-app.engine('handlebars', engine({
+app.engine('hbs', engine({
+  extname: '.hbs',
   defaultLayout: false,
   cache: true,
   partialsDir: [
@@ -63,7 +64,7 @@ app.engine('handlebars', engine({
   ],
   helpers: handlebarsHelpers
 }));
-app.set('view engine', 'handlebars');
+app.set('view engine', 'hbs');
 app.use(router);
 
 const shouldSilenceConsole = (args) => {

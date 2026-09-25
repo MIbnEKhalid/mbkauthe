@@ -54,7 +54,7 @@ router.get("/user/api-tokens", sessRole("any"), async (req, res) => {
       console.error("Error loading grantable permissions:", permErr);
     }
 
-    renderPage(req, res, "settings/api-tokens.handlebars", true, {
+    renderPage(req, res, "settings/api-tokens.hbs", true, {
       page: "API Tokens",
       tokens,
       username,

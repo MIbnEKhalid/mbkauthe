@@ -66,7 +66,8 @@ const handlebarsHelpers = {
 
 const app = express();
 app.set('views', [viewsPath]);
-app.engine('handlebars', engine({
+app.engine('hbs', engine({
+  extname: '.hbs',
   defaultLayout: false,
   cache: true,
   partialsDir: [
@@ -75,7 +76,7 @@ app.engine('handlebars', engine({
   ],
   helpers: handlebarsHelpers
 }));
-app.set('view engine', 'handlebars');
+app.set('view engine', 'hbs');
 app.use(router);
 
 // ---- console silencing (same pattern as test.spec.js) ----

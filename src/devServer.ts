@@ -26,8 +26,9 @@ const port = parseInt(process.env.PORT || "5555", 10);
 const app = express();
 
 app.engine(
-  "handlebars",
+  "hbs",
   engine({
+    extname: ".hbs",
     helpers: commonHandlebarsHelpers,
     defaultLayout: "main",
     layoutsDir: path.join(rootDir, "views", "layouts"),
@@ -39,7 +40,7 @@ app.engine(
   })
 );
 
-app.set("view engine", "handlebars");
+app.set("view engine", "hbs");
 app.set("views", path.join(rootDir, "views"));
 
 app.use("/public", express.static(path.join(rootDir, "public")));

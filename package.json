@@ -1,6 +1,6 @@
 {
   "name": "mbkauthe",
-  "version": "6.2.1",
+  "version": "6.2.2",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "./dist/index.js",
   "type": "module",
@@ -111,7 +111,7 @@
   "dependencies": {
     "@simplewebauthn/server": "^14.0.2",
     "admindb": "^2.2.1",
-    "better-sqlite3": "^11.9.1",
+    "better-sqlite3": "13.0.3",
     "connect-pg-simple": "^10.0.0",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",

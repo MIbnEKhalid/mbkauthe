@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS, checkPermission, checkRolePermission, permissionMatches, AuthorizationService, defaultRoleRegistry, RoleRegistry, ensureSession, ensureSessionAsync, hasSessionCookie } from "../../dist/index.js";
+import { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS, checkPermission, checkRolePermission, permissionMatches, AuthorizationService, RoleRegistry, ensureSession, ensureSessionAsync, hasSessionCookie } from "../../dist/index.js";
 
 describe("Authentication & Authorization Speed Optimizations", () => {
   describe("Superadmin Zero-DB Fast Path", () => {

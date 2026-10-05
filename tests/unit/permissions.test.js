@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { definePermissions, hasPermission, permissionMatches, normalizePermissions, buildEffectivePermissions, collectPermissions, collectRoles, intersectPermissions, defineGlobalPermissions, GlobalPermissions, resolvePermission, RoleRegistry, defaultRoleRegistry, mbkautheVar } from "../../dist/index.js";
+import { definePermissions, hasPermission, buildEffectivePermissions, collectPermissions, collectRoles, intersectPermissions, defineGlobalPermissions, GlobalPermissions, resolvePermission, RoleRegistry, mbkautheVar } from "../../dist/index.js";
 
 describe("definePermissions", () => {
   it("resolves nested service/action access to app:service:action strings", () => {

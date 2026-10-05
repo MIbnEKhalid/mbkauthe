@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AuthContext, createAuthContext, createAnonymousContext, createSessionAuthContext, createTokenAuthContext, principalFromUser, AuthorizationService, authorizationService, RoleRegistry } from "../../dist/index.js";
+import { createAnonymousContext, createSessionAuthContext, createTokenAuthContext, principalFromUser, AuthorizationService, RoleRegistry } from "../../dist/index.js";
 
 describe("AuthContext and Principal Model", () => {
   it("creates an anonymous context with isAuthenticated = false", () => {

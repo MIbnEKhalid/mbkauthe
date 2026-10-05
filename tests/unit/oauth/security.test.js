@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { OAuthFlowService } from "../../../src/oauth/OAuthFlowService.js";
 import { MemoryOAuthStateStore } from "../../../src/oauth/state/OAuthStateStore.js";
 

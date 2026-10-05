@@ -65,20 +65,18 @@ app.get(["/dashboard", "/home"], (req, res) => res.redirect("/mbkauthe/"));
 app.use(mbkautheRouter);
 
 // 404 Page Controller for Development Server
-app.use(
-  createNotFoundHandler({
-    defaultPage: "/mbkauthe/login",
-    defaultPageName: "Login Portal",
-  })
+app.use(createNotFoundHandler({
+  defaultPage: "/mbkauthe/login",
+  defaultPageName: "Login Portal",
+})
 );
 
 // 500 Error Controller
-app.use(
-  createErrorHandler({
-    appName: mbkautheVar.APP_NAME,
-    defaultPage: "/mbkauthe/login",
-    defaultPageName: "Login Portal",
-  })
+app.use(createErrorHandler({
+  appName: mbkautheVar.APP_NAME,
+  defaultPage: "/mbkauthe/login",
+  defaultPageName: "Login Portal",
+})
 );
 
 app.listen(port, () => {

@@ -9,7 +9,7 @@ export const ALL_PERMISSIONS_KEY = "__permissions";
 export const ROLES_KEY = "__roles";
 
 export function resolveAppKey(appKey: string | null = null, fallbackAppKey: string | null = null): string {
-  const resolved = normalizePermission(appKey || mbkautheVar.APP_NAME || fallbackAppKey || "");
+  const resolved = normalizePermission(appKey || fallbackAppKey || mbkautheVar.APP_NAME || "");
   if (!resolved) {
     throw new Error(
       "[mbkauthe] definePermissions/syncAppPermissions requires an app key. Set APP_NAME (mbkautheVar.APP_NAME), pass the `appKey` option, or provide `fallbackAppKey`."

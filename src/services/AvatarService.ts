@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { authRepository } from "../db/repositories/AuthRepository.js";
-import { isSafeFetchUrl } from "../http/utils/urlSafety.js";
+import { isSafeFetchUrl } from "mbkutils";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

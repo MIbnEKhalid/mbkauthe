@@ -1,13 +1,13 @@
 {
   "name": "mbkauthe",
-  "version": "6.2.4",
+  "version": "6.3.0",
   "description": "MBKTech's reusable authentication system for Node.js applications.",
   "main": "./dist/index.js",
   "type": "module",
   "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "tsx src/devServer.ts",
-    "build": "tsc && node scripts/minify.js",
+    "build": "node scripts/clean.js && tsc && node scripts/minify.js",
     "publish": "node scripts/publish.js",
     "create-tables": "node dist/db/schema/createTable.js",
     "test": "vitest run",
@@ -35,10 +35,6 @@
       "types": "./dist/http/middleware/index.d.ts",
       "default": "./dist/http/middleware/index.js"
     },
-    "./utils": {
-      "types": "./dist/http/response/index.d.ts",
-      "default": "./dist/http/response/index.js"
-    },
     "./services": {
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"
@@ -50,10 +46,6 @@
     "./diagnostics": {
       "types": "./dist/diagnostics/index.d.ts",
       "default": "./dist/diagnostics/index.js"
-    },
-    "./response": {
-      "types": "./dist/http/response/index.d.ts",
-      "default": "./dist/http/response/index.js"
     },
     "./oauth": {
       "types": "./dist/oauth/index.d.ts",
@@ -123,6 +115,7 @@
     "express-rate-limit": "^8.7.0",
     "express-session": "^1.18.1",
     "jose": "^6.2.12",
+    "mbkutils": "latest",
     "pg": "^8.23.1",
     "speakeasy": "^2.0.0"
   },

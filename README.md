@@ -160,8 +160,8 @@ import { googleProvider, githubProvider, microsoftProvider, discordProvider, app
 // 7. Express Routers & Adapters
 import { createOAuthRouter } from "mbkauthe/express";
 
-// 8. Response Formatters & Envelopes
-import { sendSuccess, sendError, renderPage, renderError, isJsonRequest } from "mbkauthe/response";
+// 8. Shared Utilities & Response Envelopes (via mbkutils)
+import { sendSuccess, sendError, renderPage, renderError, isJsonRequest, createNotFoundHandler, createErrorHandler } from "mbkutils";
 
 // 9. Diagnostics & Health Reporting
 import { getAuthHealthReport } from "mbkauthe/diagnostics";

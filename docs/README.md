@@ -73,6 +73,5 @@ MBKAuthe provides clean TypeScript subpath exports for modular tree-shaking and 
 | `mbkauthe/oauth/presets` | Built-in identity provider presets: `googleProvider`, `githubProvider`, `microsoftProvider`, `discordProvider`, `appleProvider`, `customOIDCProvider`. |
 | `mbkauthe/express` | Express router adapter: `createOAuthRouter`. |
 | `mbkauthe/middleware` | HTTP middleware: `validateSession`, `checkPermission`, `securityHeadersMiddleware`, `corsMiddleware`. |
-| `mbkauthe/response` | Response formatters & handlers: `sendSuccess`, `sendError`, `renderPage`, `renderError`, `isJsonRequest`. |
 | `mbkauthe/diagnostics` | Real-time diagnostic reporting: `getAuthHealthReport`, `AuthHealthStatus`. |
 | `mbkauthe/config` | Configuration & security: `mbkautheVar`, `hashPassword`, `verifyPassword`, `encryptSessionId`, `decryptSessionId`. |

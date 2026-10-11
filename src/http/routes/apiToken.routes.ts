@@ -1,5 +1,5 @@
 import express from "express";
-import { renderError, renderPage } from "../response/formatters.js";
+import { renderError, renderPage } from "mbkutils";
 import { sessRole, sessPerm } from "../middleware/authMiddleware.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 import { apiTokenService } from "../../services/ApiTokenService.js";

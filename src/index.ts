@@ -189,15 +189,9 @@ export * from "./core/types/index.js";
 export { ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError } from "./core/errors/catalog.js";
 export { MbkAuthError } from "./core/errors/MbkAuthError.js";
 
-// 10. HTTP Response, UI & Helpers
-export { commonHandlebarsHelpers, handlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
-export { isJsonRequest } from "./http/response/contentNegotiation.js";
-export { sendSuccess, sendError, renderPage, renderError, getUserContext, sanitizeErrorDetails } from "./http/response/formatters.js";
-export { createErrorHandler, createNotFoundHandler, proxycall } from "./http/response/handlers.js";
-export { isSafeFetchUrl } from "./http/utils/urlSafety.js";
-export { isSafeRelativeRedirect, sanitizeRelativeRedirect } from "./http/utils/redirect.js";
+// 10. Auth UI Helpers & Access
+export { authHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
 export { isUserAuthorizedForApp } from "./http/utils/appAccess.js";
-export { createLogger, logDebug } from "./utils/logger.js";
 export { extractAuthorizationToken, timingSafeTokenMatch } from "./core/tokens/index.js";
 
 // 11. HTTP & Express Middleware
@@ -243,24 +237,6 @@ export { dbLogsRouter } from "./http/routes/dbLogs.routes.js";
 export { devRouter } from "./http/routes/dev.routes.js";
 export { createMbkautheApp, mbkautheApp } from "./http/app.js";
 
-// 13. Legacy mbkauthShared compatibility object
-import { commonHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
-import { isJsonRequest } from "./http/response/contentNegotiation.js";
-import { sendSuccess, sendError, renderPage, renderError, sanitizeErrorDetails } from "./http/response/formatters.js";
-import { createErrorHandler, createNotFoundHandler } from "./http/response/handlers.js";
-
-export const mbkauthShared = {
-  commonHandlebarsHelpers,
-  renderPage,
-  renderError,
-  createNotFoundHandler,
-  createErrorHandler,
-  sendSuccess,
-  sendError,
-  isJsonRequest,
-  sanitizeErrorDetails,
-};
-
-// 14. Default export: Main Express application router
+// 13. Default export: Main Express application router
 import defaultApp from "./http/app.js";
 export default defaultApp;

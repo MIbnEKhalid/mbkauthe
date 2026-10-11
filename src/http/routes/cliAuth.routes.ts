@@ -1,7 +1,7 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { sessRole } from "../middleware/authMiddleware.js";
-import { renderPage } from "../response/formatters.js";
+import { renderPage } from "mbkutils";
 import { cliAuthService } from "../../services/CliAuthService.js";
 import { mbkautheVar } from "../../config/env.js";
 import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
@@ -17,7 +17,7 @@ const createCliLimit = (max: number, windowMs = 60 * 1000) =>
     standardHeaders: true,
     legacyHeaders: false,
     validate: { xForwardedForHeader: false, trustProxy: false },
-    keyGenerator: (req) => req.ip || (req.socket?.remoteAddress) || "unknown",
+    keyGenerator: (req) => ipKeyGenerator(req.ip || (req.socket?.remoteAddress) || "unknown"),
   });
 
 const deviceRequestLimit = createCliLimit(20);
@@ -137,4 +137,3 @@ router.post("/api/cli/device/token", devicePollLimit, async (req, res) => {
 
 export const cliAuthRouter = router;
 export default router;
-

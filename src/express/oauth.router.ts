@@ -5,12 +5,10 @@
  */
 
 import express, { Router, type Request, type Response, type NextFunction } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { OAuthFlowService, oAuthFlowService } from "../oauth/OAuthFlowService.js";
 import { completeLoginProcess } from "../http/session/authFlow.js";
-import { sanitizeRelativeRedirect, isSafeRelativeRedirect } from "../http/utils/redirect.js";
-import { renderError, sendSuccess, sendError } from "../http/response/formatters.js";
-import { isJsonRequest } from "../http/response/contentNegotiation.js";
+import { sanitizeRelativeRedirect, isSafeRelativeRedirect, renderError, sendSuccess, sendError, isJsonRequest } from "mbkutils";
 import { createLogger } from "../utils/logger.js";
 import { mbkautheVar } from "../config/index.js";
 
@@ -41,7 +39,7 @@ export function createOAuthRouter(
     legacyHeaders: false,
     message: { success: false, message: "Too many OAuth requests, please try again later" },
     validate: { xForwardedForHeader: false, trustProxy: false },
-    keyGenerator: (req) => req.ip || (req.socket?.remoteAddress) || "unknown",
+    keyGenerator: (req) => ipKeyGenerator(req.ip || (req.socket?.remoteAddress) || "unknown"),
   });
 
   // Helper to build callback URL for a provider

@@ -1,6 +1,5 @@
 import request from 'supertest';
 import express from 'express';
-import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFile } from 'fs/promises';
@@ -47,36 +46,22 @@ const {
   ErrorCodes,
 } = await import('../../dist/index.js');
 
+import { setupViewEngine } from 'mbkutils';
+
 const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
 
 const viewsPath = path.join(__dirname, '../../views');
 
-const handlebarsHelpers = {
-  eq: (a, b) => a === b,
-  encodeURIComponent: (str) => encodeURIComponent(str),
-  formatTimestamp: (timestamp) => new Date(timestamp).toLocaleString(),
-  jsonStringify: (context) => JSON.stringify(context),
-  json: (obj) => JSON.stringify(obj, null, 2),
-  objectEntries: (obj) => {
-    if (!obj || typeof obj !== 'object') return [];
-    return Object.entries(obj).map(([key, value]) => ({ key, value }));
-  },
-  cacheBuster: () => `?v=${packageJson.version}`
-};
-
 const app = express();
-app.set('views', [viewsPath]);
-app.engine('hbs', engine({
-  extname: '.hbs',
+setupViewEngine(app, {
+  rootDir: path.resolve(__dirname, '../../'),
+  viewsDir: viewsPath,
   defaultLayout: false,
   cache: true,
-  partialsDir: [
-    viewsPath,
-    path.join(viewsPath, 'Error'),
-  ],
-  helpers: handlebarsHelpers
-}));
-app.set('view engine', 'hbs');
+  helpers: {
+    cacheBust: () => `?v=${packageJson.version}`
+  }
+});
 app.use(router);
 
 // ---- console silencing (same pattern as test.spec.js) ----
@@ -994,4 +979,3 @@ describe('Session Origin and Local-Only User Restrictions', () => {
     }
   });
 });
-

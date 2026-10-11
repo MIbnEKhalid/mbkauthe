@@ -1,6 +1,5 @@
 import request from 'supertest';
 import express from 'express';
-import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { vi } from 'vitest';
@@ -13,6 +12,8 @@ process.env.env = 'dev';
 process.env.dbLogs = 'true';
 process.env.dbLogsCallsite = 'false';
 delete process.env.mbkauthShared;
+
+import { isSafeRelativeRedirect, sanitizeRelativeRedirect, isSafeFetchUrl, setupViewEngine } from 'mbkutils';
 
 const {
   default: router,
@@ -27,44 +28,22 @@ const {
   resetQueryCount,
   resetQueryLog,
   runWithRequestContext,
-  isSafeRelativeRedirect,
-  sanitizeRelativeRedirect,
-  isSafeFetchUrl,
   hashPassword,
   verifyPassword,
 } = await import('../../dist/index.js');
 
 const viewsPath = path.join(__dirname, '../../views');
 
-const handlebarsHelpers = {
-  eq: (a, b) => a === b,
-  encodeURIComponent: (str) => encodeURIComponent(str),
-  formatTimestamp: (timestamp) => new Date(timestamp).toLocaleString(),
-  jsonStringify: (context) => JSON.stringify(context),
-  json: (obj) => JSON.stringify(obj, null, 2),
-  objectEntries: (obj) => {
-    if (!obj || typeof obj !== 'object') return [];
-    return Object.entries(obj).map(([key, value]) => ({ key, value }));
-  },
-  cacheBuster: () => `?v=${packageJson.version}`
-};
-
 const app = express();
-app.set('views', [
-  viewsPath,
-  path.join(__dirname, '../../views')
-]);
-app.engine('hbs', engine({
-  extname: '.hbs',
+setupViewEngine(app, {
+  rootDir: path.resolve(__dirname, '../../'),
+  viewsDir: viewsPath,
   defaultLayout: false,
   cache: true,
-  partialsDir: [
-    viewsPath,
-    path.join(viewsPath, 'Error'),
-  ],
-  helpers: handlebarsHelpers
-}));
-app.set('view engine', 'hbs');
+  helpers: {
+    cacheBust: () => `?v=${packageJson.version}`
+  }
+});
 app.use(router);
 
 const shouldSilenceConsole = (args) => {

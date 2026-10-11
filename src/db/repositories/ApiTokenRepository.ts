@@ -8,6 +8,7 @@
 import { BaseRepository, BaseRepositoryOptions } from "./BaseRepository.js";
 import { dblogin, dialect } from "../pool.js";
 import type { ApiTokenRecord, ApiTokenStats } from "../../core/types/token.types.js";
+import { formatDateTimeIso } from "mbkutils";
 
 function parsePermissions(value: unknown): Record<string, unknown> | unknown[] {
   if (Array.isArray(value) || (value && typeof value === "object")) return value as Record<string, unknown>;
@@ -38,13 +39,6 @@ const normalizeToken = (row: any): ApiTokenRecord | null => {
   };
 };
 
-function formatDateTime(value: Date | string | null | undefined): string {
-  if (!value) return "";
-  const d = value instanceof Date ? value : new Date(value);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 
 export class ApiTokenRepository extends BaseRepository {
   constructor(options: BaseRepositoryOptions = {}) {
@@ -255,8 +249,8 @@ export class ApiTokenRepository extends BaseRepository {
       const perms = parsePermissions(row.permissions);
       return {
         ...row,
-        formatted_created: formatDateTime(created),
-        formatted_expires: formatDateTime(expires),
+        formatted_created: formatDateTimeIso(created),
+        formatted_expires: formatDateTimeIso(expires),
         is_active: !expires || expires > now,
         permissions: perms,
         token_permissions: parsePermissionList(perms),

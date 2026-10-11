@@ -1,12 +1,8 @@
-import dotenv from "dotenv";
-import createDebug from "debug";
+import { createLogger as baseCreateLogger } from "mbkutils";
+import type { Debugger } from "debug";
 
-dotenv.config();
+export const createLogger = (namespace: string = ""): Debugger => {
+  return baseCreateLogger(namespace ? `authe:${namespace}` : "authe") as Debugger;
+};
 
-const debugPattern = process.env.DEBUG || process.env.debug || "";
-if (debugPattern) {
-  createDebug.enable(debugPattern);
-}
-
-export const createLogger = (namespace: string = "") => createDebug(`mbkauthe${namespace ? `:${namespace}` : ""}`);
-export const logDebug = createLogger();
+export const logDebug: Debugger = createLogger();

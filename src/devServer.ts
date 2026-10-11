@@ -8,13 +8,12 @@ process.env.dbLogs = process.env.dbLogs || "false";
 
 import express from "express";
 import cookieParser from "cookie-parser";
-import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 import mbkautheRouter from "./http/app.js";
-import { commonHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
+import { authHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
+import { setupViewEngine, createNotFoundHandler, createErrorHandler } from "mbkutils";
 import { mbkautheVar } from "./config/env.js";
-import { createNotFoundHandler, createErrorHandler } from "./http/response/handlers.js";
 import { apiTokensRouter } from "./http/routes/apiToken.routes.js";
 import { adminApiTokensRouter } from "./http/routes/adminApiToken.routes.js";
 import { devRouter } from "./http/routes/dev.routes.js";
@@ -25,23 +24,12 @@ const port = parseInt(process.env.PORT || "5555", 10);
 
 const app = express();
 
-app.engine(
-  "hbs",
-  engine({
-    extname: ".hbs",
-    helpers: commonHandlebarsHelpers,
-    defaultLayout: "main",
-    layoutsDir: path.join(rootDir, "views", "layouts"),
-    partialsDir: [
-      path.join(rootDir, "views", "partials"),
-      path.join(rootDir, "views"),
-      path.join(rootDir, "views", "Error"),
-    ],
-  })
-);
-
-app.set("view engine", "hbs");
-app.set("views", path.join(rootDir, "views"));
+setupViewEngine(app, {
+  rootDir,
+  viewsDir: path.join(rootDir, "views"),
+  defaultLayout: "main",
+  helpers: authHandlebarsHelpers,
+});
 
 app.use("/public", express.static(path.join(rootDir, "public")));
 app.use("/assets", express.static(path.join(rootDir, "public")));

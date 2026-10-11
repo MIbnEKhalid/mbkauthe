@@ -15,7 +15,7 @@ import { completeLoginProcess, invalidateAvatarCache, fetchActiveSession, invali
 import { createLogger } from "../../utils/logger.js";
 import { isOAuthProviderConfigured, getEnabledOAuthProvidersUI } from "../../oauth/providers/loader.js";
 import { ensureSession } from "../middleware/security.js";
-import { renderPage } from "../response/formatters.js";
+import { renderPage } from "mbkutils";
 
 const router = express.Router();
 

@@ -135,10 +135,10 @@ export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";
 export {
   normalizePermission,
   resolvePermission,
-  splitPermission,
+  resolvePermissionId,
+  permissionIdMatches,
   permissionMatches,
   matchPermission,
-  compilePermissionPattern,
   normalizePermissions,
 } from "./core/permissions/matcher.js";
 export {

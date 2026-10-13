@@ -85,7 +85,7 @@ describe("AuthContext and Principal Model", () => {
 describe("AuthorizationService — Pure Authorization Decisions", () => {
   const customRegistry = new RoleRegistry();
   customRegistry.setRole("editor", ["blog:posts:create", "blog:posts:edit", "blog:posts:view"]);
-  customRegistry.setRole("admin", ["blog:*:*"]);
+  customRegistry.setRole("admin", ["blog:posts:create", "blog:posts:edit", "blog:posts:view", "blog:posts:delete", "blog:comments:ban"]);
   const authz = new AuthorizationService(customRegistry);
 
   describe("Role checks", () => {
@@ -119,7 +119,7 @@ describe("AuthorizationService — Pure Authorization Decisions", () => {
       expect(authz.hasPermission(user, "blog:posts:delete")).toBe(false);
     });
 
-    it("evaluates wildcard permissions", () => {
+    it("evaluates admin role permissions", () => {
       const adminUser = createSessionAuthContext({ username: "charlie", role: "admin" });
       expect(authz.hasPermission(adminUser, "blog:posts:delete")).toBe(true);
       expect(authz.hasPermission(adminUser, "blog:comments:ban")).toBe(true);

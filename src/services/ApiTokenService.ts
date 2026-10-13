@@ -23,7 +23,7 @@ export interface CreateTokenOptions {
 export interface VerifyTokenResult {
   valid: boolean;
   username: string;
-  permissions: string[];
+  permissions: (string | number)[];
 }
 
 export class ApiTokenService {

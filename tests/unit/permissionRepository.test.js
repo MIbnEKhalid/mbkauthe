@@ -86,7 +86,9 @@ describe("PermissionRepository — roles", () => {
 
     await repo.setRolePermissions("manager", ["blog:posts:create", "blog:posts:publish"]);
     const manager = await repo.getRoleByName("manager");
-    expect(manager.permissions).toEqual(["blog:posts:create", "blog:posts:publish"]);
+    const pCreate = (await repo.lookupCatalogPermission("blog:posts:create")).id;
+    const pPublish = (await repo.lookupCatalogPermission("blog:posts:publish")).id;
+    expect(manager.permissions).toEqual([pCreate, pPublish]);
 
     await repo.deleteRole("editor");
     expect(await repo.getRoleByName("editor")).toBe(null);
@@ -97,9 +99,14 @@ describe("PermissionRepository — roles", () => {
     await repo.contributeRolePermissions("editor", ["blog:posts:create", "blog:posts:edit"]);
     await repo.contributeRolePermissions("editor", ["chat:messages:send", "chat:files:upload"]);
 
+    const pCreate = (await repo.lookupCatalogPermission("blog:posts:create")).id;
+    const pEdit = (await repo.lookupCatalogPermission("blog:posts:edit")).id;
+    const pSend = (await repo.lookupCatalogPermission("chat:messages:send")).id;
+    const pUpload = (await repo.lookupCatalogPermission("chat:files:upload")).id;
+
     const editor = await repo.getRoleByName("editor");
     expect(editor.permissions).toEqual(
-      expect.arrayContaining(["blog:posts:create", "blog:posts:edit", "chat:messages:send", "chat:files:upload"])
+      expect.arrayContaining([pCreate, pEdit, pSend, pUpload])
     );
   });
 });
@@ -113,14 +120,20 @@ describe("PermissionRepository — overrides", () => {
     await repo.setOverride("alice", "blog:posts:archive", "allow", "admin");
     await repo.setOverride("bob", "blog:posts:create", "allow", "admin");
 
+    const pArchive = (await repo.lookupCatalogPermission("blog:posts:archive")).id;
+    const pDelete = (await repo.lookupCatalogPermission("blog:posts:delete")).id;
+    const pCreate = (await repo.lookupCatalogPermission("blog:posts:create")).id;
+
     let overrides = await repo.listOverridesForUser("alice");
     expect(overrides).toHaveLength(2);
-    expect(overrides.map((o) => o.permission)).toEqual(["blog:posts:archive", "blog:posts:delete"]);
+    expect(overrides.map((o) => o.permission_id)).toEqual(
+      expect.arrayContaining([pArchive, pDelete])
+    );
 
     // Upsert existing override.
     await repo.setOverride("alice", "blog:posts:delete", "allow", "admin");
     overrides = await repo.listOverridesForUser("alice");
-    expect(overrides.find((o) => o.permission === "blog:posts:delete").effect).toBe("allow");
+    expect(overrides.find((o) => o.permission_id === pDelete).effect).toBe("allow");
 
     await repo.removeOverride("alice", "blog:posts:delete");
     overrides = await repo.listOverridesForUser("alice");
@@ -130,6 +143,7 @@ describe("PermissionRepository — overrides", () => {
     expect(await repo.listOverridesForUser("alice")).toHaveLength(0);
     // Bob unaffected.
     expect(await repo.listOverridesForUser("bob")).toHaveLength(1);
+    expect(overrides.find((o) => o.permission_id === pCreate)).toBeUndefined();
   });
 });
 
@@ -142,18 +156,19 @@ describe("PermissionRepository — effective permissions for a user", () => {
     await repo.setOverride("alice", "blog:posts:archive", "allow", "admin");
     await repo.setOverride("alice", "blog:posts:delete", "deny", "admin");
 
+    const pCreate = (await repo.lookupCatalogPermission("blog:posts:create")).id;
+    const pEdit = (await repo.lookupCatalogPermission("blog:posts:edit")).id;
+    const pPublish = (await repo.lookupCatalogPermission("blog:posts:publish")).id;
+    const pArchive = (await repo.lookupCatalogPermission("blog:posts:archive")).id;
+    const pDelete = (await repo.lookupCatalogPermission("blog:posts:delete")).id;
+
     const snapshot = await repo.computeEffectiveForUser("alice");
     expect(snapshot.roles).toContain("manager");
     expect(snapshot.effective.allows).toEqual(
-      expect.arrayContaining([
-        "blog:posts:create",
-        "blog:posts:edit",
-        "blog:posts:publish",
-        "blog:posts:archive",
-      ])
+      expect.arrayContaining([pCreate, pEdit, pPublish, pArchive])
     );
-    expect(snapshot.effective.allows).not.toContain("blog:posts:delete");
-    expect(snapshot.effective.denies).toContain("blog:posts:delete");
+    expect(snapshot.effective.allows).not.toContain(pDelete);
+    expect(snapshot.effective.denies).toContain(pDelete);
     expect(snapshot.perm_version).toBeGreaterThanOrEqual(1);
   });
 
@@ -203,7 +218,11 @@ describe("syncAppPermissions integration", () => {
 
     const editorRole = await repo.getRoleByName("editor");
     expect(editorRole.permissions).toEqual(
-      expect.arrayContaining(["blog:posts:create", "blog:posts:edit", "blog:comments:moderate"])
+      expect.arrayContaining([
+        Permissions.posts.create.id,
+        Permissions.posts.edit.id,
+        Permissions.comments.moderate.id,
+      ])
     );
 
     let catalog = await repo.listCatalogByApp("blog");

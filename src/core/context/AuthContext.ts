@@ -21,13 +21,13 @@ export interface AuthPrincipal {
   allowed_apps?: string[];
   user_allowed_apps?: string[];
   overrides?: {
-    allows: string[];
-    denies: string[];
+    allows: number[];
+    denies: number[];
   };
   permissions?: {
-    allows?: string[];
-    denies?: string[];
-  } | string[] | Record<string, boolean>;
+    allows?: number[];
+    denies?: number[];
+  } | number[] | Record<string, any>;
   [key: string]: any;
 }
 
@@ -176,11 +176,11 @@ export function principalFromUser(user: any): AuthPrincipal {
     allowedApps = user.user_allowed_apps.map((a: any) => String(a).trim().toLowerCase()).filter(Boolean);
   }
 
-  let overrides: { allows: string[]; denies: string[] } | undefined;
+  let overrides: { allows: number[]; denies: number[] } | undefined;
   if (user.overrides && typeof user.overrides === "object") {
     overrides = {
-      allows: Array.isArray(user.overrides.allows) ? user.overrides.allows.map(String) : [],
-      denies: Array.isArray(user.overrides.denies) ? user.overrides.denies.map(String) : [],
+      allows: Array.isArray(user.overrides.allows) ? user.overrides.allows.map((id: any) => Number(id)).filter((id: number) => id > 0) : [],
+      denies: Array.isArray(user.overrides.denies) ? user.overrides.denies.map((id: any) => Number(id)).filter((id: number) => id > 0) : [],
     };
   }
 

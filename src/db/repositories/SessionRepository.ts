@@ -114,7 +114,6 @@ export class SessionRepository extends BaseRepository {
     const configuredMax = Number.isInteger(maxSessions) && maxSessions > 0 ? maxSessions : 5;
 
     return this.withTransaction(async (txRepo: any) => {
-      await txRepo.advisoryTransactionLock(`sessions:${username}`, "lock-user-sessions");
       const currentSessions = await txRepo.cleanupAndCountUserSessions(username);
       if (currentSessions >= configuredMax) {
         const sessionsToDelete = currentSessions - configuredMax + 1;

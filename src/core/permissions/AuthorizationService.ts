@@ -1,6 +1,6 @@
 /**
- * MBKAuthe — Dedicated Pure Authorization Service
- * Responsible for all authorization decisions: Roles, Permissions, Policies, and App Access.
+ * MBKAuthe — Pure Numeric Authorization Service
+ * Responsible for all authorization decisions: Roles, Numeric Permissions, Policies, and App Access.
  * Consumes an AuthContext or AuthPrincipal without performing authentication or database calls.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
@@ -8,7 +8,8 @@
 
 import { AuthContext, AuthPrincipal, principalFromUser } from "../context/AuthContext.js";
 import { RoleRegistry, defaultRoleRegistry, SUPERADMIN_ROLE } from "./roleRegistry.js";
-import { resolvePermission, permissionMatches, normalizePermission } from "./matcher.js";
+import { resolvePermissionId } from "./matcher.js";
+import type { PermissionTarget } from "../types/permission.types.js";
 import { mbkautheVar } from "../../config/index.js";
 
 export type PolicyFn = (context: AuthContext) => boolean | Promise<boolean>;
@@ -90,7 +91,7 @@ export class AuthorizationService {
   }
 
   /**
-   * Checks if the principal has a explicitly forbidden/denied role.
+   * Checks if the principal has an explicitly forbidden/denied role.
    */
   isRoleDenied(target: AuthContext | AuthPrincipal | any, notAllowedRole?: string | null): boolean {
     if (!notAllowedRole || typeof notAllowedRole !== "string") return false;
@@ -106,11 +107,11 @@ export class AuthorizationService {
   }
 
   /**
-   * Evaluates if the principal is authorized for a specific permission.
+   * Evaluates if the principal is authorized for a specific numeric permission ID.
    */
   hasPermission(
     target: AuthContext | AuthPrincipal | any,
-    required: string,
+    required: number | PermissionTarget,
     registry: RoleRegistry = this.roleRegistry
   ): boolean {
     const principal = this.extractPrincipal(target);
@@ -119,41 +120,40 @@ export class AuthorizationService {
     // 1. SuperAdmin bypass
     if (this.isSuperadmin(principal)) return true;
 
-    const resolvedRequired = resolvePermission(required);
-    if (!resolvedRequired) return false;
+    const reqId = resolvePermissionId(required, registry);
+    if (!reqId || reqId <= 0) return false;
 
     // 2. Deny overrides always win
-    const userDenies = (
-      principal.overrides?.denies ||
-      (principal.permissions as any)?.denies ||
-      []
-    );
-    for (let i = 0; i < userDenies.length; i++) {
-      if (permissionMatches(userDenies[i], resolvedRequired)) return false;
-    }
+    const rawDenies = Array.isArray(principal.overrides?.denies)
+      ? principal.overrides.denies
+      : Array.isArray((principal.permissions as any)?.denies)
+      ? (principal.permissions as any).denies
+      : [];
+    const userDenies = rawDenies.map((p: any) => resolvePermissionId(p, registry)).filter((id: number) => id > 0);
+    if (userDenies.includes(reqId)) return false;
 
-    // 3. Fast path: User effective / allow overrides check
-    const userAllows = (
-      principal.overrides?.allows ||
-      (principal.permissions as any)?.allows ||
-      (Array.isArray(principal.permissions) ? principal.permissions : [])
-    );
-    for (let i = 0; i < userAllows.length; i++) {
-      if (permissionMatches(userAllows[i], resolvedRequired)) return true;
-    }
+    // 3. User effective / allow overrides check
+    const rawAllows = Array.isArray(principal.overrides?.allows)
+      ? principal.overrides.allows
+      : Array.isArray((principal.permissions as any)?.allows)
+      ? (principal.permissions as any).allows
+      : Array.isArray(principal.permissions)
+      ? principal.permissions
+      : [];
+    const userAllows = rawAllows.map((p: any) => resolvePermissionId(p, registry)).filter((id: number) => id > 0);
+    if (userAllows.includes(reqId)) return true;
 
     // 4. Role-based permissions
     const userRoles = new Set<string>();
     if (principal.role) userRoles.add(principal.role.toLowerCase());
     if (Array.isArray(principal.roles)) {
       for (const r of principal.roles) {
-        const clean = normalizePermission(r);
-        if (clean) userRoles.add(clean);
+        if (typeof r === "string" && r.trim()) userRoles.add(r.trim().toLowerCase());
       }
     }
 
     for (const roleName of userRoles) {
-      if (registry.checkRoleHasPermission(roleName, resolvedRequired)) {
+      if (registry.checkRoleHasPermission(roleName, reqId)) {
         return true;
       }
     }
@@ -162,22 +162,22 @@ export class AuthorizationService {
   }
 
   /**
-   * Evaluates if the principal has all of the required permissions.
+   * Evaluates if the principal has all of the required numeric permissions.
    */
   hasAllPermissions(
     target: AuthContext | AuthPrincipal | any,
-    requiredList: string[],
+    requiredList: (number | PermissionTarget)[],
     registry: RoleRegistry = this.roleRegistry
   ): boolean {
     return requiredList.every((p) => this.hasPermission(target, p, registry));
   }
 
   /**
-   * Evaluates if the principal has at least one of the required permissions.
+   * Evaluates if the principal has at least one of the required numeric permissions.
    */
   hasAnyPermission(
     target: AuthContext | AuthPrincipal | any,
-    requiredList: string[],
+    requiredList: (number | PermissionTarget)[],
     registry: RoleRegistry = this.roleRegistry
   ): boolean {
     return requiredList.some((p) => this.hasPermission(target, p, registry));

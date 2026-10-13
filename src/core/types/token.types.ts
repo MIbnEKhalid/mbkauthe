@@ -5,7 +5,7 @@ export interface ApiTokenRecord {
   token_hash?: string;
   prefix?: string;
   permissions?: any;
-  token_permissions?: string[];
+  token_permissions?: (string | number)[];
   last_used?: Date | string | null;
   created_at?: Date | string;
   expires_at?: Date | string | null;

@@ -248,7 +248,7 @@ export class CliAuthService {
     }
 
     const profilePermissions = Array.isArray(profile.permissions) ? profile.permissions : [];
-    let tokenPermissions = profilePermissions;
+    let tokenPermissions: any[] = profilePermissions;
     if (role && role !== "superadmin" && profilePermissions.length > 0) {
       try {
         const effective = await this.permRepo.computeEffectiveForUser(username);

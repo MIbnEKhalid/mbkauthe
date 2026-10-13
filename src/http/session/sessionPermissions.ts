@@ -1,6 +1,6 @@
 /**
- * MBKAuthe — Session permission & role hydration helper.
- * Attaches assigned roles and allow/deny overrides to the express session user object.
+ * MBKAuthe — Session permission & role hydration helper (numeric ID engine).
+ * Attaches assigned roles and numeric allow/deny overrides to the express session user object.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
  */
@@ -28,13 +28,13 @@ function resetSessionUserPermissions(sessionUser?: Partial<SessionUser> | null):
 
 export const SUPERADMIN_PERMISSIONS: EffectivePermissionsResult = Object.freeze({
   roles: ["superadmin"],
-  overrides: { allows: ["*"], denies: [] },
-  effective: { allows: ["*"], denies: [] },
+  overrides: { allows: [0], denies: [] },
+  effective: { allows: [0], denies: [] },
   perm_version: 1,
 });
 
 /**
- * Attach roles and permission overrides to `sessionUser`.
+ * Attach roles and numeric permission overrides to `sessionUser`.
  */
 export async function attachSessionPermissions(
   sessionUser?: Partial<SessionUser> | null,
@@ -47,10 +47,29 @@ export async function attachSessionPermissions(
   if (effectiveRole === "superadmin") {
     if (sessionUser) {
       sessionUser.roles = ["superadmin"];
-      sessionUser.overrides = { allows: ["*"], denies: [] };
-      sessionUser.permissions = { allows: ["*"], denies: [] };
+      sessionUser.overrides = { allows: [0], denies: [] };
+      sessionUser.permissions = { allows: [0], denies: [] };
     }
     return SUPERADMIN_PERMISSIONS;
+  }
+
+  // Fast path: if sessionUser already has hydrated roles and permissions, avoid recomputing
+  if (
+    sessionUser &&
+    Array.isArray(sessionUser.roles) &&
+    sessionUser.roles.length > 0 &&
+    sessionUser.permissions &&
+    (knownRole ? sessionUser.roles.includes(effectiveRole) : true)
+  ) {
+    return {
+      roles: sessionUser.roles,
+      overrides: {
+        allows: sessionUser.overrides?.allows || [],
+        denies: sessionUser.overrides?.denies || [],
+      },
+      effective: (sessionUser.permissions as any) || { allows: [], denies: [] },
+      perm_version: 1,
+    };
   }
 
   try {
@@ -73,10 +92,15 @@ export async function attachSessionPermissions(
  * True when the session carries no effective permissions or roles.
  */
 export function hasNoSessionPermissions(sessionUser?: Partial<SessionUser> | null): boolean {
-  const noRoles = !sessionUser?.roles?.length;
-  const perms = sessionUser?.permissions as { allows?: string[]; denies?: string[] } | undefined;
-  const noPerms = !perms || (!perms.allows?.length && !perms.denies?.length);
-  return noRoles && noPerms;
+  if (!sessionUser) return true;
+  const perms = sessionUser.permissions as { allows?: number[]; denies?: number[] } | number[] | undefined;
+  if (!perms) return true;
+  if (Array.isArray(perms)) {
+    return perms.length === 0;
+  }
+  const noAllows = !Array.isArray(perms.allows) || perms.allows.length === 0;
+  const noDenies = !Array.isArray(perms.denies) || perms.denies.length === 0;
+  return noAllows && noDenies;
 }
 
 export default attachSessionPermissions;

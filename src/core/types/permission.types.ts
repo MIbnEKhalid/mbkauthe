@@ -1,26 +1,40 @@
-export type PermissionString = string;
+export type PermissionId = number;
+
+export interface PermissionDescriptor {
+  id: number;
+  appKey: string;
+  serviceKey: string;
+  actionKey: string;
+  label?: string;
+  key: string;
+  valueOf(): number;
+  toString(): string;
+}
+
+export type PermissionTarget = number | PermissionDescriptor | { id?: number; key?: string; [key: string]: any };
 
 export interface PermissionManifest {
   [domain: string]: {
-    [action: string]: string;
+    [action: string]: string | { id?: number; label: string };
   };
 }
 
 export interface DeclaredPermission {
+  id?: number;
   serviceKey: string;
   actionKey: string;
   label?: string | null;
 }
 
 export interface CatalogPermission {
-  id?: number | string;
+  id: number;
   app_key: string;
   service_key: string;
   action_key: string;
   label?: string | null;
   is_active: boolean;
   updated_at?: Date | string;
-  permission: string;
+  permission?: string;
 }
 
 export interface RoleDefinition {
@@ -29,17 +43,17 @@ export interface RoleDefinition {
   label: string;
   description?: string;
   is_system?: boolean;
-  permissions: string[];
+  permissions: number[];
   created_at?: Date | string;
   updated_at?: Date | string;
 }
 
 export interface RoleRegistryMap {
-  [roleName: string]: RoleDefinition | string[];
+  [roleName: string]: RoleDefinition | number[] | any;
 }
 
 export interface UserPermissionOverride {
-  permission: string;
+  permission_id: number;
   effect: "allow" | "deny";
   granted_by?: string | null;
   created_at?: Date | string;
@@ -54,12 +68,12 @@ export interface UserRoleAssignment {
 export interface EffectivePermissionsResult {
   roles?: string[];
   overrides?: {
-    allows: string[];
-    denies: string[];
+    allows: number[];
+    denies: number[];
   };
   effective?: {
-    allows: string[];
-    denies: string[];
+    allows: number[];
+    denies: number[];
   };
   perm_version?: number;
 }

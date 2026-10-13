@@ -10,11 +10,12 @@ import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 
 const router = express.Router();
 
-function normalizeRequestedPermissions(value: unknown): string[] {
-  let list: string[] = [];
-  if (Array.isArray(value)) list = value as string[];
+function normalizeRequestedPermissions(value: unknown): number[] {
+  let list: any[] = [];
+  if (Array.isArray(value)) list = value;
   else if (typeof value === "string") list = value.split(",");
-  return [...new Set(list.map(normalizePermission).filter(Boolean))];
+  else if (typeof value === "number") list = [value];
+  return Array.from(new Set(list.map((id) => Number(id)).filter((id) => id > 0)));
 }
 
 async function loadGrantablePermissions(user: any) {
@@ -23,17 +24,17 @@ async function loadGrantablePermissions(user: any) {
     return { active, grantable: active, effective: { allows: [], denies: [] } };
   }
   const effective = await permissionRepository.computeEffectiveForUser(user.username);
-  const grantable = active.filter((perm) => hasPermission({ permissions: effective.effective }, perm.permission));
+  const grantable = active.filter((perm) => hasPermission({ permissions: effective.effective }, perm.id));
   return { active, grantable, effective };
 }
 
 function groupPermissions(rows: any[]) {
   const apps = new Map<string, Map<string, any[]>>();
-  for (const { app_key, service_key, permission, label } of rows) {
+  for (const { id, app_key, service_key, label } of rows) {
     if (!apps.has(app_key)) apps.set(app_key, new Map());
     const services = apps.get(app_key)!;
     if (!services.has(service_key)) services.set(service_key, []);
-    services.get(service_key)!.push({ permission, label });
+    services.get(service_key)!.push({ id, label });
   }
   return [...apps.entries()].map(([appKey, services]) => ({
     appKey,
@@ -89,8 +90,8 @@ router.post("/api/token", sessPerm("basic.access"), async (req, res) => {
 
   try {
     const { active, grantable } = await loadGrantablePermissions((req as any).session.user);
-    const activeSet = new Set(active.map((p) => p.permission));
-    const grantableSet = new Set(grantable.map((p) => p.permission));
+    const activeSet = new Set(active.map((p) => p.id));
+    const grantableSet = new Set(grantable.map((p) => p.id));
 
     const unknown = requested.filter((p) => !activeSet.has(p));
     if (unknown.length > 0) {

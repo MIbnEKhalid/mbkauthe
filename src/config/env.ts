@@ -305,6 +305,17 @@ function extractAndResolveConfig({ strict = false } = {}): { resolved: Record<st
       setBoth(resolved, lower, upper, sharedVal);
       continue;
     }
+    if (lower === "login_db") {
+      const fallbackDb =
+        process.env.LOGIN_DB ||
+        process.env.NEON_POSTGRES ||
+        process.env.DATABASE_URL ||
+        process.env.POSTGRES_URL;
+      if (hasValue(fallbackDb)) {
+        setBoth(resolved, "login_db", "LOGIN_DB", fallbackDb);
+        continue;
+      }
+    }
     const defVal = findValue(DEFAULT_CONFIG, lower);
     if (defVal !== undefined) {
       setBoth(resolved, lower, upper, defVal);

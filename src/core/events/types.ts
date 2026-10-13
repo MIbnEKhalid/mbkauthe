@@ -34,7 +34,7 @@ export interface AuthTokenCreatedEvent {
   tokenId: number | string;
   userId: number | string;
   name: string;
-  scopes: string[];
+  scopes: (string | number)[];
   expiresAt?: Date | null;
   timestamp: Date;
 }

@@ -202,24 +202,26 @@ DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMEST
 CREATE TABLE IF NOT EXISTS mbkcore_role_permissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     role_name VARCHAR(50) NOT NULL REFERENCES mbkcore_roles(name) ON DELETE CASCADE ON UPDATE CASCADE,
-    permission VARCHAR(150) NOT NULL,
+    permission_id INTEGER NOT NULL REFERENCES mbkcore_permission_catalog(id) ON DELETE CASCADE,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_role_permission UNIQUE (role_name, permission)
+    CONSTRAINT uq_role_permission UNIQUE (role_name, permission_id)
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_role_permissions_role ON mbkcore_role_permissions (role_name);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_role_permissions_perm ON mbkcore_role_permissions (permission_id);
 
 -- Table: mbkcore_user_permission_overrides
 CREATE TABLE IF NOT EXISTS mbkcore_user_permission_overrides (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    permission VARCHAR(150) NOT NULL,
+    permission_id INTEGER NOT NULL REFERENCES mbkcore_permission_catalog(id) ON DELETE CASCADE,
     effect VARCHAR(5) NOT NULL,
     granted_by VARCHAR(50),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_user_perm_override UNIQUE (username, permission),
+    CONSTRAINT uq_user_perm_override UNIQUE (username, permission_id),
     CONSTRAINT chk_user_perm_override_effect CHECK (effect IN ('allow', 'deny'))
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_username ON mbkcore_user_permission_overrides (username);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_perm ON mbkcore_user_permission_overrides (permission_id);
 
 -- Table: mbkcore_oauth_accounts
 CREATE TABLE IF NOT EXISTS mbkcore_oauth_accounts (

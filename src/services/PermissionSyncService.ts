@@ -1,5 +1,5 @@
 /**
- * MBKAuthe — Permission catalog and role database synchronization service.
+ * MBKAuthe — Permission catalog and role database synchronization service (numeric ID engine).
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
  */
@@ -24,7 +24,7 @@ export interface SyncResult {
 
 /**
  * Synchronize an application's permission & role manifest into the database
- * and hydrate the in-memory RoleRegistry.
+ * and hydrate the in-memory RoleRegistry with numeric IDs.
  */
 export async function syncAppPermissions(
   Permissions: PermissionManifest,
@@ -45,19 +45,24 @@ export async function syncAppPermissions(
     }
   }
 
-  // 1. Sync catalog permissions
-  const declaredMap = new Map(
-    collectPermissions(Permissions, appKey).map((p) => [`${p.serviceKey}:${p.actionKey}`, p])
-  );
-  await repo.syncCatalogForApp(
-    appKey,
-    [...declaredMap.values()].map(({ serviceKey, actionKey, label }) => ({ serviceKey, actionKey, label }))
-  );
+  // 1. Sync catalog permissions and populate node IDs
+  const declaredList = collectPermissions(Permissions, appKey);
+  await repo.syncCatalogForApp(appKey, declaredList as any);
 
-  // 2. Sync declared application roles
+  // 2. Sync declared application roles with numeric IDs
   const declaredRoles = collectRoles(Permissions);
-  for (const { name, permissions, label, description } of declaredRoles) {
-    await repo.contributeRolePermissions(name, permissions, { label, description, is_system: false });
+  for (const r of declaredRoles) {
+    const permIds = Array.isArray((r as any).nodes)
+      ? (r as any).nodes.map((n: any) => n.id).filter((id: number) => id > 0)
+      : Array.isArray(r.permissions)
+      ? r.permissions.filter((id: number) => id > 0)
+      : [];
+
+    await repo.contributeRolePermissions(r.name || "", permIds, {
+      label: r.label,
+      description: r.description,
+      is_system: false,
+    });
   }
 
   // 3. Hydrate in-memory RoleRegistry
@@ -69,7 +74,7 @@ export async function syncAppPermissions(
 
   return {
     appKey,
-    synced: declaredMap.size,
+    synced: declaredList.length,
     deactivated,
     rolesSynced: declaredRoles.length,
   };

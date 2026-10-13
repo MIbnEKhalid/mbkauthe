@@ -9,8 +9,8 @@ describe("Authentication & Authorization Speed Optimizations", () => {
 
       expect(result).toBe(SUPERADMIN_PERMISSIONS);
       expect(sessionUser.roles).toEqual(["superadmin"]);
-      expect(sessionUser.permissions).toEqual({ allows: ["*"], denies: [] });
-      expect(sessionUser.overrides).toEqual({ allows: ["*"], denies: [] });
+      expect(sessionUser.permissions).toEqual({ allows: [0], denies: [] });
+      expect(sessionUser.overrides).toEqual({ allows: [0], denies: [] });
     });
 
     it("attachSessionPermissions detects superadmin from sessionUser.role if knownRole is omitted", async () => {
@@ -18,7 +18,7 @@ describe("Authentication & Authorization Speed Optimizations", () => {
       const result = await attachSessionPermissions(sessionUser, "admin_user");
 
       expect(result).toBe(SUPERADMIN_PERMISSIONS);
-      expect(sessionUser.permissions).toEqual({ allows: ["*"], denies: [] });
+      expect(sessionUser.permissions).toEqual({ allows: [0], denies: [] });
     });
 
     it("checkPermission bypasses immediately for superadmin without DB role loading", async () => {
@@ -78,12 +78,11 @@ describe("Authentication & Authorization Speed Optimizations", () => {
       expect(permissionMatches("blog:posts:create", "blog:posts:edit")).toBe(false);
     });
 
-    it("wildcard match works correctly", () => {
-      expect(permissionMatches("portal:dns:*", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("portal:*:*", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("*", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("*:*:*", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("portal:dns:*", "other:dns:view")).toBe(false);
+    it("numeric permission ID match works correctly", () => {
+      expect(permissionMatches(101, 101)).toBe(true);
+      expect(permissionMatches(101, 102)).toBe(false);
+      expect(permissionMatches("portal:dns:view", "portal:dns:view")).toBe(true);
+      expect(permissionMatches("portal:dns:view", "other:dns:view")).toBe(false);
     });
   });
 
@@ -102,7 +101,7 @@ describe("Authentication & Authorization Speed Optimizations", () => {
       expect(hasNoSessionPermissions({
         username: "root",
         roles: ["superadmin"],
-        permissions: { allows: ["*"], denies: [] },
+        permissions: { allows: [0], denies: [] },
       })).toBe(false);
     });
   });

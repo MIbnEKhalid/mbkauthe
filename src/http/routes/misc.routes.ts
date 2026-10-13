@@ -14,6 +14,9 @@ import { createLogger } from "../../utils/logger.js";
 import { getAuthHealthReport } from "../../diagnostics/index.js";
 import { ensureSession } from "../middleware/security.js";
 import { avatarService } from "../../services/AvatarService.js";
+import { defaultRoleRegistry } from "../../core/permissions/roleRegistry.js";
+import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
+import { attachSessionPermissions, hasNoSessionPermissions } from "../session/sessionPermissions.js";
 
 dotenv.config();
 
@@ -145,10 +148,79 @@ if (process.env.env === "dev") {
   });
 }
 
-const buildTestViewData = (req: express.Request) => {
+const buildTestViewData = async (req: express.Request) => {
   const user = (req as any).session?.user || (req as any).user || (req as any).authContext?.principal || {};
-  const { username, full_name, role, user_id, session_id, allowed_apps, permissions } = user;
+  let { username, full_name, role, user_id, session_id, allowed_apps, permissions } = user;
   const session_expiry = (req as any).session?.cookie?.expires ? new Date((req as any).session.cookie.expires).toISOString() : null;
+
+  if (username && hasNoSessionPermissions(user)) {
+    try {
+      const snap = await attachSessionPermissions(user, username, role);
+      permissions = user.permissions || snap.effective;
+    } catch {
+      // ignore
+    }
+  }
+
+  if (defaultRoleRegistry.roles.size === 0 && !defaultRoleRegistry.isLoaded) {
+    await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
+  }
+
+  // Normalize and enrich numeric permissions
+  let rawAllows: any[] = [];
+  let rawDenies: any[] = [];
+
+  if (Array.isArray(permissions)) {
+    rawAllows = permissions;
+  } else if (permissions && typeof permissions === "object") {
+    if (Array.isArray(permissions.allows)) rawAllows = permissions.allows;
+    if (Array.isArray(permissions.denies)) rawDenies = permissions.denies;
+  }
+
+  const isSuperadmin = (role || "").toLowerCase() === "superadmin" || (req as any).authContext?.isSuperadmin;
+
+  if (isSuperadmin && rawAllows.length === 0) {
+    rawAllows = [0];
+  }
+
+  const enrichPermItem = (item: any) => {
+    if (item !== null && typeof item === "object" && item.key) {
+      return {
+        id: item.id ?? null,
+        key: item.key,
+        label: item.label || "",
+        display: item.display || `#${item.id} ${item.key}${item.label ? ` (${item.label})` : ""}`,
+      };
+    }
+    const numId = Number(item);
+    if (numId === 0 || item === 0 || item === "0" || item === "*") {
+      return {
+        id: 0,
+        key: "*:*:*",
+        label: "Superadmin Root Bypass",
+        display: "* (Superadmin Root Bypass)",
+      };
+    }
+    const desc = defaultRoleRegistry.getDescriptorById(numId);
+    if (desc) {
+      return {
+        id: numId,
+        key: desc.key,
+        label: desc.label || "",
+        display: `#${numId} ${desc.key}${desc.label ? ` (${desc.label})` : ""}`,
+      };
+    }
+    const strVal = String(item);
+    return {
+      id: Number.isFinite(numId) ? numId : null,
+      key: strVal,
+      label: "",
+      display: Number.isFinite(numId) ? `#${numId}` : strVal,
+    };
+  };
+
+  const enrichedAllows = rawAllows.map(enrichPermItem);
+  const enrichedDenies = rawDenies.map(enrichPermItem);
 
   const authContext = (req as any).authContext;
   const authMethod = authContext?.authMethod || (req.headers.authorization ? "api-token" : "session");
@@ -179,7 +251,11 @@ const buildTestViewData = (req: express.Request) => {
     initial: (full_name && full_name[0]) || (username && username[0]) || "U",
     allowed_apps: Array.isArray(allowed_apps) ? allowed_apps.join(", ") : (allowed_apps || "N/A"),
     session_expiry,
-    permissions,
+    permissions: {
+      allows: enrichedAllows,
+      denies: enrichedDenies,
+    },
+    permissions_count: enrichedAllows.length + enrichedDenies.length,
     auth_type: authMethod,
     auth_type_label,
     auth_type_icon,
@@ -188,11 +264,13 @@ const buildTestViewData = (req: express.Request) => {
 };
 
 router.get(["/test", "/"], sessPerm("basic.access"), LoginLimit, async (req, res) => {
-  return renderPage(req, res, "pages/test.hbs", false, buildTestViewData(req));
+  const data = await buildTestViewData(req);
+  return renderPage(req, res, "pages/test.hbs", false, data);
 });
 
 router.get("/test.json", sessPerm("basic.access"), LoginLimit, async (req, res) => {
-  return res.json(buildTestViewData(req));
+  const data = await buildTestViewData(req);
+  return res.json(data);
 });
 
 router.post("/test", sessPerm("basic.access"), LoginLimit, async (req, res) => {

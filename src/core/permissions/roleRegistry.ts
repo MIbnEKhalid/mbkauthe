@@ -1,66 +1,107 @@
 /**
- * MBKAuthe — Dynamic permission & role core (pure, in-memory).
+ * MBKAuthe — Dynamic permission & role core (pure numeric ID engine).
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
  * Source: https://github.com/MIbnEKhalid/mbkauthe
  */
 
-import { normalizePermission, resolvePermission, permissionMatches, normalizePermissions } from "./matcher.js";
-import type { RoleDefinition } from "../types/permission.types.js";
+import { resolvePermissionId, normalizePermission, setDefaultRoleRegistryRef } from "./matcher.js";
+import type { PermissionDescriptor, PermissionTarget } from "../types/permission.types.js";
 
 export const SUPERADMIN_ROLE = "superadmin";
 export const GLOBAL_APP_KEY = "global";
 
 export class RoleRegistry {
-  public roles: Map<string, Set<string>>;
-  public wildcards: Map<string, string[]>;
+  public roles: Map<string, Set<number>>;
+  public isLoaded: boolean = false;
+  private keyToId: Map<string, number> = new Map();
+  private idToDescriptor: Map<number, PermissionDescriptor> = new Map();
 
   constructor() {
     this.roles = new Map();
-    this.wildcards = new Map();
+    this.isLoaded = false;
   }
 
-  setRole(roleName: string, permissions: string[] = []): void {
+  registerCatalogItem(id: number, appKey: string, serviceKey: string, actionKey: string, label?: string): PermissionDescriptor {
+    const cleanApp = normalizePermission(appKey);
+    const cleanService = normalizePermission(serviceKey);
+    const cleanAction = normalizePermission(actionKey);
+    const key = `${cleanApp}:${cleanService}:${cleanAction}`;
+
+    const descriptor: PermissionDescriptor = {
+      id,
+      appKey: cleanApp,
+      serviceKey: cleanService,
+      actionKey: cleanAction,
+      label,
+      key,
+      valueOf() {
+        return this.id;
+      },
+      toString() {
+        return String(this.id);
+      },
+    };
+
+    this.keyToId.set(key, id);
+    if (cleanApp === GLOBAL_APP_KEY) {
+      this.keyToId.set(`${cleanService}.${cleanAction}`, id);
+      this.keyToId.set(`${cleanService}:${cleanAction}`, id);
+    }
+    this.idToDescriptor.set(id, descriptor);
+    return descriptor;
+  }
+
+  getIdByKey(key: string): number {
+    const cleanKey = normalizePermission(key);
+    const id = this.keyToId.get(cleanKey);
+    if (id && id > 0) return id;
+    if (this !== defaultRoleRegistry && typeof defaultRoleRegistry !== "undefined") {
+      return defaultRoleRegistry.getIdByKey(cleanKey);
+    }
+    return 0;
+  }
+
+  getDescriptorById(id: number): PermissionDescriptor | undefined {
+    return this.idToDescriptor.get(id);
+  }
+
+  getAllDescriptors(): PermissionDescriptor[] {
+    return Array.from(this.idToDescriptor.values());
+  }
+
+  setRole(roleName: string, permissions: (number | PermissionTarget)[] = []): void {
     const role = normalizePermission(roleName);
     if (!role) return;
-    const permSet = new Set<string>();
-    const wildcardList: string[] = [];
+    const permSet = new Set<number>();
     for (const p of permissions) {
-      const norm = normalizePermission(p);
-      if (!norm) continue;
-      permSet.add(norm);
-      if (norm.includes("*")) wildcardList.push(norm);
+      const id = resolvePermissionId(p, this);
+      if (id > 0) permSet.add(id);
     }
     this.roles.set(role, permSet);
-    this.wildcards.set(role, wildcardList);
   }
 
-  addRolePermissions(roleName: string, permissions: string[] = []): void {
+  addRolePermissions(roleName: string, permissions: (number | PermissionTarget)[] = []): void {
     const role = normalizePermission(roleName);
     if (!role) return;
-    const current = this.roles.get(role) || new Set<string>();
-    const currentWildcards = this.wildcards.get(role) || [];
+    const current = this.roles.get(role) || new Set<number>();
     for (const p of permissions) {
-      const norm = normalizePermission(p);
-      if (!norm) continue;
-      current.add(norm);
-      if (norm.includes("*") && !currentWildcards.includes(norm)) currentWildcards.push(norm);
+      const id = resolvePermissionId(p, this);
+      if (id > 0) current.add(id);
     }
     this.roles.set(role, current);
-    this.wildcards.set(role, currentWildcards);
   }
 
   deleteRole(roleName: string): void {
     const role = normalizePermission(roleName);
     this.roles.delete(role);
-    this.wildcards.delete(role);
   }
 
-  getRolePermissions(roleName: string): Set<string> {
-    return this.roles.get(normalizePermission(roleName)) || new Set<string>();
+  getRolePermissions(roleName: string): Set<number> {
+    return this.roles.get(normalizePermission(roleName)) || new Set<number>();
   }
 
-  getPermissionsForRole(roleName: string): string[] {
+  getPermissionsForRole(roleName: string): number[] {
     return Array.from(this.getRolePermissions(roleName));
   }
 
@@ -74,30 +115,33 @@ export class RoleRegistry {
 
   clear(): void {
     this.roles.clear();
-    this.wildcards.clear();
+    this.keyToId.clear();
+    this.idToDescriptor.clear();
+    this.isLoaded = false;
   }
 
-  loadRoles(rolesMap: Record<string, string[]> | Array<{ name: string; permissions?: string[] }> = {}): void {
+  loadRoles(rolesMap: Record<string, number[]> | Array<{ name: string; permissions?: number[] }> = {}): void {
     if (Array.isArray(rolesMap)) {
       for (const item of rolesMap) {
         if (item?.name) this.setRole(item.name, item.permissions || []);
       }
     } else if (rolesMap && typeof rolesMap === "object") {
-      for (const [name, perms] of Object.entries(rolesMap)) this.setRole(name, perms);
+      for (const [name, perms] of Object.entries(rolesMap)) this.setRole(name, perms as any);
     }
   }
 
-  checkRoleHasPermission(roleName: string, requiredPermission: string): boolean {
+  checkRoleHasPermission(roleName: string, requiredPermission: number | PermissionTarget): boolean {
     const role = normalizePermission(roleName);
     const permSet = this.roles.get(role);
-    if (!permSet) return false;
-    if (permSet.has(requiredPermission) || permSet.has("*") || permSet.has("*:*:*")) return true;
-    const wildcards = this.wildcards.get(role);
-    return Boolean(wildcards?.length && wildcards.some((w) => permissionMatches(w, requiredPermission)));
+    if (!permSet || permSet.size === 0) return false;
+    const reqId = resolvePermissionId(requiredPermission, this);
+    if (reqId <= 0) return false;
+    return permSet.has(reqId);
   }
 }
 
 export const defaultRoleRegistry = new RoleRegistry();
+setDefaultRoleRegistryRef(defaultRoleRegistry);
 
 export const GlobalRoles: Record<string, string> = {
   superadmin: "superadmin",
@@ -113,44 +157,44 @@ export function buildEffectivePermissions({
   roleRegistry = defaultRoleRegistry,
 }: {
   roles?: string[] | string;
-  allows?: string[];
-  denies?: string[];
+  allows?: (number | PermissionTarget)[];
+  denies?: (number | PermissionTarget)[];
   roleRegistry?: RoleRegistry;
-} = {}): { allows: string[]; denies: string[] } {
-  const normalizedAllows = allows.map(normalizePermission).filter(Boolean);
-  const normalizedDenies = denies.map(normalizePermission).filter(Boolean);
-  const base = new Set<string>();
+} = {}): { allows: number[]; denies: number[] } {
+  const normalizedAllows = (allows || []).map((p) => resolvePermissionId(p, roleRegistry)).filter((id) => id > 0);
+  const normalizedDenies = (denies || []).map((p) => resolvePermissionId(p, roleRegistry)).filter((id) => id > 0);
+  const base = new Set<number>();
   const roleList = Array.isArray(roles) ? roles : [roles];
 
   for (const r of roleList) {
-    if (Array.isArray(r)) {
-      for (const p of r) {
-        const norm = normalizePermission(p);
-        if (norm) base.add(norm);
+    if (typeof r === "string" && r.trim()) {
+      for (const id of roleRegistry.getRolePermissions(r)) {
+        base.add(id);
       }
-    } else if (typeof r === "string" && r.trim()) {
-      for (const p of roleRegistry.getRolePermissions(r)) base.add(p);
     }
   }
 
   // Deny always wins
-  for (const deny of normalizedDenies) {
-    for (const permission of [...base]) {
-      if (permissionMatches(deny, permission)) base.delete(permission);
-    }
+  for (const denyId of normalizedDenies) {
+    base.delete(denyId);
   }
 
   // Allow overrides grant permissions
-  for (const allow of normalizedAllows) {
-    if (!normalizedDenies.some((deny) => permissionMatches(deny, allow))) base.add(allow);
+  for (const allowId of normalizedAllows) {
+    if (!normalizedDenies.includes(allowId)) {
+      base.add(allowId);
+    }
   }
 
-  return { allows: [...base].sort(), denies: [...new Set(normalizedDenies)].sort() };
+  return {
+    allows: Array.from(base).sort((a, b) => a - b),
+    denies: Array.from(new Set(normalizedDenies)).sort((a, b) => a - b),
+  };
 }
 
-export function intersectPermissions(held: any, requested: any, roleRegistry: RoleRegistry = defaultRoleRegistry): { allows: string[]; denies: string[] } {
-  let heldAllows: string[] = [];
-  let heldDenies: string[] = [];
+export function intersectPermissions(held: any, requested: any, roleRegistry: RoleRegistry = defaultRoleRegistry): { allows: number[]; denies: number[] } {
+  let heldAllows: number[] = [];
+  let heldDenies: number[] = [];
   const targetHeld = held?.principal || held;
 
   if (targetHeld && typeof targetHeld === "object" && (targetHeld.role || targetHeld.roles || targetHeld.overrides)) {
@@ -162,27 +206,23 @@ export function intersectPermissions(held: any, requested: any, roleRegistry: Ro
     });
     heldAllows = effective.allows;
     heldDenies = effective.denies;
-  } else {
-    const norm = normalizePermissions(targetHeld);
-    heldAllows = norm.allows;
-    heldDenies = norm.denies;
+  } else if (Array.isArray(targetHeld)) {
+    heldAllows = targetHeld.map((p) => resolvePermissionId(p, roleRegistry)).filter((id) => id > 0);
   }
 
-  const list = Array.isArray(requested)
-    ? requested
-    : (typeof requested === "string" ? requested.split(",") : normalizePermissions(requested).allows);
+  const list = Array.isArray(requested) ? requested : [requested];
+  const requestedIds = list.map((p) => resolvePermissionId(p, roleRegistry)).filter((id) => id > 0);
 
-  const allows: string[] = [];
-  for (const entry of list) {
-    const permission = normalizePermission(entry);
-    if (!permission || heldDenies.some((deny) => permissionMatches(deny, permission))) continue;
-    if (heldAllows.some((allow) => permissionMatches(allow, permission))) allows.push(permission);
+  const allows: number[] = [];
+  for (const reqId of requestedIds) {
+    if (heldDenies.includes(reqId)) continue;
+    if (heldAllows.includes(reqId)) allows.push(reqId);
   }
 
-  return { allows: [...new Set(allows)].sort(), denies: [] };
+  return { allows: Array.from(new Set(allows)).sort((a, b) => a - b), denies: [] };
 }
 
-export function hasPermission(user: any, required: string, roleRegistry: RoleRegistry = defaultRoleRegistry): boolean {
+export function hasPermission(user: any, required: number | PermissionTarget, roleRegistry: RoleRegistry = defaultRoleRegistry): boolean {
   if (!user) return false;
   const targetUser = user.principal || user;
 
@@ -191,11 +231,13 @@ export function hasPermission(user: any, required: string, roleRegistry: RoleReg
     return true;
   }
 
-  const resolvedRequired = resolvePermission(required);
-  if (!resolvedRequired) return false;
+  const reqId = resolvePermissionId(required, roleRegistry);
+  if (reqId <= 0) return false;
 
-  const userDenies = (targetUser.overrides?.denies || targetUser.permissions?.denies || []).map(normalizePermission).filter(Boolean);
-  if (userDenies.some((deny: string) => permissionMatches(deny, resolvedRequired))) return false;
+  const userDenies = (targetUser.overrides?.denies || targetUser.permissions?.denies || [])
+    .map((p: any) => resolvePermissionId(p, roleRegistry))
+    .filter((id: number) => id > 0);
+  if (userDenies.includes(reqId)) return false;
 
   const userRoles = new Set(primaryRole ? [primaryRole] : []);
   if (Array.isArray(targetUser.roles)) {
@@ -206,9 +248,11 @@ export function hasPermission(user: any, required: string, roleRegistry: RoleReg
   }
 
   for (const roleName of userRoles) {
-    if (roleRegistry.checkRoleHasPermission(roleName, resolvedRequired)) return true;
+    if (roleRegistry.checkRoleHasPermission(roleName, reqId)) return true;
   }
 
-  const userAllows = (targetUser.overrides?.allows || targetUser.permissions?.allows || (Array.isArray(targetUser.permissions) ? targetUser.permissions : [])).map(normalizePermission).filter(Boolean);
-  return userAllows.some((allow: string) => permissionMatches(allow, resolvedRequired));
+  const userAllows = (targetUser.overrides?.allows || targetUser.permissions?.allows || (Array.isArray(targetUser.permissions) ? targetUser.permissions : []))
+    .map((p: any) => resolvePermissionId(p, roleRegistry))
+    .filter((id: number) => id > 0);
+  return userAllows.includes(reqId);
 }

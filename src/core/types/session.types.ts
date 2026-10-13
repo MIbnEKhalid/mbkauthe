@@ -9,13 +9,13 @@ export interface SessionUser {
   allowed_apps?: string[];
   roles?: string[];
   overrides?: {
-    allows?: string[];
-    denies?: string[];
+    allows?: number[];
+    denies?: number[];
   };
   permissions?: {
-    allows?: string[];
-    denies?: string[];
-  };
+    allows?: number[];
+    denies?: number[];
+  } | number[];
   [key: string]: any;
 }
 

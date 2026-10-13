@@ -14,7 +14,7 @@ export interface VerifyTotpDto {
 
 export interface CreateApiTokenDto {
   name: string;
-  scopes: string[];
+  scopes: (string | number)[];
   expiresInDays?: number | null;
 }
 
@@ -89,11 +89,25 @@ export function validateCreateApiTokenDto(input: any): CreateApiTokenDto {
     throw new MbkAuthError(ErrorCodes.MISSING_REQUIRED_FIELD, 400, "Token name must be between 1 and 100 characters");
   }
 
-  let scopes: string[] = [];
+  let scopes: (string | number)[] = [];
   if (Array.isArray(input.scopes)) {
-    scopes = input.scopes.map((s: any) => String(s).trim()).filter(Boolean);
+    scopes = input.scopes
+      .map((s: any) => {
+        if (typeof s === "number") return s;
+        const num = Number(s);
+        if (!Number.isNaN(num) && String(num) === String(s).trim()) return num;
+        return String(s).trim();
+      })
+      .filter((s: any) => s !== "" && s !== null && s !== undefined);
   } else if (typeof input.scopes === "string") {
-    scopes = input.scopes.split(",").map((s: string) => s.trim()).filter(Boolean);
+    scopes = input.scopes
+      .split(",")
+      .map((s: string) => {
+        const trimmed = s.trim();
+        const num = Number(trimmed);
+        return !Number.isNaN(num) && String(num) === trimmed ? num : trimmed;
+      })
+      .filter(Boolean);
   }
 
   let expiresInDays: number | null = null;

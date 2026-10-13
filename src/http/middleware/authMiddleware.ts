@@ -303,6 +303,7 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
       username: sessionRow.username || username || "unknown",
       full_name: (typeof sessionRow.full_name === "string" && sessionRow.full_name.trim()) || (sessionRow.username || username || "unknown"),
       role: sessionRow.role,
+      roles: [sessionRow.role],
       allowed_apps: sessionRow.allowed_apps,
       image: sessionRow.image || undefined,
       is_local_only: isLocalOnly,
@@ -311,24 +312,42 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     const isSuper = sessionRow.role === "superadmin";
 
     if ((req as any).session) {
-      const existingUser = (req as any).session.user || {};
-      (req as any).session.user = {
-        ...existingUser,
-        ...userForSession,
-      };
+      const existingUser = (req as any).session.user;
+      const allowedAppsMatch =
+        Array.isArray(existingUser?.allowed_apps) &&
+        Array.isArray(sessionRow.allowed_apps) &&
+        existingUser.allowed_apps.length === sessionRow.allowed_apps.length &&
+        existingUser.allowed_apps.every((app: string, idx: number) => app === sessionRow.allowed_apps[idx]);
 
-      if (isSuper) {
-        (req as any).session.user.roles = ["superadmin"];
-        (req as any).session.user.overrides = { allows: ["*"], denies: [] };
-        (req as any).session.user.permissions = { allows: ["*"], denies: [] };
-      } else if (hasNoSessionPermissions((req as any).session.user) || existingUser.role !== sessionRow.role) {
-        await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
+      const alreadySynced =
+        existingUser &&
+        existingUser.session_id === String(session_id) &&
+        existingUser.role === sessionRow.role &&
+        existingUser.username === (sessionRow.username || username || "unknown") &&
+        allowedAppsMatch &&
+        !hasNoSessionPermissions(existingUser);
+
+      if (!alreadySynced) {
+        const hasPreservedRoles = Array.isArray(existingUser?.roles) && existingUser.roles.length > 0 && existingUser.role === sessionRow.role;
+        (req as any).session.user = {
+          ...(existingUser || {}),
+          ...userForSession,
+          ...(hasPreservedRoles ? { roles: existingUser.roles } : {}),
+        };
+
+        if (isSuper) {
+          (req as any).session.user.roles = ["superadmin"];
+          (req as any).session.user.overrides = { allows: [0], denies: [] };
+          (req as any).session.user.permissions = { allows: [0], denies: [] };
+        } else if (hasNoSessionPermissions((req as any).session.user) || existingUser?.role !== sessionRow.role) {
+          await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
+        }
       }
     } else {
       if (isSuper) {
         (userForSession as any).roles = ["superadmin"];
-        (userForSession as any).overrides = { allows: ["*"], denies: [] };
-        (userForSession as any).permissions = { allows: ["*"], denies: [] };
+        (userForSession as any).overrides = { allows: [0], denies: [] };
+        (userForSession as any).permissions = { allows: [0], denies: [] };
       } else {
         await attachSessionPermissions(userForSession, userForSession.username, sessionRow.role);
       }
@@ -338,7 +357,10 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
 
     // Build unified AuthContext with fresh DB session data taking precedence
     const context = createSessionAuthContext(
-      sessionUser,
+      {
+        ...sessionUser,
+        allowed_apps: sessionRow.allowed_apps,
+      },
       {
         id: session_id,
         expiresAt: sessionRow.expires_at,
@@ -561,28 +583,30 @@ export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (
     // Superadmin bypass: instant return, zero DB lookups, zero permission comparison
     if (authorizationService.isSuperadmin(authContext)) return next();
 
-    if (defaultRoleRegistry.roles.size === 0) {
+    if (defaultRoleRegistry.roles.size === 0 && !defaultRoleRegistry.isLoaded) {
       await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
     }
 
-    const resolvedPermission = resolvePermission(permission);
+    const resolvedPermission = resolvePermission(permission, defaultRoleRegistry);
     if (authorizationService.hasPermission(authContext, resolvedPermission)) {
       return next();
     }
 
     const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
+    const desc = defaultRoleRegistry.getDescriptorById(resolvedPermission);
+    const permDisplay = desc?.key || (typeof permission === "string" ? permission : String(resolvedPermission));
     if (isJsonRequest(req)) {
       return res.status(403).json(
         createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
-          requiredPermission: resolvedPermission,
-          message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
+          requiredPermission: permDisplay,
+          message: `You do not have permission to access this resource. Required permission: ${permDisplay}`,
         })
       );
     }
     return renderError(res, req, {
       code: 403,
       error: "Access Denied",
-      message: `You do not have permission to access this resource. Required permission: ${resolvedPermission}`,
+      message: `You do not have permission to access this resource. Required permission: ${permDisplay}`,
       pagename: "Home",
       page: homeRedirect,
     });

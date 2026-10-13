@@ -150,39 +150,37 @@
         </div>
 
         <div class="permissions-chips-wrap" id="permChipsWrap">
-          {{#if permissions.allows}}
+          {{#if permissions.allows.length}}
           <div class="perm-subgroup">
-            <span class="perm-type-label perm-allow-label"><i class="fas fa-circle-check"></i> Granted ({{#if permissions.allows.length}}{{permissions.allows.length}}{{else}}1{{/if}}):</span>
+            <span class="perm-type-label perm-allow-label"><i class="fas fa-circle-check"></i> Granted ({{permissions.allows.length}}):</span>
             <div class="perm-tags">
               {{#each permissions.allows}}
-              <span class="perm-tag allow" data-perm="{{this}}" onclick="copyValue('{{this}}', 'Permission')">
-                <i class="fas fa-check" aria-hidden="true"></i> {{this}}
-              </span>
-              {{else}}
-              <span class="perm-tag allow" data-perm="{{permissions.allows}}" onclick="copyValue('{{permissions.allows}}', 'Permission')">
-                <i class="fas fa-check" aria-hidden="true"></i> {{permissions.allows}}
+              <span class="perm-tag allow" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
+                <i class="fas fa-check" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
               </span>
               {{/each}}
             </div>
           </div>
           {{/if}}
 
-          {{#if permissions.denies}}
+          {{#if permissions.denies.length}}
           <div class="perm-subgroup">
-            <span class="perm-type-label perm-deny-label"><i class="fas fa-circle-xmark"></i> Restricted:</span>
+            <span class="perm-type-label perm-deny-label"><i class="fas fa-circle-xmark"></i> Restricted ({{permissions.denies.length}}):</span>
             <div class="perm-tags">
               {{#each permissions.denies}}
-              <span class="perm-tag deny" data-perm="{{this}}" onclick="copyValue('{{this}}', 'Permission')">
-                <i class="fas fa-xmark" aria-hidden="true"></i> {{this}}
-              </span>
-              {{else}}
-              <span class="perm-tag deny" data-perm="{{permissions.denies}}" onclick="copyValue('{{permissions.denies}}', 'Permission')">
-                <i class="fas fa-xmark" aria-hidden="true"></i> {{permissions.denies}}
+              <span class="perm-tag deny" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
+                <i class="fas fa-xmark" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
               </span>
               {{/each}}
             </div>
           </div>
           {{/if}}
+
+          {{#unless permissions.allows.length}}
+            {{#unless permissions.denies.length}}
+            <div class="text-muted" style="padding: 0.5rem 0; font-size: 0.875rem; color: var(--text-muted, #888);"><i class="fas fa-info-circle"></i> No explicit security scopes assigned to this session.</div>
+            {{/unless}}
+          {{/unless}}
         </div>
       </div>
       {{/if}}

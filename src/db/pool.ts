@@ -26,8 +26,15 @@ export function getDbLogin(): any {
       const statement_timeout = Number(process.env.DB_STATEMENT_TIMEOUT_MS || mbkautheVar.DB_STATEMENT_TIMEOUT_MS) || 30000;
       const max = Number(process.env.DB_MAX_CONNECTIONS || mbkautheVar.DB_MAX_CONNECTIONS) || 10;
 
+      const connectionString =
+        mbkautheVar.LOGIN_DB ||
+        process.env.LOGIN_DB ||
+        process.env.NEON_POSTGRES ||
+        process.env.DATABASE_URL ||
+        process.env.POSTGRES_URL;
+
       _dbloginInstance = new Pool({
-        connectionString: mbkautheVar.LOGIN_DB,
+        connectionString,
         ssl: { rejectUnauthorized: true },
         max,
         idleTimeoutMillis,

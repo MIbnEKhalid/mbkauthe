@@ -160,9 +160,10 @@ async function createUser(username, {
   );
   if (permissions && permissions.length > 0) {
     for (const perm of permissions) {
+      const permId = typeof perm === "number" ? perm : 1;
       await dblogin.query(
-        `INSERT INTO mbkcore_user_permission_overrides (username, permission, effect) VALUES ($1, $2, 'allow')`,
-        [username, perm]
+        `INSERT INTO mbkcore_user_permission_overrides (username, permission_id, effect) VALUES ($1, $2, 'allow')`,
+        [username, permId]
       );
     }
   }

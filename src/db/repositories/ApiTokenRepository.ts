@@ -161,13 +161,50 @@ export class ApiTokenRepository extends BaseRepository {
     return rows[0] ? { username: rows[0].username, name: rows[0].name } : null;
   }
 
-  async _purgeDeviceCodes(whereClause: string, values: unknown[]): Promise<void> {
+  private static _hasDeviceCodesTable: boolean | null = null;
+
+  private async _checkDeviceCodesTableExists(): Promise<boolean> {
+    if (ApiTokenRepository._hasDeviceCodesTable !== null) {
+      return ApiTokenRepository._hasDeviceCodesTable;
+    }
     try {
-      await this.executeRaw({
-        name: "api-tokens-purge-device-codes",
-        text: `DELETE FROM "DeviceCodes" WHERE ${whereClause}`,
-        values,
-      });
+      const isSqlite = this.dialect?.name === "sqlite";
+      const query = isSqlite
+        ? {
+            name: "check-devicecodes-table-sqlite",
+            text: "SELECT 1 FROM sqlite_master WHERE type = 'table' AND lower(name) = 'devicecodes' LIMIT 1",
+            values: [],
+          }
+        : {
+            name: "check-devicecodes-table-pg",
+            text: "SELECT 1 FROM information_schema.tables WHERE lower(table_name) = 'devicecodes' LIMIT 1",
+            values: [],
+          };
+      const { rows } = await this.executeRaw(query);
+      ApiTokenRepository._hasDeviceCodesTable = Boolean(rows && rows.length > 0);
+    } catch {
+      ApiTokenRepository._hasDeviceCodesTable = false;
+    }
+    return ApiTokenRepository._hasDeviceCodesTable;
+  }
+
+  async _purgeDeviceCodes(whereClause: string, values: unknown[]): Promise<void> {
+    const tableExists = await this._checkDeviceCodesTableExists();
+    if (!tableExists) return;
+
+    try {
+      await this.executeRaw({ text: "SAVEPOINT purge_device_codes" });
+      try {
+        await this.executeRaw({
+          name: "api-tokens-purge-device-codes",
+          text: `DELETE FROM "DeviceCodes" WHERE ${whereClause}`,
+          values,
+        });
+        await this.executeRaw({ text: "RELEASE SAVEPOINT purge_device_codes" }).catch(() => {});
+      } catch (err: any) {
+        await this.executeRaw({ text: "ROLLBACK TO SAVEPOINT purge_device_codes" }).catch(() => {});
+        if (!/does not exist|no such table/i.test(String(err?.message || ""))) throw err;
+      }
     } catch (err: any) {
       if (!/does not exist|no such table/i.test(String(err?.message || ""))) throw err;
     }

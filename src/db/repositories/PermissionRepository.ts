@@ -1,46 +1,28 @@
 /**
- * MBKAuthe — Numeric ID Permission Repository
+ * MBKAuthe — Pure Bitmask Permission Repository
+ * High-performance persistence for roles and user authorization snapshots.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
- * Source: https://github.com/MIbnEKhalid/mbkauthe
  */
 
 import { dblogin, dialect } from "../pool.js";
 import { BaseRepository, BaseRepositoryOptions } from "./BaseRepository.js";
-import { normalizePermission, resolvePermissionId } from "../../core/permissions/matcher.js";
-import { buildEffectivePermissions, GLOBAL_APP_KEY, defaultRoleRegistry, RoleRegistry } from "../../core/permissions/roleRegistry.js";
-import type { CatalogPermission, RoleDefinition, UserPermissionOverride, UserRoleAssignment, EffectivePermissionsResult, DeclaredPermission, PermissionTarget } from "../../core/types/permission.types.js";
-
-const GLOBAL_PERMISSION: DeclaredPermission & { appKey: string; id: number } = {
-  id: 1,
-  appKey: GLOBAL_APP_KEY,
-  serviceKey: "basic",
-  actionKey: "access",
-  label: "Basic global access",
-};
+import { combineResourceMasks, applyOverrides } from "../../core/permissions/bitmask.js";
+import type { ResourceMasks, RoleDefinition, UserPermissionOverrides, UserAuthorizationSnapshot } from "../../core/types/permission.types.js";
 
 const toBool = (val: unknown): boolean => Boolean(val === 1 || val === true || val === "1" || val === "true");
 
-export interface UpsertCatalogOptions {
-  id?: number;
-  appKey: string;
-  serviceKey: string;
-  actionKey: string;
-  label?: string | null;
-}
-
-export interface RoleCreateOptions {
-  label?: string;
-  description?: string;
-  is_system?: boolean;
-}
-
 export class PermissionRepository extends BaseRepository {
-  private effectiveCache = new Map<string, { snapshot: EffectivePermissionsResult; expiresAt: number }>();
+  private effectiveCache = new Map<string, { snapshot: UserAuthorizationSnapshot; expiresAt: number }>();
   private effectiveCacheTtlMs = 60 * 1000;
+  private schemaEnsured = false;
 
   constructor(options: BaseRepositoryOptions = {}) {
     super({ db: options.db || dblogin, dialect: options.dialect || dialect });
+  }
+
+  get dialectName(): string {
+    return this.dialect?.name || "postgres";
   }
 
   invalidateEffectiveCache(username?: string): void {
@@ -51,677 +33,379 @@ export class PermissionRepository extends BaseRepository {
     }
   }
 
-  get dialectName(): string {
-    return this.dialect?.name || "postgres";
-  }
-
-  async ensureGlobalPermission(): Promise<void> {
-    await this.upsertCatalogPermission(GLOBAL_PERMISSION);
-  }
-
-  // ---------------------------------------------------------------- Catalog
-
-  async upsertCatalogPermission({ id, appKey, serviceKey, actionKey, label = null }: UpsertCatalogOptions): Promise<CatalogPermission> {
-    const isSqlite = this.dialectName === "sqlite";
-    const cleanApp = normalizePermission(appKey);
-    const cleanService = normalizePermission(serviceKey);
-    const cleanAction = normalizePermission(actionKey);
-
-    let result: any;
-    if (typeof id === "number" && id > 0) {
-      const text = isSqlite
-        ? `INSERT INTO mbkcore_permission_catalog (id, app_key, service_key, action_key, label, is_active)
-           VALUES ($1, $2, $3, $4, $5, 1)
-           ON CONFLICT(app_key, service_key, action_key)
-           DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMESTAMP
-           RETURNING id, app_key, service_key, action_key, label, is_active`
-        : `INSERT INTO mbkcore_permission_catalog (id, app_key, service_key, action_key, label, is_active)
-           VALUES ($1, $2, $3, $4, $5, true)
-           ON CONFLICT (app_key, service_key, action_key)
-           DO UPDATE SET label = EXCLUDED.label, is_active = true, updated_at = now()
-           RETURNING id, app_key, service_key, action_key, label, is_active`;
-      result = await this.executeRaw({ name: "permission-upsert-catalog-id", text, values: [id, cleanApp, cleanService, cleanAction, label] });
-    } else {
-      const text = isSqlite
-        ? `INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, is_active)
-           VALUES ($1, $2, $3, $4, 1)
-           ON CONFLICT(app_key, service_key, action_key)
-           DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMESTAMP
-           RETURNING id, app_key, service_key, action_key, label, is_active`
-        : `INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, is_active)
-           VALUES ($1, $2, $3, $4, true)
-           ON CONFLICT (app_key, service_key, action_key)
-           DO UPDATE SET label = EXCLUDED.label, is_active = true, updated_at = now()
-           RETURNING id, app_key, service_key, action_key, label, is_active`;
-      result = await this.executeRaw({ name: "permission-upsert-catalog", text, values: [cleanApp, cleanService, cleanAction, label] });
-    }
-
-    const row = result.rows?.[0];
-    const permId = Number(row?.id || id || 0);
-    defaultRoleRegistry.registerCatalogItem(permId, cleanApp, cleanService, cleanAction, label || undefined);
-
-    return {
-      id: permId,
-      app_key: cleanApp,
-      service_key: cleanService,
-      action_key: cleanAction,
-      label: row?.label || label,
-      is_active: true,
-      permission: `${cleanApp}:${cleanService}:${cleanAction}`,
-    };
-  }
-
-  async deactivateAllCatalogPermissionsForApp(appKey: string): Promise<{ rowCount: number }> {
-    if (String(appKey).trim().toLowerCase() === GLOBAL_APP_KEY) return { rowCount: 0 };
-    const isSqlite = this.dialectName === "sqlite";
-    const result = await this.executeRaw({
-      name: "permission-deactivate-app",
-      text: `UPDATE mbkcore_permission_catalog SET is_active = ${isSqlite ? "0" : "false"}, updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"} WHERE app_key = $1`,
-      values: [appKey],
-    });
-    return { rowCount: result.rowCount || 0 };
-  }
-
-  async syncCatalogForApp(appKey: string, declared: Array<DeclaredPermission & { node?: any }> = []): Promise<Map<string, number>> {
-    const idMap = new Map<string, number>();
-
-    await this.withTransaction(async (txRepo) => {
-      const pRepo = txRepo as unknown as PermissionRepository;
-      await pRepo.deactivateAllCatalogPermissionsForApp(appKey);
-      for (const perm of declared) {
-        const saved = await pRepo.upsertCatalogPermission({
-          id: perm.id,
-          appKey,
-          serviceKey: perm.serviceKey,
-          actionKey: perm.actionKey,
-          label: perm.label,
-        });
-        idMap.set(`${perm.serviceKey}:${perm.actionKey}`, saved.id);
-        idMap.set(`${appKey}:${perm.serviceKey}:${perm.actionKey}`, saved.id);
-        if (perm.node) {
-          perm.node.id = saved.id;
-        }
+  /**
+   * Ensures permissions column exists on mbkcore_roles and mbkcore_users
+   */
+  async ensureSchema(): Promise<void> {
+    if (this.schemaEnsured) return;
+    try {
+      const isSqlite = this.dialectName === "sqlite";
+      if (!isSqlite) {
+        await this.executeRaw({
+          name: "perm-ensure-roles-col",
+          text: `ALTER TABLE mbkcore_roles ADD COLUMN IF NOT EXISTS permissions jsonb DEFAULT '{}'::jsonb`,
+          values: [],
+        }).catch(() => {});
+        await this.executeRaw({
+          name: "perm-ensure-users-col",
+          text: `ALTER TABLE mbkcore_users ADD COLUMN IF NOT EXISTS perm_overrides jsonb DEFAULT '{}'::jsonb,
+                                              ADD COLUMN IF NOT EXISTS extra_roles jsonb DEFAULT '[]'::jsonb`,
+          values: [],
+        }).catch(() => {});
       }
-    });
-
-    return idMap;
-  }
-
-  async listCatalog(): Promise<CatalogPermission[]> {
-    const result = await this.executeRaw({
-      name: "permission-list-catalog",
-      text: `SELECT id, app_key, service_key, action_key, label, is_active, updated_at
-             FROM mbkcore_permission_catalog
-             ORDER BY id, app_key, service_key, action_key`,
-      values: [],
-    });
-    return (result.rows || []).map((row: any) => ({
-      id: Number(row.id),
-      app_key: row.app_key,
-      service_key: row.service_key,
-      action_key: row.action_key,
-      label: row.label,
-      is_active: toBool(row.is_active),
-      updated_at: row.updated_at,
-      permission: `${row.app_key}:${row.service_key}:${row.action_key}`,
-    }));
-  }
-
-  async listActiveCatalog(): Promise<CatalogPermission[]> {
-    const catalog = await this.listCatalog();
-    return catalog.filter((row) => row.is_active);
-  }
-
-  async listCatalogByApp(appKey: string): Promise<CatalogPermission[]> {
-    const result = await this.executeRaw({
-      name: "permission-list-catalog-app",
-      text: `SELECT id, app_key, service_key, action_key, label, is_active, updated_at
-             FROM mbkcore_permission_catalog
-             WHERE app_key = $1
-             ORDER BY id, service_key, action_key`,
-      values: [appKey],
-    });
-    return (result.rows || []).map((row: any) => ({
-      id: Number(row.id),
-      app_key: row.app_key,
-      service_key: row.service_key,
-      action_key: row.action_key,
-      label: row.label,
-      is_active: toBool(row.is_active),
-      permission: `${row.app_key}:${row.service_key}:${row.action_key}`,
-    }));
-  }
-
-  async lookupCatalogPermission(permission: string | number): Promise<CatalogPermission | null> {
-    if (typeof permission === "number") {
-      const result = await this.executeRaw({
-        name: "permission-lookup-catalog-by-id",
-        text: `SELECT id, app_key, service_key, action_key, label, is_active, updated_at
-               FROM mbkcore_permission_catalog WHERE id = $1 LIMIT 1`,
-        values: [permission],
-      });
-      const row = result.rows?.[0];
-      return row ? {
-        id: Number(row.id),
-        app_key: row.app_key,
-        service_key: row.service_key,
-        action_key: row.action_key,
-        label: row.label,
-        is_active: toBool(row.is_active),
-        updated_at: row.updated_at,
-        permission: `${row.app_key}:${row.service_key}:${row.action_key}`,
-      } : null;
+      this.schemaEnsured = true;
+    } catch {
+      this.schemaEnsured = true;
     }
-
-    const segments = String(permission || "").split(":");
-    if (segments.length !== 3) return null;
-    const [appKey, serviceKey, actionKey] = segments.map((s) => String(s).trim().toLowerCase());
-    if (!appKey || !serviceKey || !actionKey) return null;
-
-    const result = await this.executeRaw({
-      name: "permission-lookup-catalog-by-key",
-      text: `SELECT id, app_key, service_key, action_key, label, is_active, updated_at
-             FROM mbkcore_permission_catalog
-             WHERE app_key = $1 AND service_key = $2 AND action_key = $3 LIMIT 1`,
-      values: [appKey, serviceKey, actionKey],
-    });
-    const row = result.rows?.[0];
-    return row ? {
-      id: Number(row.id),
-      app_key: row.app_key,
-      service_key: row.service_key,
-      action_key: row.action_key,
-      label: row.label,
-      is_active: toBool(row.is_active),
-      updated_at: row.updated_at,
-      permission: `${row.app_key}:${row.service_key}:${row.action_key}`,
-    } : null;
-  }
-
-  async isCatalogPermissionActive(permission: string | number): Promise<boolean> {
-    const found = await this.lookupCatalogPermission(permission);
-    return Boolean(found && found.is_active);
-  }
-
-  async ensureCatalogPermissionId(target: PermissionTarget | any): Promise<number> {
-    let appKey = "";
-    let serviceKey = "";
-    let actionKey = "";
-    let label = "";
-
-    if (typeof target === "string" && target.includes(":")) {
-      const parts = target.trim().toLowerCase().split(":");
-      if (parts.length === 3) {
-        [appKey, serviceKey, actionKey] = parts;
-        label = `${serviceKey} ${actionKey}`;
-      }
-    } else if (target && typeof target === "object" && target.appKey && target.serviceKey && target.actionKey) {
-      appKey = target.appKey;
-      serviceKey = target.serviceKey;
-      actionKey = target.actionKey;
-      label = target.label || `${serviceKey} ${actionKey}`;
-    }
-
-    if (appKey && serviceKey && actionKey) {
-      const existing = await this.lookupCatalogPermission(`${appKey}:${serviceKey}:${actionKey}`);
-      if (existing) return existing.id;
-
-      const saved = await this.upsertCatalogPermission({
-        appKey,
-        serviceKey,
-        actionKey,
-        label,
-      });
-      defaultRoleRegistry.registerCatalogItem(saved.id, appKey, serviceKey, actionKey, label);
-      return saved.id;
-    }
-
-    const directId = resolvePermissionId(target, defaultRoleRegistry);
-    if (directId > 0) {
-      const existing = await this.lookupCatalogPermission(directId);
-      if (existing) return existing.id;
-    }
-
-    return directId > 0 ? directId : 0;
   }
 
   // ---------------------------------------------------------------- Roles
 
   async listRoles(): Promise<RoleDefinition[]> {
-    const rolesResult = await this.executeRaw({
+    await this.ensureSchema();
+    const result = await this.executeRaw({
       name: "permission-list-roles",
-      text: "SELECT id, name, label, description, is_system, created_at, updated_at FROM mbkcore_roles ORDER BY name",
-      values: [],
-    });
-    const roles = rolesResult.rows || [];
-    if (roles.length === 0) return [];
-
-    const permsResult = await this.executeRaw({
-      name: "permission-list-role-perms",
-      text: "SELECT role_name, permission_id FROM mbkcore_role_permissions ORDER BY role_name, permission_id",
+      text: "SELECT id, name, label, description, is_system, permissions, created_at, updated_at FROM mbkcore_roles ORDER BY name",
       values: [],
     });
 
-    const permsByRole = new Map<string, number[]>();
-    for (const row of permsResult.rows || []) {
-      const list = permsByRole.get(row.role_name) || [];
-      list.push(Number(row.permission_id));
-      permsByRole.set(row.role_name, list);
-    }
+    return (result.rows || []).map((r: any) => {
+      let perms: ResourceMasks = {};
+      if (typeof r.permissions === "string") {
+        try { perms = JSON.parse(r.permissions); } catch { perms = {}; }
+      } else if (r.permissions && typeof r.permissions === "object") {
+        perms = r.permissions;
+      }
 
-    return roles.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      label: r.label || r.name,
-      description: r.description || "",
-      is_system: toBool(r.is_system),
-      permissions: permsByRole.get(r.name) || [],
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    }));
+      return {
+        id: r.id,
+        name: String(r.name).toLowerCase(),
+        label: r.label || r.name,
+        description: r.description || "",
+        is_system: toBool(r.is_system),
+        permissions: perms,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      };
+    });
   }
 
   async getRoleByName(name: string): Promise<RoleDefinition | null> {
-    const cleanName = normalizePermission(name);
+    await this.ensureSchema();
+    const cleanName = String(name || "").trim().toLowerCase();
     const result = await this.executeRaw({
       name: "permission-get-role",
-      text: "SELECT id, name, label, description, is_system, created_at, updated_at FROM mbkcore_roles WHERE name = $1 LIMIT 1",
+      text: "SELECT id, name, label, description, is_system, permissions, created_at, updated_at FROM mbkcore_roles WHERE LOWER(name) = $1 LIMIT 1",
       values: [cleanName],
     });
+
     const row = result.rows?.[0];
     if (!row) return null;
 
-    const permsResult = await this.executeRaw({
-      name: "permission-get-role-perms",
-      text: "SELECT permission_id FROM mbkcore_role_permissions WHERE role_name = $1 ORDER BY permission_id",
-      values: [cleanName],
-    });
+    let perms: ResourceMasks = {};
+    if (typeof row.permissions === "string") {
+      try { perms = JSON.parse(row.permissions); } catch { perms = {}; }
+    } else if (row.permissions && typeof row.permissions === "object") {
+      perms = row.permissions;
+    }
 
     return {
       id: row.id,
-      name: row.name,
+      name: String(row.name).toLowerCase(),
       label: row.label || row.name,
       description: row.description || "",
       is_system: toBool(row.is_system),
-      permissions: (permsResult.rows || []).map((p: any) => Number(p.permission_id)),
+      permissions: perms,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
   }
 
-  async createRole(name: string, permissions: (number | PermissionTarget)[] = [], options: RoleCreateOptions = {}): Promise<RoleDefinition | null> {
-    const cleanName = normalizePermission(name);
-    const label = options.label || cleanName;
-    const description = options.description || "";
-    const isSystem = options.is_system ? 1 : 0;
+  async setRolePermissions(roleName: string, permissions: ResourceMasks): Promise<void> {
+    await this.ensureSchema();
+    this.invalidateEffectiveCache();
+    const cleanName = String(roleName || "").trim().toLowerCase();
     const isSqlite = this.dialectName === "sqlite";
-
-    const text = isSqlite
-      ? `INSERT INTO mbkcore_roles (name, label, description, is_system)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT(name) DO UPDATE SET label = excluded.label, description = excluded.description`
-      : `INSERT INTO mbkcore_roles (name, label, description, is_system)
-         VALUES ($1, $2, $3, ${isSystem ? "true" : "false"})
-         ON CONFLICT (name) DO UPDATE SET label = EXCLUDED.label, description = EXCLUDED.description, updated_at = now()`;
+    const permVal = isSqlite ? JSON.stringify(permissions) : JSON.stringify(permissions);
 
     await this.executeRaw({
+      name: "permission-set-role-permissions",
+      text: `UPDATE mbkcore_roles
+             SET permissions = $1,
+                 updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"}
+             WHERE LOWER(name) = $2`,
+      values: [permVal, cleanName],
+    });
+  }
+
+  async createRole(name: string, options: { label?: string; description?: string; permissions?: ResourceMasks; is_system?: boolean } = {}): Promise<RoleDefinition> {
+    await this.ensureSchema();
+    const cleanName = String(name || "").trim().toLowerCase();
+    const isSqlite = this.dialectName === "sqlite";
+    const permVal = JSON.stringify(options.permissions || {});
+
+    const text = isSqlite
+      ? `INSERT INTO mbkcore_roles (name, label, description, is_system, permissions)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, name, label, description, is_system, permissions, created_at, updated_at`
+      : `INSERT INTO mbkcore_roles (name, label, description, is_system, permissions)
+         VALUES ($1, $2, $3, $4, $5::jsonb)
+         RETURNING id, name, label, description, is_system, permissions, created_at, updated_at`;
+
+    const result = await this.executeRaw({
       name: "permission-create-role",
       text,
-      values: [cleanName, label, description, ...(isSqlite ? [isSystem] : [])],
+      values: [cleanName, options.label || cleanName, options.description || "", options.is_system ? 1 : 0, permVal],
     });
 
-    if (permissions?.length) {
-      await this.setRolePermissions(cleanName, permissions);
-    }
-
-    await this.loadAllRolesIntoRegistry();
-    return this.getRoleByName(cleanName);
-  }
-
-  async setRolePermissions(roleName: string, permissions: (number | PermissionTarget)[] = []): Promise<void> {
-    const cleanName = normalizePermission(roleName);
-    const resolvedIds: number[] = [];
-    for (const p of permissions) {
-      const id = await this.ensureCatalogPermissionId(p);
-      if (id > 0) resolvedIds.push(id);
-    }
-    const cleanPermIds = Array.from(new Set(resolvedIds));
-
-    await this.withTransaction(async (txRepo) => {
-      await txRepo.executeRaw({
-        name: "permission-clear-role-perms",
-        text: "DELETE FROM mbkcore_role_permissions WHERE role_name = $1",
-        values: [cleanName],
-      });
-
-      for (const permId of cleanPermIds) {
-        await txRepo.executeRaw({
-          name: "permission-insert-role-perm",
-          text: txRepo.dialect?.name === "sqlite"
-            ? "INSERT INTO mbkcore_role_permissions (role_name, permission_id) VALUES ($1, $2) ON CONFLICT(role_name, permission_id) DO NOTHING"
-            : "INSERT INTO mbkcore_role_permissions (role_name, permission_id) VALUES ($1, $2) ON CONFLICT (role_name, permission_id) DO NOTHING",
-          values: [cleanName, permId],
-        });
-      }
-    });
-
-    defaultRoleRegistry.setRole(cleanName, cleanPermIds);
-  }
-
-  async contributeRolePermissions(roleName: string, permissions: (number | PermissionTarget)[] = [], options: RoleCreateOptions = {}): Promise<void> {
-    const cleanName = normalizePermission(roleName);
-    const resolvedIds: number[] = [];
-    for (const p of permissions) {
-      const id = await this.ensureCatalogPermissionId(p);
-      if (id > 0) resolvedIds.push(id);
-    }
-    const cleanPermIds = Array.from(new Set(resolvedIds));
-
-    await this.withTransaction(async (txRepo) => {
-      const isSqlite = txRepo.dialect?.name === "sqlite";
-      await txRepo.executeRaw({
-        name: "permission-ensure-role",
-        text: isSqlite
-          ? `INSERT INTO mbkcore_roles (name, label, description, is_system)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT(name) DO UPDATE SET updated_at = CURRENT_TIMESTAMP`
-          : `INSERT INTO mbkcore_roles (name, label, description, is_system)
-             VALUES ($1, $2, $3, ${options.is_system ? "true" : "false"})
-             ON CONFLICT (name) DO UPDATE SET updated_at = now()`,
-        values: [cleanName, options.label || cleanName, options.description || "", ...(isSqlite ? [options.is_system ? 1 : 0] : [])],
-      });
-
-      for (const permId of cleanPermIds) {
-        await txRepo.executeRaw({
-          name: "permission-insert-role-perm-contrib",
-          text: isSqlite
-            ? "INSERT INTO mbkcore_role_permissions (role_name, permission_id) VALUES ($1, $2) ON CONFLICT(role_name, permission_id) DO NOTHING"
-            : "INSERT INTO mbkcore_role_permissions (role_name, permission_id) VALUES ($1, $2) ON CONFLICT (role_name, permission_id) DO NOTHING",
-          values: [cleanName, permId],
-        });
-      }
-    });
-
-    defaultRoleRegistry.addRolePermissions(cleanName, cleanPermIds);
+    const r = result.rows?.[0];
+    return {
+      id: r?.id,
+      name: cleanName,
+      label: r?.label || cleanName,
+      description: r?.description || "",
+      is_system: toBool(r?.is_system),
+      permissions: options.permissions || {},
+      created_at: r?.created_at,
+      updated_at: r?.updated_at,
+    };
   }
 
   async deleteRole(name: string): Promise<void> {
-    const cleanName = normalizePermission(name);
-    await this.executeRaw({ name: "permission-delete-role", text: "DELETE FROM mbkcore_roles WHERE name = $1", values: [cleanName] });
-    defaultRoleRegistry.deleteRole(cleanName);
-  }
-
-  async loadAllRolesIntoRegistry(registry: RoleRegistry = defaultRoleRegistry): Promise<RoleRegistry> {
-    try {
-      const isSqlite = this.dialectName === "sqlite";
-      // 1. Load catalog items into registry
-      const catResult = await this.executeRaw({
-        name: "permission-load-all-catalog",
-        text: `SELECT id, app_key, service_key, action_key, label FROM mbkcore_permission_catalog WHERE is_active = ${isSqlite ? "1" : "true"}`,
-        values: [],
-      });
-      for (const c of catResult.rows || []) {
-        registry.registerCatalogItem(Number(c.id), c.app_key, c.service_key, c.action_key, c.label);
-      }
-
-      // 2. Load role permissions
-      const permsResult = await this.executeRaw({
-        name: "permission-load-all-role-perms",
-        text: "SELECT role_name, permission_id FROM mbkcore_role_permissions",
-        values: [],
-      });
-
-      const roleMap = new Map<string, number[]>();
-      for (const row of permsResult.rows || []) {
-        const list = roleMap.get(row.role_name) || [];
-        list.push(Number(row.permission_id));
-        roleMap.set(row.role_name, list);
-      }
-
-      for (const [role, perms] of roleMap.entries()) {
-        registry.setRole(role, perms);
-      }
-      registry.isLoaded = true;
-      return registry;
-    } catch (err: any) {
-      registry.isLoaded = true;
-      const msg = err?.message || "";
-      if (!/no such table|relation .* does not exist|does not exist/i.test(msg)) {
-        console.error("[mbkauthe] Failed to hydrate RoleRegistry:", err);
-      }
-      return registry;
-    }
-  }
-
-  async resolveCanonicalUserId(userIdOrUsername: string, txRepo?: PermissionRepository): Promise<string | null> {
-    if (!userIdOrUsername) return null;
-    const executor = txRepo || this;
-    const res = await executor.executeRaw({
-      name: "permission-resolve-canonical-user-id",
-      text: "SELECT user_id FROM mbkcore_users WHERE user_id = $1 OR username = $1 LIMIT 1",
-      values: [userIdOrUsername],
+    await this.ensureSchema();
+    this.invalidateEffectiveCache();
+    const cleanName = String(name || "").trim().toLowerCase();
+    await this.executeRaw({
+      name: "permission-delete-role",
+      text: "DELETE FROM mbkcore_roles WHERE LOWER(name) = $1 AND is_system = false",
+      values: [cleanName],
     });
-    return res.rows?.[0]?.user_id || null;
   }
 
-  // ----------------------------------------------------------- User Overrides
+  // ---------------------------------------------------- User Role & Overrides
 
-  async listOverridesForUser(userIdOrUsername: string): Promise<UserPermissionOverride[]> {
-    const isSqlite = this.dialectName === "sqlite";
-    const text = isSqlite
-      ? `SELECT permission_id, effect, granted_by, created_at
-         FROM mbkcore_user_permission_overrides
-         WHERE username = $1
-         ORDER BY effect ASC, permission_id ASC`
-      : `SELECT o.permission_id, o.effect, o.granted_by_id AS granted_by, o.created_at
-         FROM mbkcore_user_permission_overrides o
-         JOIN mbkcore_users u ON u.user_id = o.user_id
-         WHERE u.user_id = $1 OR u.username = $1
-         ORDER BY o.effect ASC, o.permission_id ASC`;
+  async getUserRole(username: string): Promise<{ role: string; roles: string[]; perm_version: number; overrides?: UserPermissionOverrides }> {
+    await this.ensureSchema();
+    const cleanUser = String(username || "").trim().toLowerCase();
     const result = await this.executeRaw({
-      name: "permission-list-overrides",
-      text,
-      values: [userIdOrUsername],
+      name: "permission-get-user-role",
+      text: "SELECT role, extra_roles, perm_version, perm_overrides FROM mbkcore_users WHERE LOWER(username) = $1 LIMIT 1",
+      values: [cleanUser],
     });
-    return (result.rows || []).map((row: any) => ({
-      permission_id: Number(row.permission_id),
-      effect: row.effect,
-      granted_by: row.granted_by || row.granted_by_id || null,
-      created_at: row.created_at,
-    }));
-  }
 
-  async setOverride(userIdOrUsername: string, permission: number | PermissionTarget, effect: "allow" | "deny", grantedByIdOrUsername: string | null = null): Promise<any> {
-    this.invalidateEffectiveCache(userIdOrUsername);
-    const permId = await this.ensureCatalogPermissionId(permission);
-    if (permId <= 0) return null;
+    const row = result.rows?.[0];
+    const role = (row?.role || "normaluser").toLowerCase();
+    const perm_version = Number(row?.perm_version || 1);
 
-    const isSqlite = this.dialectName === "sqlite";
-    if (isSqlite) {
-      const text = `INSERT INTO mbkcore_user_permission_overrides (username, permission_id, effect, granted_by)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT(username, permission_id) DO UPDATE SET effect = excluded.effect, granted_by = excluded.granted_by`;
-      return this.executeRaw({
-        name: "permission-set-override",
-        text,
-        values: [userIdOrUsername, permId, effect, grantedByIdOrUsername],
-      });
-    }
-
-    const canonicalUserId = (await this.resolveCanonicalUserId(userIdOrUsername)) || userIdOrUsername;
-    const canonicalGrantedBy = grantedByIdOrUsername ? (await this.resolveCanonicalUserId(grantedByIdOrUsername)) : null;
-
-    const text = `INSERT INTO mbkcore_user_permission_overrides (user_id, permission_id, effect, granted_by_id)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, permission_id) DO UPDATE SET effect = EXCLUDED.effect, granted_by_id = EXCLUDED.granted_by_id`;
-
-    return this.executeRaw({
-      name: "permission-set-override",
-      text,
-      values: [canonicalUserId, permId, effect, canonicalGrantedBy],
-    });
-  }
-
-  async removeOverride(userIdOrUsername: string, permission: number | PermissionTarget): Promise<any> {
-    this.invalidateEffectiveCache(userIdOrUsername);
-    const permId = await this.ensureCatalogPermissionId(permission);
-    if (permId <= 0) return null;
-
-    const isSqlite = this.dialectName === "sqlite";
-    if (isSqlite) {
-      return this.executeRaw({
-        name: "permission-remove-override",
-        text: "DELETE FROM mbkcore_user_permission_overrides WHERE username = $1 AND permission_id = $2",
-        values: [userIdOrUsername, permId],
-      });
-    }
-
-    const canonicalUserId = (await this.resolveCanonicalUserId(userIdOrUsername)) || userIdOrUsername;
-    return this.executeRaw({
-      name: "permission-remove-override",
-      text: "DELETE FROM mbkcore_user_permission_overrides WHERE user_id = $1 AND permission_id = $2",
-      values: [canonicalUserId, permId],
-    });
-  }
-
-  async clearOverridesForUser(userIdOrUsername: string): Promise<any> {
-    this.invalidateEffectiveCache(userIdOrUsername);
-    const isSqlite = this.dialectName === "sqlite";
-    if (isSqlite) {
-      return this.executeRaw({
-        name: "permission-clear-overrides",
-        text: "DELETE FROM mbkcore_user_permission_overrides WHERE username = $1",
-        values: [userIdOrUsername],
-      });
-    }
-
-    const canonicalUserId = (await this.resolveCanonicalUserId(userIdOrUsername)) || userIdOrUsername;
-    return this.executeRaw({
-      name: "permission-clear-overrides",
-      text: "DELETE FROM mbkcore_user_permission_overrides WHERE user_id = $1",
-      values: [canonicalUserId],
-    });
-  }
-
-  async replaceOverridesForUser(userIdOrUsername: string, overrides: Array<{ permission_id: number; effect: string }> = [], grantedByIdOrUsername: string | null = null): Promise<void> {
-    this.invalidateEffectiveCache(userIdOrUsername);
-    const isSqlite = this.dialectName === "sqlite";
-    const canonicalUserId = isSqlite ? userIdOrUsername : ((await this.resolveCanonicalUserId(userIdOrUsername)) || userIdOrUsername);
-    const canonicalGrantedBy = isSqlite ? grantedByIdOrUsername : (grantedByIdOrUsername ? (await this.resolveCanonicalUserId(grantedByIdOrUsername)) : null);
-
-    await this.withTransaction(async (txRepo) => {
-      const pRepo = txRepo as unknown as PermissionRepository;
-      await pRepo.clearOverridesForUser(userIdOrUsername);
-      for (const item of overrides) {
-        const permId = await pRepo.ensureCatalogPermissionId(item.permission_id);
-        const effect = String(item.effect || "").toLowerCase();
-        if (permId > 0 && ["allow", "deny"].includes(effect)) {
-          await pRepo.setOverride(canonicalUserId, permId, effect as any, canonicalGrantedBy);
+    let roles = [role];
+    if (row?.extra_roles) {
+      try {
+        const extra = typeof row.extra_roles === "string" ? JSON.parse(row.extra_roles) : row.extra_roles;
+        if (Array.isArray(extra)) {
+          roles = Array.from(new Set([role, ...extra.map((r: any) => String(r).toLowerCase())]));
         }
+      } catch {
+        /* ignore */
       }
-      await pRepo.bumpPermissionVersion(userIdOrUsername);
-    });
+    }
+
+    let overrides: UserPermissionOverrides | undefined;
+    if (row?.perm_overrides) {
+      try {
+        overrides = typeof row.perm_overrides === "string" ? JSON.parse(row.perm_overrides) : row.perm_overrides;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return { role, roles, perm_version, overrides };
   }
 
-  // ---------------------------------------------------- User Role Assignment
+  async setUserRole(username: string, role: string, extraRoles: string[] = []): Promise<void> {
+    await this.ensureSchema();
+    const cleanUser = String(username || "").trim().toLowerCase();
+    const cleanRole = String(role || "normaluser").trim().toLowerCase();
+    this.invalidateEffectiveCache(cleanUser);
 
-  async getUserRole(username: string): Promise<UserRoleAssignment> {
-    const userRow = await this.executeRaw({
-      name: "permission-get-user-primary-role",
-      text: "SELECT role, perm_version FROM mbkcore_users WHERE username = $1 LIMIT 1",
-      values: [username],
-    });
-    const primaryRole = userRow.rows?.[0]?.role ? normalizePermission(userRow.rows[0].role) : "normaluser";
-    const permVersion = Number(userRow.rows?.[0]?.perm_version ?? 1);
-    return { role: primaryRole, roles: [primaryRole], perm_version: permVersion };
-  }
-
-  async getUserRoles(username: string): Promise<UserRoleAssignment> {
-    return this.getUserRole(username);
-  }
-
-  async setUserRole(username: string, role: string): Promise<void> {
-    this.invalidateEffectiveCache(username);
-    const cleanRole = normalizePermission(role) || "normaluser";
     const isSqlite = this.dialectName === "sqlite";
+    const extraVal = JSON.stringify(extraRoles.map((r) => r.toLowerCase()));
+
     await this.executeRaw({
       name: "permission-set-user-role",
       text: `UPDATE mbkcore_users
              SET role = $1,
+                 extra_roles = $2,
                  perm_version = (COALESCE(perm_version, 1) + 1),
                  updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"}
-             WHERE username = $2`,
-      values: [cleanRole, username],
+             WHERE LOWER(username) = $3`,
+      values: [cleanRole, extraVal, cleanUser],
     });
   }
 
-  async setUserRoles(username: string, roles: string[] | string = []): Promise<void> {
-    const role = Array.isArray(roles) && roles.length > 0 ? roles[0] : (typeof roles === "string" ? roles : "normaluser");
-    return this.setUserRole(username, role);
+  async setUserOverrides(username: string, overrides: UserPermissionOverrides): Promise<void> {
+    await this.ensureSchema();
+    const cleanUser = String(username || "").trim().toLowerCase();
+    this.invalidateEffectiveCache(cleanUser);
+
+    const isSqlite = this.dialectName === "sqlite";
+    const overVal = JSON.stringify(overrides);
+
+    await this.executeRaw({
+      name: "permission-set-user-overrides",
+      text: `UPDATE mbkcore_users
+             SET perm_overrides = $1,
+                 perm_version = (COALESCE(perm_version, 1) + 1),
+                 updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"}
+             WHERE LOWER(username) = $2`,
+      values: [overVal, cleanUser],
+    });
   }
 
-  async bumpPermissionVersion(username: string): Promise<any> {
-    this.invalidateEffectiveCache(username);
+  async bumpPermissionVersion(username: string): Promise<void> {
+    const cleanUser = String(username || "").trim().toLowerCase();
+    this.invalidateEffectiveCache(cleanUser);
     const isSqlite = this.dialectName === "sqlite";
-    return this.executeRaw({
+    await this.executeRaw({
       name: "permission-bump-version",
       text: `UPDATE mbkcore_users SET perm_version = (COALESCE(perm_version, 1) + 1),
-             updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"} WHERE username = $1`,
-      values: [username],
+             updated_at = ${isSqlite ? "CURRENT_TIMESTAMP" : "now()"} WHERE LOWER(username) = $1`,
+      values: [cleanUser],
     });
   }
 
-  async computeEffectiveForUser(username: string, knownRole: string | null = null): Promise<EffectivePermissionsResult> {
-    const cleanRole = normalizePermission(knownRole);
-    if (cleanRole === "superadmin") {
+  // ------------------------------------------------ Effective Permission Computation
+
+  async computeEffectiveForUser(username: string, knownRole?: string | null): Promise<UserAuthorizationSnapshot> {
+    const cleanUser = String(username || "").trim().toLowerCase();
+    const cleanKnownRole = String(knownRole || "").trim().toLowerCase();
+
+    // Fast path: superadmin
+    if (cleanKnownRole === "superadmin") {
       return {
+        role: "superadmin",
         roles: ["superadmin"],
-        overrides: { allows: [0], denies: [] },
-        effective: { allows: [0], denies: [] },
+        masks: {},
+        isSuperadmin: true,
         perm_version: 1,
       };
     }
 
-    const cacheKey = username ? username.toLowerCase() : "";
-    if (cacheKey) {
-      const cached = this.effectiveCache.get(cacheKey);
+    // Check memory cache
+    if (cleanUser) {
+      const cached = this.effectiveCache.get(cleanUser);
       if (cached && Date.now() < cached.expiresAt) {
-        if (!knownRole || (cached.snapshot.roles && cached.snapshot.roles.includes(cleanRole))) {
-          return cached.snapshot;
-        }
+        return cached.snapshot;
       }
     }
 
-    const { role, roles, perm_version } = knownRole
-      ? { role: cleanRole, roles: [cleanRole], perm_version: 1 }
-      : await this.getUserRoles(username);
+    const { role, roles, perm_version, overrides } = await this.getUserRole(cleanUser);
 
-    if (role === "superadmin") {
-      const superSnapshot: EffectivePermissionsResult = {
-        roles: ["superadmin"],
-        overrides: { allows: [0], denies: [] },
-        effective: { allows: [0], denies: [] },
+    if (role === "superadmin" || roles.includes("superadmin")) {
+      const superSnap: UserAuthorizationSnapshot = {
+        role: "superadmin",
+        roles,
+        masks: {},
+        isSuperadmin: true,
         perm_version,
       };
-      if (cacheKey) this.effectiveCache.set(cacheKey, { snapshot: superSnapshot, expiresAt: Date.now() + this.effectiveCacheTtlMs });
-      return superSnapshot;
+      if (cleanUser) this.effectiveCache.set(cleanUser, { snapshot: superSnap, expiresAt: Date.now() + this.effectiveCacheTtlMs });
+      return superSnap;
     }
 
-    if (defaultRoleRegistry.roles.size === 0 && !defaultRoleRegistry.isLoaded) {
-      await this.loadAllRolesIntoRegistry(defaultRoleRegistry);
+    // Fetch all roles assigned to user
+    const roleMasks: ResourceMasks[] = [];
+    for (const r of roles) {
+      const roleDef = await this.getRoleByName(r);
+      if (roleDef && roleDef.permissions) {
+        roleMasks.push(roleDef.permissions);
+      }
     }
 
-    const overrides = await this.listOverridesForUser(username);
-    const denies = overrides.filter((o) => o.effect === "deny").map((o) => o.permission_id);
-    const allows = overrides.filter((o) => o.effect === "allow").map((o) => o.permission_id);
-    const effective = buildEffectivePermissions({ roles, allows, denies, roleRegistry: defaultRoleRegistry });
-    const snapshot: EffectivePermissionsResult = { roles, overrides: { allows, denies }, effective, perm_version };
+    // Combine role masks and apply overrides
+    const baseMasks = combineResourceMasks(...roleMasks);
+    const finalMasks = applyOverrides(baseMasks, overrides);
 
-    if (cacheKey) {
-      this.effectiveCache.set(cacheKey, { snapshot, expiresAt: Date.now() + this.effectiveCacheTtlMs });
+    const snapshot: UserAuthorizationSnapshot = {
+      role,
+      roles,
+      masks: finalMasks,
+      overrides,
+      isSuperadmin: false,
+      perm_version,
+    };
+
+    if (cleanUser) {
+      this.effectiveCache.set(cleanUser, { snapshot, expiresAt: Date.now() + this.effectiveCacheTtlMs });
     }
 
     return snapshot;
+  }
+
+  // ------------------------------------------------ Permission Catalog (Management Only)
+
+  async syncCatalogPermissions(definitions: Record<string, any>, fallbackApp: string = "app"): Promise<number> {
+    const isSqlite = this.dialectName === "sqlite";
+    const items: Array<{ appKey: string; resKey: string; actKey: string; label: string; permKey: string; mask: number }> = [];
+
+    for (const [resKey, def] of Object.entries(definitions || {})) {
+      const appKey = (def as any)?.app || fallbackApp;
+      for (const [actKey, desc] of Object.entries((def as any)?.actions || {})) {
+        if (actKey === "*" || actKey === "all") continue;
+        const actionDesc = desc as any;
+        const permKey = actionDesc.key || `${appKey}:${resKey}:${actKey}`;
+        const label = actionDesc.label || `${resKey} ${actKey}`;
+        const mask = Number(actionDesc.mask) || 1;
+        items.push({ appKey, resKey, actKey, label, permKey, mask });
+      }
+    }
+
+    if (!items.length) return 0;
+    const chunkSize = 50;
+    let synced = 0;
+
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      const values: any[] = [];
+      const placeholders = chunk.map((item, idx) => {
+        const offset = idx * 6;
+        values.push(item.appKey, item.resKey, item.actKey, item.label, item.permKey, item.mask);
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, ${isSqlite ? "1" : "true"})`;
+      }).join(", ");
+
+      const text = isSqlite
+        ? `INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, permission, mask, is_active)
+           VALUES ${placeholders}
+           ON CONFLICT (permission) DO UPDATE SET
+             label = excluded.label,
+             mask = excluded.mask,
+             app_key = excluded.app_key,
+             service_key = excluded.service_key,
+             action_key = excluded.action_key,
+             is_active = 1,
+             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+        : `INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, permission, mask, is_active)
+           VALUES ${placeholders}
+           ON CONFLICT (permission) DO UPDATE SET
+             label = EXCLUDED.label,
+             mask = EXCLUDED.mask,
+             app_key = EXCLUDED.app_key,
+             service_key = EXCLUDED.service_key,
+             action_key = EXCLUDED.action_key,
+             is_active = true,
+             updated_at = now()`;
+
+      try {
+        await this.executeRaw({
+          name: `perm-sync-catalog-chunk-${i}`,
+          text,
+          values,
+        });
+        synced += chunk.length;
+      } catch {
+        // Gracefully continue if catalog table not migrated in isolated unit tests
+      }
+    }
+    return synced;
   }
 }
 

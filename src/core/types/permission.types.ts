@@ -1,93 +1,59 @@
-export type PermissionId = number;
+/**
+ * MBKAuthe — Bitmask Authorization Types
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
+ */
 
-export interface PermissionDescriptor {
-  id: number;
-  appKey: string;
-  serviceKey: string;
-  actionKey: string;
-  label?: string;
-  key: string;
+export type ResourceMasks = Record<string, number>;
+
+export interface ActionDescriptor {
+  readonly resource: string;
+  readonly action: string;
+  readonly mask: number;
+  readonly id?: number;
+  readonly key?: string;
+  readonly label?: string;
   valueOf(): number;
   toString(): string;
 }
 
-export type PermissionTarget = number | PermissionDescriptor | { id?: number; key?: string; [key: string]: any };
+export type PermissionTarget = ActionDescriptor | { resource: string; mask: number } | string | number;
 
-export interface PermissionManifest {
-  [domain: string]: {
-    [action: string]: string | { id?: number; label: string };
-  };
-}
-
-export interface DeclaredPermission {
-  id?: number;
-  serviceKey: string;
-  actionKey: string;
-  label?: string | null;
-}
-
-export interface CatalogPermission {
-  id: number;
-  app_key: string;
-  service_key: string;
-  action_key: string;
-  label?: string | null;
-  is_active: boolean;
-  updated_at?: Date | string;
-  permission?: string;
+export interface ResourceDefinition {
+  readonly name: string;
+  readonly label?: string;
+  readonly app?: string;
+  readonly actions: Record<string, ActionDescriptor>;
+  readonly allMask: number;
 }
 
 export interface RoleDefinition {
   id?: number | string;
-  name?: string;
-  label: string;
+  name: string;
+  label?: string;
   description?: string;
   is_system?: boolean;
-  permissions: number[];
+  permissions: ResourceMasks;
   created_at?: Date | string;
   updated_at?: Date | string;
 }
 
-export interface RoleRegistryMap {
-  [roleName: string]: RoleDefinition | number[] | any;
+export interface UserPermissionOverrides {
+  allows?: ResourceMasks;
+  denies?: ResourceMasks;
 }
 
-export interface UserPermissionOverride {
-  permission_id: number;
-  effect: "allow" | "deny";
-  granted_by?: string | null;
-  created_at?: Date | string;
-}
-
-export interface UserRoleAssignment {
+export interface UserAuthorizationSnapshot {
   role: string;
   roles: string[];
+  masks: ResourceMasks;
+  overrides?: UserPermissionOverrides;
+  isSuperadmin: boolean;
   perm_version: number;
 }
 
-export interface EffectivePermissionsResult {
-  roles?: string[];
-  overrides?: {
-    allows: number[];
-    denies: number[];
-  };
-  effective?: {
-    allows: number[];
-    denies: number[];
-  };
-  perm_version?: number;
-}
-
-export interface DefinePermissionsOptions {
-  appKey?: string | null;
-  fallbackAppKey?: string | null;
-  roles?: RoleRegistryMap;
-}
-
-export interface SyncPermissionsResult {
-  synced: number;
-  deactivated: number;
-  rolesSynced: number;
-  appKey: string;
-  skipped?: boolean;
+export interface DefineResourcesOptions {
+  app?: string;
+  fallbackAppKey?: string;
+  roles?: Record<string, { label?: string; description?: string; permissions?: Record<string, number> | string[] }>;
 }

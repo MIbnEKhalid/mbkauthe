@@ -38,7 +38,7 @@ Designed for high reliability and defense-in-depth security, MBKAuthe provides d
 - **Encrypted Multi-Session Engine**: Client-side AES cookie encryption, automatic database session validation, session restoration, and concurrent session pruning (`MAX_SESSIONS_PER_USER`).
 - **Provider-Neutral OAuth & OIDC**: Modern social login architecture supporting Google, GitHub, Microsoft/Entra ID, Discord, Apple, and generic OIDC providers with default-on PKCE (RFC 7636) and AES-256-GCM token encryption at rest.
 - **Decoupled Auth & Authorization**: Pure domain `AuthContext` model and dedicated `AuthorizationService` for role, permission, and custom policy evaluation independent of transport or database.
-- **Dynamic Manifest-Driven RBAC**: Declarative `app:service:action` permission manifests (`definePermissions`), database catalog sync (`syncAppPermissions`), `RoleRegistry`, and drop-in middleware (`sessVal`, `sessRole`, `sessPerm`, `roleChk`, `permChk`).
+- **Sub-Nanosecond Bitmask Authorization Engine**: Pure 31-bit integer action masks, deterministic CRUD bits, zero runtime database roundtrips, multi-role aggregation with deterministic user overrides, startup role sync (`syncAppPermissions`), and drop-in Express middleware (`sessVal`, `sessRole`, `sessPerm`, `roleChk`, `permChk`).
 - **WebAuthn / FIDO2 Passkeys**: Full passwordless biometric authentication (Touch ID, Face ID, Windows Hello) and hardware security keys with challenge-response ceremonies, anti-replay counter checks, multi-user discoverable credentials, and post-login registration prompts.
 - **Cryptographic TokenEngine**: Standardized prefixed tokens (`mbk_pat_`, `mbk_cli_`, `mbk_sess_`) with constant-time SHA-256 verification and last-used tracking.
 - **RFC 8628 CLI Device Login**: OAuth 2.0 Device Authorization Grant allowing command-line tools to authenticate seamlessly via the browser with 8-character user codes.
@@ -70,16 +70,15 @@ import { syncAppPermissions } from "mbkauthe/services";
 
 const app = express();
 
-// 1. Define App Permissions
+// 1. Define App Resources & Role Bitmasks
 const AppPermissions = definePermissions({
-  appKey: "portal",
-  permissions: {
-    dashboard: { view: "View main dashboard" },
-    admin: { manage: "Manage system configuration" },
-  },
+  dashboard: { view: "View main dashboard" },
+  admin: { manage: "Manage system configuration" },
+}, {
+  app: "portal",
   roles: {
-    superadmin: ["portal:*"],
-    normaluser: ["portal:dashboard:view"],
+    superadmin: ["*"],
+    normaluser: ["dashboard:view"],
   },
 });
 

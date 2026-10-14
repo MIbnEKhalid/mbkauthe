@@ -8,7 +8,7 @@ import { SqlitePool } from '../../src/db/adapters/SqliteAdapter.js';
 import { sqliteDialect } from '../../src/db/dialects/SqliteDialect.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
+const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/sqlite.sql');
 
 describe('Passkey Subsystem Unit Tests', () => {
   let schemaSql;

@@ -11,7 +11,7 @@ export async function createTables(): Promise<void> {
   const startTime = performance.now();
   console.log(`[mbkauthe] Starting schema creation (Database type: ${dbType})...`);
 
-  const schemaFile = dbType === "sqlite" ? "db.sqlite.sql" : "db.sql";
+  const schemaFile = dbType === "sqlite" ? "sqlite.sql" : "postgres.sql";
   const schemaPath = path.resolve(__dirname, "../../../docs/schema", schemaFile);
   const schemaSql = await readFile(schemaPath, "utf8");
 

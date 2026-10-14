@@ -48,7 +48,7 @@ const {
 
 import { setupViewEngine } from 'mbkutils';
 
-const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
+const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/sqlite.sql');
 
 const viewsPath = path.join(__dirname, '../../views');
 
@@ -159,13 +159,15 @@ async function createUser(username, {
     [username, hashPassword(PASSWORD, username), role, active, isLocalOnly, JSON.stringify(allowedApps), fullName || `Full ${username}`]
   );
   if (permissions && permissions.length > 0) {
+    const allows = {};
     for (const perm of permissions) {
-      const permId = typeof perm === "number" ? perm : 1;
-      await dblogin.query(
-        `INSERT INTO mbkcore_user_permission_overrides (username, permission_id, effect) VALUES ($1, $2, 'allow')`,
-        [username, permId]
-      );
+      if (typeof perm === "string") allows[perm] = 1;
+      else allows[`res_${perm}`] = perm;
     }
+    await dblogin.query(
+      `UPDATE mbkcore_users SET perm_overrides = $1 WHERE username = $2`,
+      [JSON.stringify({ allows, denies: {} }), username]
+    ).catch(() => {});
   }
   if (twoFASecret) {
     await dblogin.query(

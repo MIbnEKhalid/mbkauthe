@@ -1,159 +1,252 @@
-# Dynamic Permission Catalogs & Authorization in MBKAuthe v6
+# Numeric Bitmask Permissions & Authorization Engine in MBKAuthe v6
 
-MBKAuthe v6 features a dynamic, manifest-driven permission catalog structured around `app:service:action` identifiers, combined with a decoupled `AuthorizationService` for pure role, permission, and policy evaluation.
+MBKAuthe v6 features a **pure numeric bitmask permission engine** that eliminates runtime database lookups, regex parsing, and string allocations. Permission evaluation executes in a **single CPU bitwise cycle (< 1ns)**, while sessions store precomputed resource action masks directly in memory.
 
 ---
 
-## 1. Defining Permissions (`definePermissions`)
+## 1. Core Architecture: Why Numeric Bitmasks?
 
-Declare application permissions and default roles using `definePermissions`:
+Traditional permission systems match strings (`"users:read"`) or evaluate wildcards against database tables on every request. MBKAuthe encodes every resource action as a deterministic 31-bit integer flag.
+
+### Key Advantages:
+- **Sub-Nanosecond Evaluation**: Checking access requires only `(userMask & requiredMask) === requiredMask`.
+- **Zero Request-Time DB Queries**: Effective permissions are hydrated once at session creation and attached to `req.session.user.perms`.
+- **Deterministic Precedence**: Role masks are combined via bitwise `OR`, and explicit user denials strip bits via bitwise `AND NOT` (`& ~denyMask`).
+- **Compact Persistence**: Instead of thousands of junction rows across multiple tables, roles store a single JSON/text bitmask map in `mbkcore_roles.permissions` (e.g. `{"global": 1, "tasks": 15}`).
+
+---
+
+## 2. Standard Action Bits
+
+Each bit position within an integer represents an action on a given resource:
+
+```typescript
+export const StandardActionBits = {
+  VIEW: 1 << 0,   // 1  (0b00001) - Read / List / View / Get
+  CREATE: 1 << 1, // 2  (0b00010) - Create / Add / Upload
+  UPDATE: 1 << 2, // 4  (0b00100) - Edit / Modify / Patch
+  DELETE: 1 << 3, // 8  (0b01000) - Delete / Destroy / Remove
+  MANAGE: 1 << 4, // 16 (0b10000) - Administrative / Configuration
+} as const;
+```
+
+Custom resource actions automatically start at bit `1 << 5` (`32`) up to bit 30 (`0x7fffffff`).
+
+---
+
+## 3. Defining Resources & Permissions
+
+MBKAuthe provides `defineResource` and `defineResources` (aliased as `definePermissions`) to generate typed, immutable `ActionDescriptor` objects.
+
+### Defining Individual Resources (`defineResource`)
+
+```typescript
+import { defineResource, StandardActionBits } from "mbkauthe/core";
+
+export const Tasks = defineResource("tasks", {
+  view: "View tasks",            // Automatically assigns StandardActionBits.VIEW (1)
+  create: "Create new tasks",    // Automatically assigns StandardActionBits.CREATE (2)
+  update: "Modify tasks",        // Automatically assigns StandardActionBits.UPDATE (4)
+  delete: "Remove tasks",        // Automatically assigns StandardActionBits.DELETE (8)
+  assign: "Assign task to user", // Custom action -> assigned 1 << 5 (32)
+});
+
+console.log(Tasks.actions.view.mask);   // 1
+console.log(Tasks.actions.assign.mask); // 32
+console.log(Tasks.allMask);             // 47 (1 | 2 | 4 | 8 | 32)
+console.log(Tasks.actions["*"].mask);   // 47 (Wildcard access to all actions)
+```
+
+### Defining Complete App Manifests (`definePermissions`)
+
+Consuming applications declare all resources and default role bitmasks together:
 
 ```typescript
 import { definePermissions } from "mbkauthe/core";
 
-export const CorePermissions = definePermissions({
-  appKey: "portal",
-  permissions: {
-    users: {
-      read: "View user directory",
-      write: "Create and edit users",
-      delete: "Delete user accounts",
-    },
-    billing: {
-      view: "View invoices",
-      charge: "Process payments",
-    },
+export const AppPermissions = definePermissions({
+  users: {
+    view: "View user profiles",
+    create: "Invite new users",
+    update: "Update user details",
+    delete: "Deactivate user accounts",
   },
+  billing: {
+    view: "View billing history",
+    manage: "Manage subscription plans",
+    export: "Export financial statements",
+  },
+}, {
+  app: "portal",
   roles: {
+    superadmin: ["*"], // Wildcard granting all actions across all declared resources
     admin: {
-      label: "Portal Administrator",
-      permissions: ["portal:users:*", "portal:billing:*"],
+      label: "Portal Admin",
+      description: "Full portal management except system roots",
+      permissions: ["users:*", "billing:*"],
     },
     member: {
       label: "Standard Member",
-      permissions: ["portal:users:read", "portal:billing:view"],
+      permissions: ["users:view", "billing:view"],
     },
   },
 });
 
-// Generated type-safe permission strings:
-console.log(CorePermissions.users.read);     // "portal:users:read"
-console.log(CorePermissions.users.write);    // "portal:users:write"
-console.log(CorePermissions.billing.charge); // "portal:billing:charge"
+// Type-safe ActionDescriptor usage:
+console.log(AppPermissions.users.view.mask); // 1
+console.log(String(AppPermissions.users.view)); // "portal:users:view"
+console.log(Number(AppPermissions.users.view)); // 1
 ```
 
 ---
 
-## 2. Syncing App Permissions to Database (`syncAppPermissions`)
+## 4. Multi-Role Aggregation & User Overrides
 
-On application startup, sync declared permissions to the database catalog:
+MBKAuthe resolves a user's effective permissions by combining their primary role (`user.role`), additional assigned roles (`user.extra_roles`), and explicit user overrides (`user.perm_overrides`).
+
+### Bitwise Mask Combination
+```typescript
+import { combineResourceMasks, applyOverrides, hasAction, StandardActionBits } from "mbkauthe/core";
+
+// 1. Roles assigned to user
+const roleA = { tasks: 1, documents: 2 }; // tasks: view (1), documents: create (2)
+const roleB = { tasks: 4, reports: 1 };   // tasks: update (4), reports: view (1)
+
+// Combine via bitwise OR:
+const baseMasks = combineResourceMasks(roleA, roleB);
+// => { tasks: 5, documents: 2, reports: 1 } (tasks: 1 | 4 = 5)
+
+// 2. Explicit User Overrides
+const overrides = {
+  allows: { documents: 1 }, // Grant documents: view (1)
+  denies: { tasks: 4 },     // Deny tasks: update (4)
+};
+
+// Formula: (baseMask | userAllows) & ~userDenies
+const effectiveMasks = applyOverrides(baseMasks, overrides);
+// => { tasks: 1, documents: 3, reports: 1 }
+
+// 3. Nanosecond Check:
+console.log(hasAction(effectiveMasks.tasks, StandardActionBits.VIEW));   // true
+console.log(hasAction(effectiveMasks.tasks, StandardActionBits.UPDATE)); // false (stripped by deny)
+```
+
+---
+
+## 5. Synchronizing Permissions at Startup (`syncAppPermissions`)
+
+At application startup, invoke `syncAppPermissions` to persist declared role masks into `mbkcore_roles`:
 
 ```typescript
 import { syncAppPermissions } from "mbkauthe/services";
-import { CorePermissions } from "./permissions.js";
+import { AppPermissions } from "./permissions.js";
 
-async function boot() {
-  const result = await syncAppPermissions(CorePermissions);
-  console.log(`Permission Sync Complete: ${result.synced} permissions registered.`);
+async function bootstrap() {
+  const result = await syncAppPermissions(AppPermissions);
+  console.log(`[auth] Permissions Synced for ${result.appKey}: ${result.rolesSynced} roles updated.`);
 }
 
-boot();
+bootstrap();
 ```
+
+Unlike legacy versions, `syncAppPermissions` does not perform complex diffs against hundreds of catalog rows. It updates the `mbkcore_roles.permissions` JSON column directly, ensuring fast startup times.
 
 ---
 
-## 3. Dedicated `AuthorizationService`
+## 6. Request Authorization with `AuthContext`
 
-The `authorizationService` provides pure, in-memory authorization logic without coupling to HTTP transports or databases:
+During incoming requests, MBKAuthe wraps the authenticated principal in an `AuthContext`:
 
 ```typescript
-import { authorizationService, AuthContext } from "mbkauthe/core";
+import { AuthContext } from "mbkauthe/core";
+import { AppPermissions } from "./permissions.js";
 
-const context = new AuthContext({
-  isAuthenticated: true,
-  principal: {
-    username: "alice",
-    role: "normaluser",
-    permissions: ["portal:users:read", "portal:billing:view"],
-    allowed_apps: ["portal"],
-  },
-});
+// Access AuthContext from express request:
+const auth = (req as any).authContext as AuthContext;
 
-// Check permissions
-const canRead = authorizationService.hasPermission(context, "portal:users:read");
-console.log("Can read users:", canRead); // true
+// Check single permission via ActionDescriptor:
+if (auth.can(AppPermissions.users.create)) {
+  // User is allowed to invite users
+}
 
-// Check app access
-const canAccess = authorizationService.canAccessApp(context, "portal");
-console.log("Can access portal:", canAccess); // true
+// Check with resource string and numeric bitmask:
+if (auth.hasPermission("users", 1)) {
+  // User can view users
+}
 
-// Evaluate custom dynamic policy
-const isAllowedTime = await authorizationService.evaluatePolicy(context, (ctx) => {
-  const hour = new Date().getHours();
-  return hour >= 9 && hour <= 18; // Business hours only
-});
+// Check multiple permissions:
+const canManageAll = auth.hasAllPermissions(
+  AppPermissions.users.view,
+  AppPermissions.billing.view
+);
+
+// Check if user has ANY of the permissions:
+const hasAnyAccess = auth.hasAnyPermission(
+  AppPermissions.users.delete,
+  AppPermissions.billing.manage
+);
 ```
+
+### SuperAdmin Instant Bypass
+If `auth.isSuperadmin()` is true, all permission checks, role checks, and application boundaries return `true` immediately without evaluating bitmasks or performing database queries.
 
 ---
 
-## 4. Enforcing Permissions in Express (`permChk` and `sessPerm`)
+## 7. Express Middleware: `permChk` & `sessPerm`
 
-### Using `permChk` (Permission Check)
+Protect Express routes directly using either standalone permission checks or combined session and permission pipelines:
+
+### Standalone Permission Check (`permChk`)
+
+Use `permChk` when `sessVal` is already applied earlier in the middleware chain:
 
 ```typescript
 import express from "express";
 import { sessVal, permChk } from "mbkauthe";
-import { CorePermissions } from "./permissions.js";
+import { AppPermissions } from "./permissions.js";
 
-const app = express();
+const router = express.Router();
 
-app.post(
-  "/api/users",
+router.post(
+  "/users",
   sessVal,
-  permChk(CorePermissions.users.write),
+  permChk(AppPermissions.users.create),
   (req, res) => {
     res.json({ message: "User created" });
   }
 );
 ```
 
-### Combined Middleware (`sessPerm`)
+### Combined Session & Permission Pipeline (`sessPerm`)
 
-`sessPerm` validates session and verifies the requested permission in one step:
+`sessPerm` verifies session authentication and validates the bitmask permission in a single call:
 
 ```typescript
+import express from "express";
 import { sessPerm } from "mbkauthe";
-import { CorePermissions } from "./permissions.js";
+import { AppPermissions } from "./permissions.js";
 
+const app = express();
+
+// Requires active session AND delete permission on users
 app.delete(
   "/api/users/:id",
-  sessPerm(CorePermissions.users.delete),
+  sessPerm(AppPermissions.users.delete),
   (req, res) => {
     res.json({ message: "User deleted" });
   }
 );
+
+// String shorthand also supported:
+app.get(
+  "/api/users",
+  sessPerm("users.view"),
+  (req, res) => {
+    res.json({ users: [] });
+  }
+);
 ```
 
----
-
-## 5. Wildcard Matching & Direct Checks
-
-Evaluate permissions programmatically using `hasPermission`:
-
-```typescript
-import { hasPermission } from "mbkauthe/core";
-
-const user = {
-  id: 1,
-  username: "alice",
-  role: "admin",
-  overrides: {
-    allows: ["portal:users:*"],
-    denies: ["portal:users:delete"],
-  },
-};
-
-console.log(hasPermission(user, "portal:users:read"));   // true
-console.log(hasPermission(user, "portal:users:delete")); // false (Deny overrides Allow)
-```
-
+If authorization fails:
+- **API Clients (`Accept: application/json`)**: Receives `403 Forbidden` with error code `INSUFFICIENT_PERMISSIONS` and the required resource/action.
+- **Browser Clients**: Renders the 403 Access Denied template with a redirect link to the dashboard.

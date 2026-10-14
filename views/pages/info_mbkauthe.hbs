@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="System Information" ogUrl="/mbkauthe/info"}}
+{{> mbkutils_head pageTitle="System Information" ogUrl="/mbkauthe/info"}}
 
 <body>
-    {{> header appName=mbkautheVar.APP_NAME}}
+    {{> mbkutils_header appName=mbkautheVar.APP_NAME}}
 
     <section class="login-container">
-        {{> backgroundElements}}
+        {{> mbkutils_backgroundElements}}
 
         <div class="auth-card info-box">
             <div class="info-header">
@@ -127,6 +127,6 @@
         </div>
     </section>
 
-    {{> versionInfo}}
+    {{> mbkutils_versionInfo}}
 </body>
 </html>

@@ -30,7 +30,7 @@ const {
 } = await import('../../dist/index.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
+const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/sqlite.sql');
 
 const schemaSql = await readFile(SCHEMA_PATH, 'utf8');
 dblogin.execScript(schemaSql);

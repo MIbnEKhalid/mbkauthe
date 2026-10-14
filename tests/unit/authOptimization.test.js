@@ -1,24 +1,42 @@
 import { describe, it, expect } from "vitest";
-import { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS, checkPermission, checkRolePermission, permissionMatches, AuthorizationService, RoleRegistry, ensureSession, ensureSessionAsync, hasSessionCookie } from "../../dist/index.js";
+import {
+  attachSessionPermissions,
+  hasNoSessionPermissions,
+  SUPERADMIN_SNAPSHOT,
+  checkPermission,
+  checkRolePermission,
+  AuthorizationService,
+  ensureSession,
+  ensureSessionAsync,
+  hasSessionCookie,
+  defineResource,
+  hasAction,
+} from "../../dist/index.js";
+
+const DnsResource = defineResource("dns", {
+  view: 1,
+  create: 2,
+  delete: 8,
+});
 
 describe("Authentication & Authorization Speed Optimizations", () => {
   describe("Superadmin Zero-DB Fast Path", () => {
-    it("attachSessionPermissions returns immediately with SUPERADMIN_PERMISSIONS when role is superadmin", async () => {
+    it("attachSessionPermissions returns immediately with SUPERADMIN_SNAPSHOT when role is superadmin", async () => {
       const sessionUser = { username: "root", role: "superadmin" };
       const result = await attachSessionPermissions(sessionUser, "root", "superadmin");
 
-      expect(result).toBe(SUPERADMIN_PERMISSIONS);
+      expect(result).toBe(SUPERADMIN_SNAPSHOT);
       expect(sessionUser.roles).toEqual(["superadmin"]);
-      expect(sessionUser.permissions).toEqual({ allows: [0], denies: [] });
-      expect(sessionUser.overrides).toEqual({ allows: [0], denies: [] });
+      expect(sessionUser.isSuperadmin).toBe(true);
+      expect(sessionUser.perms).toEqual({});
     });
 
     it("attachSessionPermissions detects superadmin from sessionUser.role if knownRole is omitted", async () => {
       const sessionUser = { username: "admin_user", role: "superadmin" };
       const result = await attachSessionPermissions(sessionUser, "admin_user");
 
-      expect(result).toBe(SUPERADMIN_PERMISSIONS);
-      expect(sessionUser.permissions).toEqual({ allows: [0], denies: [] });
+      expect(result).toBe(SUPERADMIN_SNAPSHOT);
+      expect(sessionUser.isSuperadmin).toBe(true);
     });
 
     it("checkPermission bypasses immediately for superadmin without DB role loading", async () => {
@@ -36,7 +54,7 @@ describe("Authentication & Authorization Speed Optimizations", () => {
         render() {},
       };
 
-      await checkPermission("any:strictly:restricted:perm")(req, res, () => {
+      await checkPermission(DnsResource.actions.delete)(req, res, () => {
         calledNext = true;
       });
 
@@ -67,25 +85,6 @@ describe("Authentication & Authorization Speed Optimizations", () => {
     });
   });
 
-  describe("Fast-path Permission Matching", () => {
-    it("exact match succeeds without splitting segments", () => {
-      expect(permissionMatches("portal:dns:view", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("global:basic:access", "global:basic:access")).toBe(true);
-    });
-
-    it("non-wildcard mismatch fails instantly via fast path", () => {
-      expect(permissionMatches("portal:dns:view", "portal:dns:delete")).toBe(false);
-      expect(permissionMatches("blog:posts:create", "blog:posts:edit")).toBe(false);
-    });
-
-    it("numeric permission ID match works correctly", () => {
-      expect(permissionMatches(101, 101)).toBe(true);
-      expect(permissionMatches(101, 102)).toBe(false);
-      expect(permissionMatches("portal:dns:view", "portal:dns:view")).toBe(true);
-      expect(permissionMatches("portal:dns:view", "other:dns:view")).toBe(false);
-    });
-  });
-
   describe("Session Permission Hydration Check", () => {
     it("hasNoSessionPermissions correctly identifies empty vs populated session users", () => {
       expect(hasNoSessionPermissions(null)).toBe(true);
@@ -95,42 +94,35 @@ describe("Authentication & Authorization Speed Optimizations", () => {
       expect(hasNoSessionPermissions({
         username: "alice",
         roles: ["normaluser"],
-        permissions: { allows: ["portal:dns:view"], denies: [] },
+        perms: { dns: 1 },
       })).toBe(false);
 
       expect(hasNoSessionPermissions({
         username: "root",
         roles: ["superadmin"],
-        permissions: { allows: [0], denies: [] },
+        role: "superadmin",
       })).toBe(false);
     });
   });
 
-  describe("AuthorizationService Permission Checks", () => {
-    it("allows user with matching allow override / effective permission without querying registry", () => {
+  describe("AuthorizationService Bitmask Checks", () => {
+    it("allows user with matching action mask instantly without DB queries", () => {
       const authService = new AuthorizationService();
       const user = {
         username: "bob",
         role: "normaluser",
-        permissions: { allows: ["app:reports:view"], denies: [] },
+        perms: { dns: DnsResource.actions.view.mask },
       };
 
-      expect(authService.hasPermission(user, "app:reports:view")).toBe(true);
-      expect(authService.hasPermission(user, "app:reports:delete")).toBe(false);
+      expect(authService.hasPermission(user, DnsResource.actions.view)).toBe(true);
+      expect(authService.hasPermission(user, DnsResource.actions.delete)).toBe(false);
     });
 
-    it("denies user when deny override is present even if role grants it", () => {
-      const registry = new RoleRegistry();
-      registry.setRole("editor", ["blog:posts:delete"]);
-      const authService = new AuthorizationService(registry);
-
-      const user = {
-        username: "charlie",
-        role: "editor",
-        permissions: { allows: ["blog:posts:delete"], denies: ["blog:posts:delete"] },
-      };
-
-      expect(authService.hasPermission(user, "blog:posts:delete", registry)).toBe(false);
+    it("checks direct bitwise mask", () => {
+      const mask = 1 | 2 | 4; // 7
+      expect(hasAction(mask, 1)).toBe(true);
+      expect(hasAction(mask, 4)).toBe(true);
+      expect(hasAction(mask, 8)).toBe(false);
     });
   });
 

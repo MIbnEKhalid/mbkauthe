@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="Login" ogUrl="/mbkauthe/login"}}
+{{> mbkutils_head pageTitle="Login" ogUrl="/mbkauthe/login"}}
 
 <body>
-    {{> header}}
+    {{> mbkutils_header}}
 
-    {{> showmessage}}
+    {{> mbkutils_showmessage}}
     {{> passkeyPromptModal}}
 
     <section class="login-container">
-        {{> backgroundElements}}
+        {{> mbkutils_backgroundElements}}
 
         <div class="auth-card login-box login-box-split">
             <div class="login-box-inner">
@@ -167,7 +167,7 @@
         </div>
     </section>
 
-    {{> versionInfo}}
+    {{> mbkutils_versionInfo}}
 
     <script>
         const cookieDomain = '{{cookieDomain}}';

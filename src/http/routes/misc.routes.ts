@@ -14,7 +14,6 @@ import { createLogger } from "../../utils/logger.js";
 import { getAuthHealthReport } from "../../diagnostics/index.js";
 import { ensureSession } from "../middleware/security.js";
 import { avatarService } from "../../services/AvatarService.js";
-import { defaultRoleRegistry } from "../../core/permissions/roleRegistry.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
 import { attachSessionPermissions, hasNoSessionPermissions } from "../session/sessionPermissions.js";
 
@@ -156,73 +155,76 @@ const buildTestViewData = async (req: express.Request) => {
   if (username && hasNoSessionPermissions(user)) {
     try {
       const snap = await attachSessionPermissions(user, username, role);
-      permissions = user.permissions || snap.effective;
+      permissions = snap.masks;
     } catch {
       // ignore
     }
   }
 
-  if (defaultRoleRegistry.roles.size === 0 && !defaultRoleRegistry.isLoaded) {
-    await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
-  }
-
-  // Normalize and enrich numeric permissions
-  let rawAllows: any[] = [];
-  let rawDenies: any[] = [];
-
-  if (Array.isArray(permissions)) {
-    rawAllows = permissions;
-  } else if (permissions && typeof permissions === "object") {
-    if (Array.isArray(permissions.allows)) rawAllows = permissions.allows;
-    if (Array.isArray(permissions.denies)) rawDenies = permissions.denies;
-  }
-
-  const isSuperadmin = (role || "").toLowerCase() === "superadmin" || (req as any).authContext?.isSuperadmin;
-
-  if (isSuperadmin && rawAllows.length === 0) {
-    rawAllows = [0];
-  }
-
-  const enrichPermItem = (item: any) => {
-    if (item !== null && typeof item === "object" && item.key) {
-      return {
-        id: item.id ?? null,
-        key: item.key,
-        label: item.label || "",
-        display: item.display || `#${item.id} ${item.key}${item.label ? ` (${item.label})` : ""}`,
-      };
-    }
-    const numId = Number(item);
-    if (numId === 0 || item === 0 || item === "0" || item === "*") {
-      return {
-        id: 0,
-        key: "*:*:*",
-        label: "Superadmin Root Bypass",
-        display: "* (Superadmin Root Bypass)",
-      };
-    }
-    const desc = defaultRoleRegistry.getDescriptorById(numId);
-    if (desc) {
-      return {
-        id: numId,
-        key: desc.key,
-        label: desc.label || "",
-        display: `#${numId} ${desc.key}${desc.label ? ` (${desc.label})` : ""}`,
-      };
-    }
-    const strVal = String(item);
-    return {
-      id: Number.isFinite(numId) ? numId : null,
-      key: strVal,
-      label: "",
-      display: Number.isFinite(numId) ? `#${numId}` : strVal,
-    };
-  };
-
-  const enrichedAllows = rawAllows.map(enrichPermItem);
-  const enrichedDenies = rawDenies.map(enrichPermItem);
-
   const authContext = (req as any).authContext;
+  const isSuperadmin =
+    (role || "").toLowerCase() === "superadmin" ||
+    (typeof authContext?.isSuperadmin === "function" ? authContext.isSuperadmin() : Boolean(authContext?.isSuperadmin)) ||
+    Boolean(user.isSuperadmin);
+
+  const userPerms: Record<string, number> =
+    (user.perms && typeof user.perms === "object" && Object.keys(user.perms).length > 0 ? user.perms : null) ||
+    (permissions && typeof permissions === "object" && !Array.isArray(permissions) && Object.keys(permissions).length > 0 ? permissions : null) ||
+    (authContext?.masks && typeof authContext.masks === "object" ? authContext.masks : null) ||
+    user.perms ||
+    (permissions && typeof permissions === "object" && !Array.isArray(permissions) ? permissions : {}) ||
+    {};
+
+  const STANDARD_ACTIONS = [
+    { bit: 1, label: "View", key: "view" },
+    { bit: 2, label: "Create", key: "create" },
+    { bit: 4, label: "Update", key: "update" },
+    { bit: 8, label: "Delete", key: "delete" },
+    { bit: 16, label: "Manage", key: "manage" },
+  ];
+
+  const enrichedAllows: any[] = [];
+  const enrichedDenies: any[] = [];
+  const resourceMatrix: any[] = [];
+
+  if (isSuperadmin) {
+    enrichedAllows.push({
+      id: 0,
+      key: "*",
+      label: "Superadmin Root Bypass",
+      display: "* (Superadmin Root Bypass)",
+    });
+  } else {
+    for (const [res, rawMask] of Object.entries(userPerms)) {
+      const mask = Number(rawMask) || 0;
+      if (mask > 0) {
+        const grantedActions = STANDARD_ACTIONS.filter((a) => (mask & a.bit) === a.bit);
+        const actionLabels = grantedActions.map((a) => a.label);
+        const actionsList = STANDARD_ACTIONS.map((a) => ({
+          label: a.label,
+          bit: a.bit,
+          granted: (mask & a.bit) === a.bit,
+        }));
+
+        enrichedAllows.push({
+          key: res,
+          label: `Mask: ${mask}`,
+          display: `${res}: ${actionLabels.join(", ") || "Custom"} (mask ${mask})`,
+        });
+
+        resourceMatrix.push({
+          resource: res,
+          mask,
+          hex: "0x" + mask.toString(16).toUpperCase().padStart(2, "0"),
+          binary: mask.toString(2).padStart(5, "0"),
+          actions: actionsList,
+          granted_count: grantedActions.length,
+          action_summary: actionLabels.join(", ") || `Mask ${mask}`,
+        });
+      }
+    }
+  }
+
   const authMethod = authContext?.authMethod || (req.headers.authorization ? "api-token" : "session");
   const loginMethod = (req as any).cookies?.last_login_method || "password";
 
@@ -251,6 +253,9 @@ const buildTestViewData = async (req: express.Request) => {
     initial: (full_name && full_name[0]) || (username && username[0]) || "U",
     allowed_apps: Array.isArray(allowed_apps) ? allowed_apps.join(", ") : (allowed_apps || "N/A"),
     session_expiry,
+    is_superadmin: isSuperadmin,
+    resource_matrix: resourceMatrix,
+    resource_matrix_count: resourceMatrix.length,
     permissions: {
       allows: enrichedAllows,
       denies: enrichedDenies,
@@ -262,6 +267,7 @@ const buildTestViewData = async (req: express.Request) => {
     login_method: loginMethod,
   };
 };
+
 
 router.get(["/test", "/"], sessPerm("basic.access"), LoginLimit, async (req, res) => {
   const data = await buildTestViewData(req);

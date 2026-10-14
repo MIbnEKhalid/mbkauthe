@@ -16,7 +16,8 @@ describe("MBKAuthe Auth Handlebars Helpers", () => {
     it("can block helper renders fn for allowed and inverse for denied", () => {
       const opts = { fn: () => "YES", inverse: () => "NO" };
       expect(authHandlebarsHelpers.can.call({ role: "superadmin" }, "portal:test", opts)).toBe("YES");
-      expect(authHandlebarsHelpers.can.call({ sessionUser: { role: "guest", permissions: { allows: [], denies: [] } } }, "portal:test", opts)).toBe("NO");
+      expect(authHandlebarsHelpers.can.call({ sessionUser: { role: "normaluser", perms: { tasks: 1 } } }, { resource: "tasks", mask: 1 }, opts)).toBe("YES");
+      expect(authHandlebarsHelpers.can.call({ sessionUser: { role: "guest", perms: {} } }, { resource: "tasks", mask: 1 }, opts)).toBe("NO");
     });
 
     it("cachebust and acachebust helpers return mbkauthe package version or overridden version", () => {

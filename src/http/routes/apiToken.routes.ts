@@ -4,28 +4,25 @@ import { sessRole, sessPerm } from "../middleware/authMiddleware.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 import { apiTokenService } from "../../services/ApiTokenService.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
-import { normalizePermission } from "../../core/permissions/matcher.js";
-import { hasPermission } from "../../core/permissions/roleRegistry.js";
+import { evaluatePermission } from "../../core/permissions/evaluator.js";
 import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 
 const router = express.Router();
 
-function normalizeRequestedPermissions(value: unknown): number[] {
+function normalizeRequestedPermissions(value: unknown): string[] {
   let list: any[] = [];
   if (Array.isArray(value)) list = value;
   else if (typeof value === "string") list = value.split(",");
-  else if (typeof value === "number") list = [value];
-  return Array.from(new Set(list.map((id) => Number(id)).filter((id) => id > 0)));
+  return Array.from(new Set(list.map((s) => String(s).trim()).filter(Boolean)));
 }
 
 async function loadGrantablePermissions(user: any) {
-  const active = await permissionRepository.listActiveCatalog();
+  const roles = await permissionRepository.listRoles();
   if (user.role === "superadmin") {
-    return { active, grantable: active, effective: { allows: [], denies: [] } };
+    return { active: roles, grantable: roles, effective: user.perms || {} };
   }
   const effective = await permissionRepository.computeEffectiveForUser(user.username);
-  const grantable = active.filter((perm) => hasPermission({ permissions: effective.effective }, perm.id));
-  return { active, grantable, effective };
+  return { active: roles, grantable: roles, effective: effective.masks };
 }
 
 function groupPermissions(rows: any[]) {

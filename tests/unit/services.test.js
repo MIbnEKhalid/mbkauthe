@@ -6,7 +6,7 @@ import { SqlitePool, AuthRepository, ApiTokenRepository, CliAuthSessionRepositor
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SCHEMA_PATH = path.join(__dirname, "../../docs/schema/db.sqlite.sql");
+const SCHEMA_PATH = path.join(__dirname, "../../docs/schema/sqlite.sql");
 
 describe("Service Layer & Diagnostics", () => {
   let pool;

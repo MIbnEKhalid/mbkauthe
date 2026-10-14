@@ -7,11 +7,24 @@ import { SqliteSessionStore } from "./SqliteSessionStore.js";
 
 const PgSession = pgSession(session);
 
+interface CachedSessionEntry {
+  sessObj: any;
+  cachedAt: number;
+}
+
+const pgSessionCache = new Map<string, CachedSessionEntry>();
+const SESSION_CACHE_TTL_MS = 5000;
+
 export class UnifiedPgSessionStore extends PgSession {
   constructor(options?: any) {
     super(options);
   }
   get(sid: string, fn: (err?: any, session?: any) => void) {
+    const cached = pgSessionCache.get(sid);
+    if (cached && (Date.now() - cached.cachedAt) < SESSION_CACHE_TTL_MS) {
+      return fn(null, JSON.parse(JSON.stringify(cached.sessObj)));
+    }
+
     const query = `
       SELECT s.sess, s.expire, s.sid AS session_id, s.expire AS app_session_expires_at,
              u.username, u.user_id, u.is_active, u.is_local_only, u.role, u.allowed_apps, u.full_name, u.image
@@ -25,7 +38,10 @@ export class UnifiedPgSessionStore extends PgSession {
         // Fallback to base get if custom query encounters an issue
         return super.get(sid, fn);
       }
-      if (!data) return fn(null);
+      if (!data) {
+        pgSessionCache.delete(sid);
+        return fn(null);
+      }
       try {
         const sessObj = typeof data.sess === "string" ? JSON.parse(data.sess) : data.sess;
         if (data.username && data.session_id) {
@@ -44,14 +60,24 @@ export class UnifiedPgSessionStore extends PgSession {
         } else {
           sessObj._liveAuth = null;
         }
+        pgSessionCache.set(sid, {
+          sessObj: JSON.parse(JSON.stringify(sessObj)),
+          cachedAt: Date.now(),
+        });
+        if (pgSessionCache.size > 2000) {
+          const oldest = pgSessionCache.keys().next().value;
+          if (oldest) pgSessionCache.delete(oldest);
+        }
         return fn(null, sessObj);
       } catch {
+        pgSessionCache.delete(sid);
         return (this as any).destroy(sid, fn);
       }
     });
   }
 
   set(sid: string, sess: any, fn?: (err?: any) => void) {
+    pgSessionCache.delete(sid);
     const maxAge = sess.cookie?.maxAge;
     const expire = typeof maxAge === "number" ? new Date(Date.now() + maxAge) : new Date(Date.now() + 86400000);
     const username = sess.user?.username ?? null;
@@ -71,7 +97,13 @@ export class UnifiedPgSessionStore extends PgSession {
     });
   }
 
+  destroy(sid: string, fn?: (err?: any) => void) {
+    pgSessionCache.delete(sid);
+    return super.destroy(sid, fn);
+  }
+
   regenerate(req: any, fn: (err?: any) => void): void {
+    if (req?.sessionID) pgSessionCache.delete(req.sessionID);
     if (req?.session?.user) {
       (this as any).generate(req);
       fn?.();

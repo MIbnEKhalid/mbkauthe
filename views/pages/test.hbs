@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="Session Diagnostic Portal" ogUrl="/mbkauthe/test"}}
+{{> mbkutils_head pageTitle="Session Diagnostic Portal" ogUrl="/mbkauthe/test"}}
 
 <body>
-  {{> header appName=appName}}
+  {{> mbkutils_header appName=appName}}
 
-  {{> showmessage}}
+  {{> mbkutils_showmessage}}
 
   <section class="login-container">
-    {{> backgroundElements}}
+    {{> mbkutils_backgroundElements}}
 
     <div class="auth-card session-box" role="region" aria-label="Authenticated Session">
       <!-- Session Hero Header -->
@@ -139,51 +139,154 @@
       {{/if}}
 
       <!-- Permissions & Scopes Matrix -->
-      {{#if permissions}}
+      <style>
+        .matrix-bit-pill {
+          padding: 0.15rem 0.45rem;
+          border-radius: 5px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          font-family: var(--font-mono, monospace);
+          transition: all 0.12s ease;
+        }
+        .matrix-bit-pill.granted {
+          background: #ecfdf5;
+          color: #065f46;
+          border: 1px solid #a7f3d0;
+        }
+        .matrix-bit-pill.not-granted {
+          background: #f8fafc;
+          color: #94a3b8;
+          border: 1px dashed #e2e8f0;
+          opacity: 0.65;
+        }
+        .matrix-mask-badge {
+          background: #f0fdfa;
+          color: #0d9488;
+          border: 1px solid #99f6e4;
+          padding: 0.2rem 0.5rem;
+          border-radius: 6px;
+          font-family: var(--font-mono, monospace);
+          font-size: 0.75rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+      </style>
+
+      {{#if (or is_superadmin resource_matrix.length permissions)}}
       <div class="session-permissions-section">
         <div class="permissions-section-header">
           <div class="permissions-title-group">
             <i class="fas fa-user-shield icon-primary" aria-hidden="true"></i>
             <span class="permissions-title">Effective Security Scopes</span>
+            <span style="font-size:0.75rem;padding:0.15rem 0.55rem;border-radius:999px;background:#f1f5f9;color:#64748b;font-weight:700">
+              {{#if is_superadmin}}Root Access{{else if resource_matrix.length}}{{resource_matrix_count}} Resources{{else}}{{permissions_count}} Scopes{{/if}}
+            </span>
           </div>
+          {{#unless is_superadmin}}
           <input type="text" class="perm-filter-input" placeholder="Filter permissions..." oninput="filterPermissions(this.value)">
+          {{/unless}}
         </div>
 
         <div class="permissions-chips-wrap" id="permChipsWrap">
-          {{#if permissions.allows.length}}
-          <div class="perm-subgroup">
-            <span class="perm-type-label perm-allow-label"><i class="fas fa-circle-check"></i> Granted ({{permissions.allows.length}}):</span>
-            <div class="perm-tags">
-              {{#each permissions.allows}}
-              <span class="perm-tag allow" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
-                <i class="fas fa-check" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
-              </span>
-              {{/each}}
+          {{#if is_superadmin}}
+          <div class="superadmin-root-banner" style="background: linear-gradient(135deg, rgba(13,148,136,0.1) 0%, rgba(8,145,178,0.1) 100%); border: 1px solid #99f6e4; border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.85rem;">
+            <div style="width: 38px; height: 38px; border-radius: 8px; background: #0d9488; color: #fff; display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0;">
+              <i class="fas fa-crown"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; color: #0f766e; font-size: 0.95rem;">Full Superadmin Root Bypass</div>
+              <div style="font-size: 0.78rem; color: #047857; margin-top: 0.15rem;">Deterministic O(1) evaluation — this root session automatically satisfies all resource gates and permission checks across the ecosystem.</div>
             </div>
           </div>
-          {{/if}}
-
-          {{#if permissions.denies.length}}
-          <div class="perm-subgroup">
-            <span class="perm-type-label perm-deny-label"><i class="fas fa-circle-xmark"></i> Restricted ({{permissions.denies.length}}):</span>
-            <div class="perm-tags">
-              {{#each permissions.denies}}
-              <span class="perm-tag deny" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
-                <i class="fas fa-xmark" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
-              </span>
-              {{/each}}
-            </div>
+          {{else if resource_matrix.length}}
+          <div class="resource-matrix-table-wrap" style="overflow-x: auto; margin-top: 0.25rem;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--slate-600); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                  <th style="padding: 0.5rem 0.6rem; width: 26%;">Resource</th>
+                  <th style="padding: 0.5rem 0.6rem; width: 44%;">Action Bits</th>
+                  <th style="padding: 0.5rem 0.6rem; width: 16%; text-align: center;">Mask</th>
+                  <th style="padding: 0.5rem 0.6rem; width: 14%; text-align: right;">Snippet</th>
+                </tr>
+              </thead>
+              <tbody id="resourceMatrixBody">
+                {{#each resource_matrix}}
+                <tr class="res-matrix-row" data-res="{{this.resource}}" style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 0.6rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span style="width: 26px; height: 26px; border-radius: 6px; background: #f1f5f9; color: var(--primary-600, #0d9488); display: grid; place-items: center; font-size: 0.75rem;"><i class="fas fa-cube"></i></span>
+                      <div>
+                        <b style="color: var(--slate-900, #1e293b); font-size: 0.84rem;">{{this.resource}}</b>
+                        <span style="display: block; font-size: 0.7rem; color: #64748b; font-family: var(--font-mono, monospace);">{{this.action_summary}}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="padding: 0.6rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
+                      {{#each this.actions}}
+                      <span class="matrix-bit-pill {{#if this.granted}}granted{{else}}not-granted{{/if}}" title="{{this.label}} (Bit {{this.bit}}): {{#if this.granted}}Granted{{else}}Not Granted{{/if}}">
+                        {{#if this.granted}}<i class="fas fa-check" style="font-size: 0.65rem;"></i>{{/if}} {{this.label}} <span style="opacity: 0.65; font-size: 0.65rem;">{{this.bit}}</span>
+                      </span>
+                      {{/each}}
+                    </div>
+                  </td>
+                  <td style="padding: 0.6rem; text-align: center;">
+                    <span class="matrix-mask-badge" title="Binary: {{this.binary}}">
+                      <b>{{this.mask}}</b> <span style="opacity: 0.6; font-size: 0.68rem;">{{this.hex}}</span>
+                    </span>
+                  </td>
+                  <td style="padding: 0.6rem; text-align: right;">
+                    <button type="button" class="btn-card-copy" onclick="copyValue('requirePermission(\'{{this.resource}}\', {{this.mask}})', 'Permission Check')" title="Copy Express route check snippet" style="padding: 0.25rem 0.5rem; font-size: 0.72rem;">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </td>
+                </tr>
+                {{/each}}
+              </tbody>
+            </table>
           </div>
-          {{/if}}
+          {{else}}
+            {{#if permissions.allows.length}}
+            <div class="perm-subgroup">
+              <span class="perm-type-label perm-allow-label"><i class="fas fa-circle-check"></i> Granted ({{permissions.allows.length}}):</span>
+              <div class="perm-tags">
+                {{#each permissions.allows}}
+                <span class="perm-tag allow" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
+                  <i class="fas fa-check" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
+                </span>
+                {{/each}}
+              </div>
+            </div>
+            {{/if}}
 
-          {{#unless permissions.allows.length}}
-            {{#unless permissions.denies.length}}
-            <div class="text-muted" style="padding: 0.5rem 0; font-size: 0.875rem; color: var(--text-muted, #888);"><i class="fas fa-info-circle"></i> No explicit security scopes assigned to this session.</div>
+            {{#if permissions.denies.length}}
+            <div class="perm-subgroup">
+              <span class="perm-type-label perm-deny-label"><i class="fas fa-circle-xmark"></i> Restricted ({{permissions.denies.length}}):</span>
+              <div class="perm-tags">
+                {{#each permissions.denies}}
+                <span class="perm-tag deny" data-perm="{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}" onclick="copyValue('{{#if this.key}}{{this.key}}{{else}}{{this}}{{/if}}', 'Permission')">
+                  <i class="fas fa-xmark" aria-hidden="true"></i> {{#if this.display}}{{this.display}}{{else if this.key}}#{{this.id}} {{this.key}}{{#if this.label}} ({{this.label}}){{/if}}{{else}}{{this}}{{/if}}
+                </span>
+                {{/each}}
+              </div>
+            </div>
+            {{/if}}
+
+            {{#unless permissions.allows.length}}
+            <div style="padding: 1.25rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">
+              <i class="fas fa-shield-slash" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+              No active resource permissions assigned to role <code>{{role}}</code>.
+            </div>
             {{/unless}}
-          {{/unless}}
+          {{/if}}
         </div>
       </div>
       {{/if}}
+
 
       <!-- Interactive API Telemetry Check -->
       <div class="session-api-check-box">
@@ -264,7 +367,7 @@
   <!-- Floating Feedback Toast -->
   <div class="cli-copy-toast" id="sessionToast" aria-live="polite"></div>
 
-  {{> versionInfo}}
+  {{> mbkutils_versionInfo}}
 
   <script>
     function copyValue(val, label) {
@@ -284,6 +387,12 @@
 
     function filterPermissions(query) {
       const q = (query || '').toLowerCase().trim();
+      const rows = document.querySelectorAll('.res-matrix-row');
+      rows.forEach(r => {
+        const text = ((r.getAttribute('data-res') || '') + ' ' + r.innerText).toLowerCase();
+        r.style.display = !q || text.includes(q) ? '' : 'none';
+      });
+
       const tags = document.querySelectorAll('.perm-tag');
       tags.forEach(t => {
         const perm = (t.getAttribute('data-perm') || t.innerText).toLowerCase();

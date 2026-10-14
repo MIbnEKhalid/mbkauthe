@@ -55,13 +55,48 @@ router.get("/test", (req, res) =>
     initial: "D",
     allowed_apps: "portal, admin, db, deploy",
     session_expiry: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+    is_superadmin: true,
     permissions: {
-      allows: ["basic.access", "api:read", "api:write", "admin.access"],
-      denies: ["billing.override"],
+      allows: [{ key: "*", label: "Superadmin Root Bypass", display: "* (Superadmin Root Bypass)" }],
+      denies: [],
     },
+    resource_matrix: [
+      {
+        resource: "users",
+        mask: 15,
+        hex: "0x0F",
+        binary: "01111",
+        granted_count: 4,
+        action_summary: "View, Create, Update, Delete",
+        actions: [
+          { label: "View", bit: 1, granted: true },
+          { label: "Create", bit: 2, granted: true },
+          { label: "Update", bit: 4, granted: true },
+          { label: "Delete", bit: 8, granted: true },
+          { label: "Manage", bit: 16, granted: false },
+        ],
+      },
+      {
+        resource: "roles",
+        mask: 31,
+        hex: "0x1F",
+        binary: "11111",
+        granted_count: 5,
+        action_summary: "View, Create, Update, Delete, Manage",
+        actions: [
+          { label: "View", bit: 1, granted: true },
+          { label: "Create", bit: 2, granted: true },
+          { label: "Update", bit: 4, granted: true },
+          { label: "Delete", bit: 8, granted: true },
+          { label: "Manage", bit: 16, granted: true },
+        ],
+      },
+    ],
+    resource_matrix_count: 2,
     appName: mbkautheVar.APP_NAME || "portal",
   })
 );
+
 
 // Simulated HTTP Errors
 router.get("/500", (req, res) =>

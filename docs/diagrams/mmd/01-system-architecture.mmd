@@ -11,24 +11,26 @@ flowchart TB
         CookieParser["Cookie Parser & Decryption (AES-256-GCM)"]
         RateLimiter["Rate Limiting Middleware"]
         AuthMiddleware["Session & Token Middleware (sessVal, authenticate)"]
-        RBACMiddleware["RBAC / Permission Middleware (sessRole, sessPerm)"]
-        Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli)"]
+        RBACMiddleware["Bitmask & Role Middleware (sessRole, sessPerm, permChk, roleChk)"]
+        Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli, /mbkauthe/api/passkey)"]
     end
 
     subgraph CoreTier["Core Domain & Service Layer (mbkauthe/core & services)"]
         AuthCtx["AuthContext (Domain Entity)"]
         AuthService["AuthService (Session & Password)"]
+        PasskeyService["PasskeyService (WebAuthn / FIDO2)"]
         OAuthService["OAuthFlowService (PKCE & OIDC)"]
         CliAuthService["CliAuthService (Device Flow)"]
         ApiTokenService["ApiTokenService (PAT Management)"]
         AuthzService["AuthorizationService (Policy Engine)"]
-        RoleReg["RoleRegistry (In-Memory RBAC)"]
-        PermSync["PermissionSyncService (Catalog Sync)"]
+        BitmaskEngine["Bitmask Evaluator (< 1ns Bitwise AND)"]
+        PermSync["PermissionSyncService (Role Bitmask Sync)"]
         EventBus["authEvents (Domain Event Emitter)"]
     end
 
     subgraph CryptoTier["Cryptographic & Security Subsystem (mbkauthe/config & core/tokens)"]
         PasswordHasher["Argon2id / PBKDF2 Password Hasher"]
+        WebAuthnEngine["@simplewebauthn/server (FIDO2/WebAuthn)"]
         TokenEngine["TokenEngine (mbk_pat_, mbk_cli_, mbk_sess_)"]
         StateStore["OAuthStateStore (PKCE, State, Nonce)"]
         JoseVerifier["jose (OIDC JWKS Signature Verifier)"]
@@ -51,7 +53,7 @@ flowchart TB
             SqliteAdapter["SqliteAdapter"]
         end
 
-        Repos["Typed Repositories (UserRepository, SessionRepository, OAuthAccountRepo, etc.)"]
+        Repos["Typed Repositories (UserRepository, SessionRepository, PasskeyRepository, PermissionRepository, OAuthAccountRepo)"]
     end
 
     Browser -->|HTTP + Encrypted Cookie| SecHeaders
@@ -62,16 +64,17 @@ flowchart TB
     SecHeaders --> RateLimiter --> CookieParser --> AuthMiddleware --> RBACMiddleware --> Routers
 
     Routers --> AuthService
+    Routers --> PasskeyService
     Routers --> OAuthService
     Routers --> CliAuthService
     Routers --> ApiTokenService
 
     AuthMiddleware --> AuthCtx
-    RBACMiddleware --> AuthzService
-    AuthzService --> RoleReg
+    RBACMiddleware --> AuthzService --> BitmaskEngine
 
     AuthService --> PasswordHasher
     AuthService --> AESCipher
+    PasskeyService --> WebAuthnEngine
     OAuthService --> StateStore
     OAuthService --> JoseVerifier
     OAuthService --> AESCipher
@@ -79,6 +82,7 @@ flowchart TB
     CliAuthService --> TokenEngine
 
     AuthService --> Repos
+    PasskeyService --> Repos
     OAuthService --> Repos
     CliAuthService --> Repos
     ApiTokenService --> Repos
@@ -87,6 +91,7 @@ flowchart TB
     AuthService -.->|Emit Events| EventBus
     OAuthService -.->|Emit Events| EventBus
     CliAuthService -.->|Emit Events| EventBus
+    PasskeyService -.->|Emit Events| EventBus
 
     Repos --> Dialect
     Dialect --> QueryLogger

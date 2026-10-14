@@ -1,11 +1,13 @@
 /**
  * MBKAuthe — Unified AuthContext & Principal Domain Model
- * Defines the clean boundary representing the authenticated principal, session, and token information.
+ * High-performance, bitmask-aware authorization context.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
  */
 
 import type { AuthUser } from "../types/user.types.js";
+import type { ResourceMasks, PermissionTarget, UserPermissionOverrides } from "../types/permission.types.js";
+import { evaluatePermission, evaluateRole, SUPERADMIN_ROLE } from "../permissions/evaluator.js";
 
 export interface AuthPrincipal {
   id?: string | number;
@@ -20,14 +22,11 @@ export interface AuthPrincipal {
   is_enabled?: boolean | null;
   allowed_apps?: string[];
   user_allowed_apps?: string[];
-  overrides?: {
-    allows: number[];
-    denies: number[];
-  };
-  permissions?: {
-    allows?: number[];
-    denies?: number[];
-  } | number[] | Record<string, any>;
+  perms?: ResourceMasks;
+  permissions?: ResourceMasks | any;
+  overrides?: UserPermissionOverrides | any;
+  perm_version?: number;
+  must_change_password?: boolean;
   [key: string]: any;
 }
 
@@ -71,9 +70,8 @@ export class AuthContext {
   public readonly appKey: string | null;
   public readonly attributes: Readonly<Record<string, any>>;
 
-  // Compatibility getter for legacy user object access
   public readonly user: AuthUser | null;
-  public readonly permissions: any;
+  public readonly permissions: ResourceMasks | any;
   public readonly type: "session" | "api-token" | string;
 
   constructor(options: AuthContextOptions = {}) {
@@ -85,29 +83,31 @@ export class AuthContext {
     this.appKey = options.appKey || null;
     this.attributes = Object.freeze({ ...(options.attributes || {}) });
 
-    // Backwards-compatible properties
     this.user = (this.principal as unknown as AuthUser) || null;
-    this.permissions = options.permissions !== undefined ? options.permissions : (this.principal?.permissions || null);
+    this.permissions = options.permissions !== undefined ? options.permissions : (this.principal?.perms || this.principal?.permissions || {});
     this.type = this.authMethod === "api-token" ? "api-token" : "session";
   }
 
-  /**
-   * Retrieves the username of the authenticated principal or empty string if unauthenticated.
-   */
   get username(): string {
     return this.principal?.username || "";
   }
 
-  /**
-   * Retrieves the primary role of the principal.
-   */
+  get userId(): string | number | null {
+    return this.principal?.user_id || this.principal?.id || null;
+  }
+
+  get email(): string | null {
+    return this.principal?.email || null;
+  }
+
+  get fullName(): string | null {
+    return this.principal?.full_name || null;
+  }
+
   get role(): string {
     return (this.principal?.role || "").toLowerCase();
   }
 
-  /**
-   * Retrieves all roles assigned to the principal.
-   */
   get roles(): string[] {
     const list = new Set<string>();
     if (this.principal?.role) list.add(this.principal.role.toLowerCase());
@@ -119,9 +119,67 @@ export class AuthContext {
     return Array.from(list);
   }
 
-  /**
-   * Clones this context with updated attributes or properties.
-   */
+  get masks(): ResourceMasks {
+    if (this.principal?.perms && typeof this.principal.perms === "object") {
+      return this.principal.perms;
+    }
+    if (this.permissions && typeof this.permissions === "object" && !Array.isArray(this.permissions)) {
+      return this.permissions;
+    }
+    return {};
+  }
+
+  get mustChangePassword(): boolean {
+    return Boolean(this.principal?.must_change_password);
+  }
+
+  isSuperadmin(): boolean {
+    return this.role === SUPERADMIN_ROLE || this.roles.includes(SUPERADMIN_ROLE);
+  }
+
+  isAdmin(): boolean {
+    return this.isSuperadmin() || this.role === "admin" || this.roles.includes("admin");
+  }
+
+  hasRole(...roles: string[]): boolean {
+    return evaluateRole({ isSuperadmin: this.isSuperadmin(), role: this.role, roles: this.roles }, roles);
+  }
+
+  hasPermission(resourceOrTarget: string | PermissionTarget, actionMask?: number): boolean {
+    if (!this.isAuthenticated) return false;
+    return evaluatePermission(
+      { isSuperadmin: this.isSuperadmin(), masks: this.masks },
+      resourceOrTarget,
+      actionMask
+    );
+  }
+
+  can(resourceOrTarget: string | PermissionTarget, actionMask?: number): boolean {
+    return this.hasPermission(resourceOrTarget, actionMask);
+  }
+
+  hasAllPermissions(...targets: (PermissionTarget | [string, number])[]): boolean {
+    if (!this.isAuthenticated) return false;
+    if (this.isSuperadmin()) return true;
+    return targets.every((t) => {
+      if (Array.isArray(t)) return this.hasPermission(t[0], t[1]);
+      return this.hasPermission(t);
+    });
+  }
+
+  hasAnyPermission(...targets: (PermissionTarget | [string, number])[]): boolean {
+    if (!this.isAuthenticated) return false;
+    if (this.isSuperadmin()) return true;
+    return targets.some((t) => {
+      if (Array.isArray(t)) return this.hasPermission(t[0], t[1]);
+      return this.hasPermission(t);
+    });
+  }
+
+  getMask(resource: string): number {
+    return this.masks[resource.toLowerCase()] || 0;
+  }
+
   with(updates: Partial<AuthContextOptions>): AuthContext {
     return new AuthContext({
       isAuthenticated: updates.isAuthenticated ?? this.isAuthenticated,
@@ -136,9 +194,6 @@ export class AuthContext {
   }
 }
 
-/**
- * Creates an unauthenticated / anonymous AuthContext.
- */
 export function createAnonymousContext(appKey?: string): AuthContext {
   return new AuthContext({
     isAuthenticated: false,
@@ -148,15 +203,13 @@ export function createAnonymousContext(appKey?: string): AuthContext {
   });
 }
 
-/**
- * Normalizes any user-like input object into a standardized AuthPrincipal.
- */
 export function principalFromUser(user: any): AuthPrincipal {
   if (!user || typeof user !== "object") {
     return {
       username: "",
       role: "guest",
       is_active: false,
+      perms: {},
     };
   }
 
@@ -167,6 +220,8 @@ export function principalFromUser(user: any): AuthPrincipal {
   let roles: string[] = [];
   if (Array.isArray(user.roles)) {
     roles = user.roles.map((r: any) => String(r).trim().toLowerCase()).filter(Boolean);
+  } else if (role) {
+    roles = [role.toLowerCase()];
   }
 
   let allowedApps: string[] = [];
@@ -176,13 +231,7 @@ export function principalFromUser(user: any): AuthPrincipal {
     allowedApps = user.user_allowed_apps.map((a: any) => String(a).trim().toLowerCase()).filter(Boolean);
   }
 
-  let overrides: { allows: number[]; denies: number[] } | undefined;
-  if (user.overrides && typeof user.overrides === "object") {
-    overrides = {
-      allows: Array.isArray(user.overrides.allows) ? user.overrides.allows.map((id: any) => Number(id)).filter((id: number) => id > 0) : [],
-      denies: Array.isArray(user.overrides.denies) ? user.overrides.denies.map((id: any) => Number(id)).filter((id: number) => id > 0) : [],
-    };
-  }
+  const perms: ResourceMasks = user.perms || user.permissions || {};
 
   return {
     id,
@@ -197,22 +246,19 @@ export function principalFromUser(user: any): AuthPrincipal {
     is_enabled: user.is_enabled !== undefined ? Boolean(user.is_enabled) : null,
     allowed_apps: allowedApps,
     user_allowed_apps: allowedApps,
-    overrides,
-    permissions: user.permissions,
+    perms,
+    permissions: perms,
+    overrides: user.overrides,
+    perm_version: Number(user.perm_version || 1),
+    must_change_password: Boolean(user.must_change_password),
     ...user,
   };
 }
 
-/**
- * Creates an AuthContext instance from provided options.
- */
 export function createAuthContext(options: AuthContextOptions = {}): AuthContext {
   return new AuthContext(options);
 }
 
-/**
- * Creates an AuthContext for a session-based authenticated user.
- */
 export function createSessionAuthContext(user: any, sessionInfo?: Partial<AuthSessionInfo>): AuthContext {
   const principal = principalFromUser(user);
   return new AuthContext({
@@ -220,13 +266,10 @@ export function createSessionAuthContext(user: any, sessionInfo?: Partial<AuthSe
     authMethod: "session",
     principal,
     session: sessionInfo ? { id: sessionInfo.id || user.session_id || "", ...sessionInfo } : (user.session_id ? { id: user.session_id } : null),
-    permissions: principal.permissions,
+    permissions: principal.perms,
   });
 }
 
-/**
- * Creates an AuthContext for an API token-authenticated principal.
- */
 export function createTokenAuthContext(tokenUser: any, tokenInfo?: Partial<AuthTokenInfo>): AuthContext {
   const principal = principalFromUser(tokenUser);
   return new AuthContext({
@@ -234,6 +277,6 @@ export function createTokenAuthContext(tokenUser: any, tokenInfo?: Partial<AuthT
     authMethod: "api-token",
     principal,
     token: tokenInfo ? { id: tokenInfo.id || tokenUser.id, ...tokenInfo } : (tokenUser.id ? { id: tokenUser.id } : null),
-    permissions: principal.overrides || principal.permissions,
+    permissions: principal.perms,
   });
 }

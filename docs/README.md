@@ -28,8 +28,8 @@ npm install mbkauthe
 
 ### 2. Authentication & Core Engine
 - [Session Engine & Multi-Session](guides/authentication.md) — Encrypted cookies, session restoration middleware, multi-account device switching, and concurrent session limits (`MAX_SESSIONS_PER_USER`).
-- [Role-Based Access Control (RBAC)](guides/rbac.md) — Role hierarchies (`superadmin`, `admin`, `normaluser`, `guest`), `RoleRegistry`, and role enforcement middleware (`roleChk`, `sessRole`).
-- [Dynamic Permission Catalogs](guides/permissions.md) — Declarative `app:service:action` manifests, `definePermissions`, `syncAppPermissions`, and `sessPerm` / `permChk` middleware.
+- [Role-Based Access Control (RBAC)](guides/rbac.md) — Multi-role aggregation (primary + `extra_roles`), embedded bitmask maps, superadmin bypass, and role enforcement middleware (`roleChk`, `sessRole`).
+- [Numeric Bitmask Permissions](guides/permissions.md) — 31-bit resource action masks, `defineResource`, `definePermissions`, zero-DB nanosecond authorization, user overrides, and `sessPerm` / `permChk` middleware.
 - [Provider-Neutral OAuth & OIDC](guides/oauth.md) — Google, GitHub, Microsoft, Discord, Apple, and Custom OIDC social login, account linking, and token encryption.
 - [WebAuthn & Passkeys](guides/passkeys.md) — FIDO2 biometric authentication (Touch ID, Face ID, Windows Hello) and security keys.
 - [OAuth Architecture Reference](oauth.md) — In-depth architectural breakdown of provider-neutral OAuth, PKCE, JWKS, and `createAuth` dependency injection.

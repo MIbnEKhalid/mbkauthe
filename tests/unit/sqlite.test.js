@@ -6,7 +6,7 @@ import { describe, beforeAll, it, expect } from 'vitest';
 import { SqlitePool, translatePgToSqlite, SqliteSessionStore, sqliteDialect, AuthRepository, BaseRepository } from '../../dist/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
+const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/sqlite.sql');
 
 let schemaSql;
 

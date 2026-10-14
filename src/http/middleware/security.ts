@@ -90,13 +90,24 @@ export function sessionCookieSyncMiddleware(req: Request, res: Response, next: N
   next();
 }
 
+const STATIC_ASSET_REGEX = /\.(css|js|map|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|otf)$/i;
+
+export function isStaticOrAssetRequest(req: Request): boolean {
+  const p = (req.path || req.url || "").split("?")[0].toLowerCase();
+  if (p === "/icon.svg" || p === "/favicon.ico" || p === "/icon.png" || p === "/robots.txt") return true;
+  if (STATIC_ASSET_REGEX.test(p)) return true;
+  if (p.startsWith("/assets/") || p.startsWith("/public/") || p.startsWith("/uploads/")) return true;
+  if (p.startsWith("/mbkauthe/avatar/") && !p.endsWith("/me")) return true;
+  return false;
+}
+
 /**
  * Ensures session middleware and cookie synchronization are initialized on-demand.
  * ONLY called on protected routes (via authMiddleware) or dedicated auth endpoints (authRoutes, oauthRoutes).
- * Unprotected routes never invoke this, ensuring zero database session queries across all apps.
+ * Unprotected routes and static assets never invoke this, ensuring zero database session queries.
  */
 export function ensureSession(req: Request, res: Response, next: NextFunction): void {
-  if (hasAuthorizationHeader(req) || (req as any).session) {
+  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req) || (req as any).session) {
     return next();
   }
   const initCookies = (done: () => void) => {
@@ -118,7 +129,7 @@ export function ensureSession(req: Request, res: Response, next: NextFunction): 
 }
 
 export async function ensureSessionAsync(req: Request, res: Response): Promise<void> {
-  if (hasAuthorizationHeader(req) || (req as any).session) {
+  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req) || (req as any).session) {
     return;
   }
   return new Promise<void>((resolve, reject) => {

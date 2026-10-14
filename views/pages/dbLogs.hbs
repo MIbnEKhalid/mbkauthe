@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="DB Query Monitor" ogUrl="/mbkauthe/db"}}
+{{> mbkutils_head pageTitle="DB Query Monitor" ogUrl="/mbkauthe/db"}}
 
 <body>
-  {{> header appName=appName}}
+  {{> mbkutils_header appName=appName}}
 
     <section class="db-container">
-    {{> backgroundElements}}
+    {{> mbkutils_backgroundElements}}
 
     <div class="auth-card db-panel">
       <div class="db-header">
@@ -408,6 +408,6 @@
     if (!isDev) showDisabledState();
     else loadLog();
   </script>
-  {{> versionInfo}}
+  {{> mbkutils_versionInfo}}
 </body>
 </html>

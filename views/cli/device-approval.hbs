@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 
-{{> head pageTitle="Approve CLI Login" ogUrl="/mbkauthe/cli/device"}}
+{{> mbkutils_head pageTitle="Approve CLI Login" ogUrl="/mbkauthe/cli/device"}}
 
 <body>
-    {{> header}}
+    {{> mbkutils_header}}
 
-    {{> showmessage}}
+    {{> mbkutils_showmessage}}
 
     <section class="login-container">
-        {{> backgroundElements}}
+        {{> mbkutils_backgroundElements}}
 
         <div class="auth-card login-box login-box-single cli-device-box">
             {{#if (eq status 'notfound')}}
@@ -162,7 +162,7 @@
     <!-- Floating Copy Toast -->
     <div class="cli-copy-toast" id="cliCopyToast" aria-live="polite"></div>
 
-    {{> versionInfo}}
+    {{> mbkutils_versionInfo}}
 
     <script>
         const user_code = {{#if user_code}}"{{user_code}}"{{else}}null{{/if}};

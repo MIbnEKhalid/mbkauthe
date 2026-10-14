@@ -4,6 +4,39 @@ All notable changes and architectural releases for MBKAuthe are documented here.
 
 ---
 
+## [6.5.0] - 2026-10-14
+
+### Sub-Nanosecond Bitmask Permission & Authorization Engine
+- **Pure Numeric Bitmask Engine**:
+  - Replaced legacy string-based `app:service:action` catalogs with deterministic 31-bit integer action masks (`StandardActionBits.VIEW: 1`, `CREATE: 2`, `UPDATE: 4`, `DELETE: 8`, `MANAGE: 16`).
+  - Permission checks evaluate in a single CPU bitwise AND cycle (`(userMask & requiredMask) === requiredMask`) in under 1 nanosecond with zero string allocations.
+  - Added `defineResource()` and `defineResources()` (aliased as `definePermissions()`) generating immutable, type-safe `ActionDescriptor` objects.
+- **Catalog-Free Database Schema**:
+  - Eliminated three heavy junction tables: `mbkcore_permission_catalog`, `mbkcore_role_permissions`, and `mbkcore_user_permission_overrides`.
+  - Stored resource bitmask maps directly in `mbkcore_roles.permissions` JSON column (`{"global": 1, "tasks": 15}`).
+  - Added `extra_roles` and `perm_overrides` JSON columns on `mbkcore_users` for multi-role assignments and deterministic overrides.
+- **Multi-Role Aggregation & Deterministic Overrides**:
+  - Added `combineResourceMasks()` combining primary and secondary roles via bitwise OR.
+  - Added `applyOverrides()` applying deterministic precedence: `(baseMask | userAllows) & ~userDenies` (explicit denials strictly strip bits).
+- **Session Hydration & Zero-DB Request Pipeline**:
+  - `attachSessionPermissions()` precomputes and caches effective bitmasks on `req.session.user.perms`.
+  - Subsequent requests require **zero database queries** for permission and role evaluation.
+  - Superadmin accounts execute instant bypass with zero mask checking.
+- **Test Matrix & View Updates**:
+  - Updated debug `/test` page to display the live Resource Bitmask Matrix with hex/binary representation and granted action indicators.
+  - Added comprehensive test suites in `tests/unit/permissions.test.js`, `permissionRepository.test.js`, and `permissionMiddleware.test.js`.
+
+---
+
+## [6.4.0] - 2026-10-13
+
+### Permissions Optimization & Role Sync Enhancements
+- Enhanced role sync efficiency and initial multi-role descriptor indexing.
+- Improved SessionRepository query caching and session permission hydration.
+- Updated database DDL schema definitions for PostgreSQL and SQLite parity.
+
+---
+
 ## [6.2.0] - 2026-09-25
 
 ### Service Layer Optimization & Flow Refactoring

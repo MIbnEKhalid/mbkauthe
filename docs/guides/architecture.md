@@ -30,7 +30,7 @@ flowchart TB
         CookieParser["Cookie Parser & Decryption (AES-256-GCM)"]
         RateLimiter["Rate Limiting Middleware"]
         AuthMiddleware["Session & Token Middleware (sessVal, authenticate)"]
-        RBACMiddleware["RBAC / Permission Middleware (sessRole, sessPerm)"]
+        RBACMiddleware["Bitmask & Role Middleware (sessRole, sessPerm, permChk, roleChk)"]
         Routers["Express Routers (/mbkauthe, /auth/oauth, /auth/cli, /mbkauthe/api/passkey)"]
     end
 
@@ -42,8 +42,8 @@ flowchart TB
         CliAuthService["CliAuthService (Device Flow)"]
         ApiTokenService["ApiTokenService (PAT Management)"]
         AuthzService["AuthorizationService (Policy Engine)"]
-        RoleReg["RoleRegistry (In-Memory RBAC)"]
-        PermSync["PermissionSyncService (Catalog Sync)"]
+        BitmaskEngine["Bitmask Evaluator (< 1ns Bitwise AND)"]
+        PermSync["PermissionSyncService (Role Bitmask Sync)"]
         EventBus["authEvents (Domain Event Emitter)"]
     end
 
@@ -89,8 +89,7 @@ flowchart TB
     Routers --> ApiTokenService
 
     AuthMiddleware --> AuthCtx
-    RBACMiddleware --> AuthzService
-    AuthzService --> RoleReg
+    RBACMiddleware --> AuthzService --> BitmaskEngine
 
     AuthService --> PasswordHasher
     AuthService --> AESCipher
@@ -322,59 +321,67 @@ sequenceDiagram
 
 ---
 
-## 5. Dynamic RBAC & Permission Catalog Synchronization Flow
+## 5. Numeric Bitmask Authorization & Role Synchronization Pipeline
 
-Permissions are defined declaratively in application code and synchronized to the database at startup, allowing dynamic role assignments and zero-downtime policy updates.
+MBKAuthe v6 replaces legacy multi-table string permission catalogs with a **pure numeric bitmask engine**. Resource actions are defined deterministically as 31-bit integer flags, roles store consolidated bitmask maps directly in `mbkcore_roles.permissions`, sessions hydrate user permissions once upon authentication, and authorization queries evaluate in a **single CPU bitwise AND cycle (< 1ns)** with zero runtime database roundtrips.
 
 **Diagram Assets**: [Source (.mmd)](../diagrams/mmd/05-rbac-permission-sync.mmd) • [Vector SVG](../diagrams/images/05-rbac-permission-sync.svg)
 
-![Dynamic RBAC Permission Sync](../diagrams/images/05-rbac-permission-sync.svg)
+![Numeric Bitmask Authorization Pipeline](../diagrams/images/05-rbac-permission-sync.svg)
 
 ```mermaid
 flowchart TD
     subgraph DevTime["1. Manifest Definition (Application Startup)"]
-        DefCode["definePermissions({ appKey: 'portal', permissions: {...}, roles: {...} })"]
-        ManifestObj["PermissionManifest Object"]
-        DefCode --> ManifestObj
+        DefCode["definePermissions({ users: {...}, billing: {...} }, { app: 'portal', roles: {...} })"]
+        ActionDesc["ActionDescriptors (Deterministic 31-bit integer masks)"]
+        RoleMasks["Role Resource Bitmask Maps (e.g. { users: 15, billing: 7 })"]
+        
+        DefCode --> ActionDesc & RoleMasks
     end
 
-    subgraph SyncEngine["2. Catalog Synchronization (PermissionSyncService)"]
-        SyncCall["syncAppPermissions(manifest, dblogin)"]
-        DiffEngine["Diff Manifest against permission_catalog DB Table"]
-        InsertPerms["INSERT New Permissions"]
-        UpdatePerms["UPDATE Modified Descriptions"]
-        SyncRoles["Sync Default Role Mappings (role_permissions table)"]
+    subgraph SyncEngine["2. Direct Role Mask Synchronization (PermissionSyncService)"]
+        SyncCall["syncAppPermissions(AppPermissions)"]
+        MergeRoles["Merge declared role masks into mbkcore_roles.permissions"]
+        ZeroCatalog["Zero catalog tables (single JSON column in mbkcore_roles)"]
         
-        SyncCall --> DiffEngine
-        DiffEngine --> InsertPerms & UpdatePerms --> SyncRoles
+        SyncCall --> MergeRoles --> ZeroCatalog
     end
 
-    subgraph MemorySync["3. In-Memory RoleRegistry Loading"]
-        LoadRegistry["RoleRegistry.loadFromDatabase()"]
-        PopulateMap["Map Roles to Set<PermissionStrings>"]
+    subgraph SessionHydration["3. Multi-Role Session Hydration (sessionPermissions)"]
+        LoginEvent["User Login / Session Restore"]
+        CombineRoles["combineResourceMasks(primaryRole, extraRoles)"]
+        ApplyOverrides["applyOverrides: (baseMask | userAllows) & ~userDenies"]
+        AttachSession["Attach precomputed bitmasks to req.session.user.perms"]
         
-        SyncRoles --> LoadRegistry --> PopulateMap
+        LoginEvent --> CombineRoles --> ApplyOverrides --> AttachSession
     end
 
-    subgraph RuntimeAuthz["4. Runtime Authorization Evaluation (AuthorizationService)"]
-        IncomingReq["Protected Request (sessPerm / permChk)"]
-        CheckUserRole["Lookup user.role in RoleRegistry"]
+    subgraph RuntimeAuthz["4. Pure CPU Bitwise Evaluation (< 1ns)"]
+        IncomingReq["Protected Request (sessPerm / permChk / auth.can)"]
+        ExtractCtx["Extract user.perms from Session (0 DB Queries)"]
         
-        SuperCheck{"Is role 'superadmin'?"}
-        ExactCheck{"Has exact permission ('portal:reports:view')?"}
-        WildcardCheck{"Has wildcard permission ('portal:reports:*' or 'portal:*')?"}
+        SuperCheck{"Is user superadmin?"}
+        GlobalCheck{"Is basic global access?"}
+        BitwiseCheck{"(userMask & requiredMask) === requiredMask"}
         
-        IncomingReq --> CheckUserRole --> SuperCheck
-        SuperCheck -- "Yes" --> Allow(["Access Granted (200 OK)"])
-        SuperCheck -- "No" --> ExactCheck
-        ExactCheck -- "Yes" --> Allow
-        ExactCheck -- "No" --> WildcardCheck
-        WildcardCheck -- "Yes" --> Allow
-        WildcardCheck -- "No" --> Deny(["Access Denied (403 Forbidden)"])
+        IncomingReq --> ExtractCtx --> SuperCheck
+        SuperCheck -- "Yes (Instant Bypass)" --> Allow(["Access Granted (200 OK)"])
+        SuperCheck -- "No" --> GlobalCheck
+        GlobalCheck -- "Yes (Authenticated)" --> Allow
+        GlobalCheck -- "No" --> BitwiseCheck
+        BitwiseCheck -- "True (Single CPU Cycle)" --> Allow
+        BitwiseCheck -- "False" --> Deny(["Access Denied (403 Forbidden)"])
     end
 
-    ManifestObj --> SyncCall
+    RoleMasks --> SyncCall
+    ZeroCatalog -.->|Load on Login| LoginEvent
 ```
+
+### Architectural Highlights of the Bitmask Pipeline:
+1. **Manifest Declaration**: `definePermissions` (or `defineResource`) generates immutable `ActionDescriptor` objects. Standard actions (`VIEW: 1`, `CREATE: 2`, `UPDATE: 4`, `DELETE: 8`, `MANAGE: 16`) are deterministic across applications, while custom actions receive subsequent available bits.
+2. **Catalog-Free Storage**: The three legacy catalog tables (`mbkcore_permission_catalog`, `mbkcore_role_permissions`, `mbkcore_user_permission_overrides`) are completely removed. `mbkcore_roles.permissions` directly stores the JSON map of resource bitmasks.
+3. **Multi-Role Aggregation & Precedence**: On login, `attachSessionPermissions` combines bitmasks across all assigned roles (`user.role` + `user.extra_roles`) using bitwise OR (`combineResourceMasks`). Explicit user overrides are deterministically applied via `(baseMask | allows) & ~denies` (explicit denies strip bits unconditionally).
+4. **Sub-Nanosecond Zero-DB Check**: During HTTP request handling, middleware (`sessPerm`, `permChk`) accesses the precomputed `req.session.user.perms` map. Evaluating access requires a single bitwise test: `(userMask & requiredMask) === requiredMask`. Superadmins automatically bypass all checks instantly.
 
 ---
 

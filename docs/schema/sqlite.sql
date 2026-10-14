@@ -1,6 +1,6 @@
 -- SQLite schema for mbkauthe (standard lowercase snake_case).
 --
--- This mirrors the auth-relevant subset of docs/schema/db.sql (Postgres).
+-- This mirrors the auth-relevant subset of docs/schema/postgres.sql.
 --
 -- Notes on the Postgres -> SQLite translation:
 --   * "integer GENERATED ... AS IDENTITY"   -> INTEGER PRIMARY KEY AUTOINCREMENT
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_roles (
     name VARCHAR(50) NOT NULL,
     label TEXT,
     description TEXT,
+    permissions TEXT DEFAULT '{}' NOT NULL,
     is_system INTEGER DEFAULT 0 NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -26,11 +27,11 @@ CREATE TABLE IF NOT EXISTS mbkcore_roles (
 CREATE INDEX IF NOT EXISTS idx_mbkcore_roles_name ON mbkcore_roles (name);
 
 -- Seed standard roles (4 roles)
-INSERT OR IGNORE INTO mbkcore_roles (name, label, description, is_system) VALUES
-('superadmin', 'Super Administrator', 'Full system access across all applications (bypasses permission checks)', 1),
-('admin', 'Administrator', 'Administrative access excluding destructive root actions', 1),
-('author', 'Author', 'Content creation and authoring access', 1),
-('normaluser', 'Standard User', 'Standard basic user access', 1);
+INSERT OR IGNORE INTO mbkcore_roles (name, label, description, is_system, permissions) VALUES
+('superadmin', 'Super Administrator', 'Full system access across all applications (bypasses permission checks)', 1, '{}'),
+('admin', 'Administrator', 'Administrative access excluding destructive root actions', 1, '{"global": 1}'),
+('author', 'Author', 'Content creation and authoring access', 1, '{"global": 1}'),
+('normaluser', 'Standard User', 'Standard basic user access', 1, '{"global": 1}');
 
 -- Table: mbkcore_users
 CREATE TABLE IF NOT EXISTS mbkcore_users (
@@ -40,6 +41,8 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     is_active INTEGER DEFAULT 0,
     is_local_only INTEGER DEFAULT 0,
     role TEXT DEFAULT 'normaluser' REFERENCES mbkcore_roles(name) ON DELETE RESTRICT ON UPDATE CASCADE,
+    extra_roles TEXT DEFAULT '[]',
+    perm_overrides TEXT DEFAULT '{}',
     have_mail_account INTEGER DEFAULT 0,
     allowed_apps TEXT DEFAULT '["Portal", "mbkauthe"]',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -175,53 +178,6 @@ CREATE TABLE IF NOT EXISTS mbkcore_session (
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_expire ON mbkcore_session (expire);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_username ON mbkcore_session (username);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_device_id ON mbkcore_session (device_id);
-
--- Table: mbkcore_permission_catalog
-CREATE TABLE IF NOT EXISTS mbkcore_permission_catalog (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    app_key VARCHAR(50) NOT NULL,
-    service_key VARCHAR(50) NOT NULL,
-    action_key VARCHAR(50) NOT NULL,
-    label TEXT,
-    is_active INTEGER DEFAULT 1 NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_permission_catalog UNIQUE (app_key, service_key, action_key)
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app ON mbkcore_permission_catalog (app_key);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_active ON mbkcore_permission_catalog (app_key, is_active);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_service ON mbkcore_permission_catalog (app_key, service_key);
-
--- Built-in permission shared by every application; app sync never manages it.
-INSERT INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, is_active)
-VALUES ('global', 'basic', 'access', 'Basic global access', 1)
-ON CONFLICT (app_key, service_key, action_key)
-DO UPDATE SET label = excluded.label, is_active = 1, updated_at = CURRENT_TIMESTAMP;
-
--- Table: mbkcore_role_permissions
-CREATE TABLE IF NOT EXISTS mbkcore_role_permissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    role_name VARCHAR(50) NOT NULL REFERENCES mbkcore_roles(name) ON DELETE CASCADE ON UPDATE CASCADE,
-    permission_id INTEGER NOT NULL REFERENCES mbkcore_permission_catalog(id) ON DELETE CASCADE,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_role_permission UNIQUE (role_name, permission_id)
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_role_permissions_role ON mbkcore_role_permissions (role_name);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_role_permissions_perm ON mbkcore_role_permissions (permission_id);
-
--- Table: mbkcore_user_permission_overrides
-CREATE TABLE IF NOT EXISTS mbkcore_user_permission_overrides (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    permission_id INTEGER NOT NULL REFERENCES mbkcore_permission_catalog(id) ON DELETE CASCADE,
-    effect VARCHAR(5) NOT NULL,
-    granted_by VARCHAR(50),
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_user_perm_override UNIQUE (username, permission_id),
-    CONSTRAINT chk_user_perm_override_effect CHECK (effect IN ('allow', 'deny'))
-);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_username ON mbkcore_user_permission_overrides (username);
-CREATE INDEX IF NOT EXISTS idx_mbkcore_user_permission_overrides_perm ON mbkcore_user_permission_overrides (permission_id);
 
 -- Table: mbkcore_oauth_accounts
 CREATE TABLE IF NOT EXISTS mbkcore_oauth_accounts (

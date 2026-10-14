@@ -44,7 +44,7 @@ const {
 
 import { setupViewEngine } from 'mbkutils';
 
-const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/db.sqlite.sql');
+const SCHEMA_PATH = path.join(__dirname, '../../docs/schema/sqlite.sql');
 const viewsPath = path.join(__dirname, '../../views');
 
 const app = express();

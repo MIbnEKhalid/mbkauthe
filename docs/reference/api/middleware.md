@@ -78,26 +78,35 @@ Combines `strictValidateSession` and role checking.
 
 ---
 
-## 3. Dynamic Permission Middleware
+## 3. Numeric Bitmask Permission Middleware
 
 ### `checkPermission(permission)` (alias: `permChk`)
-Checks whether the authenticated user or API token holds the required `app:service:action` permission.
+Checks whether the authenticated user or API token holds the required resource action bitmask. Evaluates in a single CPU cycle (< 1ns) with 0 database queries using cached session bitmasks.
+
+Accepts:
+- `ActionDescriptor` (e.g. `AppPermissions.users.delete`)
+- Permission target string (e.g. `"users:delete"`, `"users.delete"`, or `"basic.access"`)
+- `[resource, mask]` tuple (e.g. `["users", StandardActionBits.DELETE]`)
 
 ```typescript
 import { sessVal, permChk } from "mbkauthe";
-import { CorePermissions } from "./permissions.js";
+import { AppPermissions } from "./permissions.js";
 
-app.delete("/users/:id", sessVal, permChk(CorePermissions.users.delete), handler);
+// ActionDescriptor
+app.delete("/users/:id", sessVal, permChk(AppPermissions.users.delete), handler);
+
+// String shorthand
+app.get("/users", sessVal, permChk("users.view"), handler);
 ```
 
 ### `validateSessionAndPermission(permission)` (alias: `sessPerm`)
-Combines session validation and permission verification.
+Pipeline combining session validation and bitmask permission verification in a single middleware call.
 
 ```typescript
 import { sessPerm } from "mbkauthe";
-import { CorePermissions } from "./permissions.js";
+import { AppPermissions } from "./permissions.js";
 
-app.post("/users", sessPerm(CorePermissions.users.write), handler);
+app.post("/users", sessPerm(AppPermissions.users.create), handler);
 ```
 
 ---

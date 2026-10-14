@@ -1,209 +1,200 @@
 /**
- * MBKAuthe — Pure Numeric Authorization Service
- * Responsible for all authorization decisions: Roles, Numeric Permissions, Policies, and App Access.
- * Consumes an AuthContext or AuthPrincipal without performing authentication or database calls.
+ * MBKAuthe — Bitmask Authorization Service
+ * Pure bitmask evaluation service with zero DB lookups and nanosecond execution.
  * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
  * Licensed under the MIT License.
  */
 
 import { AuthContext, AuthPrincipal, principalFromUser } from "../context/AuthContext.js";
-import { RoleRegistry, defaultRoleRegistry, SUPERADMIN_ROLE } from "./roleRegistry.js";
-import { resolvePermissionId } from "./matcher.js";
-import type { PermissionTarget } from "../types/permission.types.js";
+import { evaluatePermission, evaluateRole, evaluateAppAccess, SUPERADMIN_ROLE } from "./evaluator.js";
+import { STANDARD_NAME_TO_BIT } from "./resource.js";
+import type { ActionDescriptor, PermissionTarget, ResourceMasks } from "../types/permission.types.js";
 import { mbkautheVar } from "../../config/index.js";
 
 export type PolicyFn = (context: AuthContext) => boolean | Promise<boolean>;
 
+export class RoleRegistry {
+  private roles = new Map<string, ResourceMasks>();
+
+  setRole(roleName: string, permissions: string[] | ResourceMasks): this {
+    const cleanRole = String(roleName || "").trim().toLowerCase();
+    if (Array.isArray(permissions)) {
+      const masks: ResourceMasks = {};
+      for (const p of permissions) {
+        const raw = String(p || "").trim().toLowerCase();
+        masks[raw] = 1;
+        if (raw.includes(":")) {
+          const parts = raw.split(":");
+          const res = parts.length === 3 ? parts[1] : parts[0];
+          const act = parts.length === 3 ? parts[2] : parts[1];
+          masks[res] = (masks[res] || 0) | (STANDARD_NAME_TO_BIT[act] || 1);
+        }
+      }
+      this.roles.set(cleanRole, masks);
+    } else if (permissions && typeof permissions === "object") {
+      this.roles.set(cleanRole, permissions);
+    }
+    return this;
+  }
+
+  getRoleMasks(roleName: string): ResourceMasks {
+    return this.roles.get(String(roleName || "").trim().toLowerCase()) || {};
+  }
+}
+
 export class AuthorizationService {
-  constructor(private roleRegistry: RoleRegistry = defaultRoleRegistry) {}
+  constructor(private roleRegistry?: RoleRegistry) {}
 
   /**
-   * Helper to extract an AuthPrincipal from either an AuthContext, an AuthPrincipal, or legacy user object.
+   * Extracts evaluation context from target (AuthContext, AuthPrincipal, or session user).
    */
-  private extractPrincipal(target: AuthContext | AuthPrincipal | any): AuthPrincipal {
-    if (!target) return principalFromUser(null);
-    if (target instanceof AuthContext) {
-      return target.principal || principalFromUser(null);
+  private extractContext(target: AuthContext | AuthPrincipal | any) {
+    if (!target) {
+      return { isSuperadmin: false, role: "guest", roles: ["guest"], masks: {}, allowedApps: [] };
     }
-    if (target.principal && typeof target.principal === "object") {
-      return target.principal;
+
+    const principal: AuthPrincipal =
+      target instanceof AuthContext ? target.principal || (target as any) : target.principal || target;
+
+    const role = (principal.role || "").toLowerCase();
+    const roles: string[] = Array.isArray(principal.roles)
+      ? principal.roles.map((r: any) => String(r).toLowerCase())
+      : [role];
+
+    const isSuperadmin = role === SUPERADMIN_ROLE || roles.includes(SUPERADMIN_ROLE);
+
+    // Extract precomputed resource masks from principal.perms or principal.permissions
+    let masks: ResourceMasks = {};
+    if (principal.perms && typeof principal.perms === "object" && Object.keys(principal.perms).length > 0) {
+      masks = { ...principal.perms };
+    } else if (principal.permissions && typeof principal.permissions === "object" && !Array.isArray(principal.permissions) && Object.keys(principal.permissions).length > 0) {
+      masks = { ...principal.permissions };
+    } else if (this.roleRegistry) {
+      for (const r of roles) {
+        const rMasks = this.roleRegistry.getRoleMasks(r);
+        for (const [k, v] of Object.entries(rMasks)) {
+          masks[k] = (masks[k] || 0) | v;
+        }
+      }
     }
-    return principalFromUser(target);
+
+    // Apply explicit user overrides if present
+    if (principal.overrides) {
+      const allows = Array.isArray(principal.overrides.allows)
+        ? principal.overrides.allows
+        : Object.keys(principal.overrides.allows || {});
+      const denies = Array.isArray(principal.overrides.denies)
+        ? principal.overrides.denies
+        : Object.keys(principal.overrides.denies || {});
+
+      for (const allow of allows) {
+        const raw = String(allow).trim().toLowerCase();
+        masks[raw] = 1;
+        if (raw.includes(":")) {
+          const parts = raw.split(":");
+          const res = parts.length === 3 ? parts[1] : parts[0];
+          const act = parts.length === 3 ? parts[2] : parts[1];
+          masks[res] = (masks[res] || 0) | (STANDARD_NAME_TO_BIT[act] || 1);
+        }
+      }
+
+      for (const deny of denies) {
+        const raw = String(deny).trim().toLowerCase();
+        delete masks[raw];
+        if (raw.includes(":")) {
+          const parts = raw.split(":");
+          const res = parts.length === 3 ? parts[1] : parts[0];
+          const act = parts.length === 3 ? parts[2] : parts[1];
+          const bit = STANDARD_NAME_TO_BIT[act] || 1;
+          if (masks[res]) {
+            masks[res] = masks[res] & ~bit;
+            if (masks[res] <= 0) delete masks[res];
+          }
+        }
+      }
+    }
+
+    const allowedApps = (principal.allowed_apps || []).map((a: any) => String(a).toLowerCase());
+
+    return { isSuperadmin, role, roles, masks, allowedApps };
   }
 
   /**
-   * Helper to ensure an AuthContext is available for policy checks.
-   */
-  private toAuthContext(target: AuthContext | AuthPrincipal | any): AuthContext {
-    if (target instanceof AuthContext) return target;
-    const principal = this.extractPrincipal(target);
-    return new AuthContext({
-      isAuthenticated: Boolean(principal.username),
-      principal,
-      authMethod: target?.authMethod || "session",
-    });
-  }
-
-  /**
-   * Returns true if the principal has the SuperAdmin role (case-insensitive).
+   * Returns true if target has the SuperAdmin role.
    */
   isSuperadmin(target: AuthContext | AuthPrincipal | any): boolean {
-    const principal = this.extractPrincipal(target);
-    const primaryRole = (principal.role || "").toLowerCase();
-    if (primaryRole === SUPERADMIN_ROLE) return true;
-
-    if (Array.isArray(principal.roles)) {
-      return principal.roles.some((r: any) => String(r).toLowerCase() === SUPERADMIN_ROLE);
-    }
-    return false;
+    return this.extractContext(target).isSuperadmin;
   }
 
   /**
-   * Checks if the principal has a specific role.
+   * Evaluates if target satisfies any of the required roles.
    */
   hasRole(target: AuthContext | AuthPrincipal | any, role: string): boolean {
     return this.hasAnyRole(target, [role]);
   }
 
-  /**
-   * Checks if the principal satisfies any of the required roles (or wildcard / any / *).
-   */
   hasAnyRole(target: AuthContext | AuthPrincipal | any, requiredRoles: string | string[]): boolean {
-    const principal = this.extractPrincipal(target);
-    if (this.isSuperadmin(principal)) return true;
-
-    const userRoles = new Set<string>();
-    if (principal.role) userRoles.add(principal.role.toLowerCase());
-    if (Array.isArray(principal.roles)) {
-      for (const r of principal.roles) {
-        if (typeof r === "string" && r.trim()) userRoles.add(r.trim().toLowerCase());
-      }
-    }
-
-    const list = (Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles])
-      .map((r) => (typeof r === "string" ? r.trim().toLowerCase() : String(r)));
-
-    if (list.includes("any") || list.includes("*")) {
-      return userRoles.size > 0;
-    }
-
-    return list.some((reqRole) => userRoles.has(reqRole));
+    const ctx = this.extractContext(target);
+    return evaluateRole(ctx, requiredRoles);
   }
 
-  /**
-   * Checks if the principal has an explicitly forbidden/denied role.
-   */
   isRoleDenied(target: AuthContext | AuthPrincipal | any, notAllowedRole?: string | null): boolean {
     if (!notAllowedRole || typeof notAllowedRole !== "string") return false;
-    const principal = this.extractPrincipal(target);
-    const deniedNorm = notAllowedRole.trim().toLowerCase();
-    const primaryRole = (principal.role || "").toLowerCase();
-
-    if (primaryRole === deniedNorm) return true;
-    if (Array.isArray(principal.roles) && principal.roles.some((r) => String(r).toLowerCase() === deniedNorm)) {
-      return true;
-    }
-    return false;
+    const ctx = this.extractContext(target);
+    if (ctx.isSuperadmin) return false;
+    const denied = notAllowedRole.trim().toLowerCase();
+    return ctx.role === denied || ctx.roles.includes(denied);
   }
 
   /**
-   * Evaluates if the principal is authorized for a specific numeric permission ID.
+   * Evaluates if target has the required resource action permission.
+   * Can accept:
+   *   hasPermission(ctx, Permissions.tasks.view)
+   *   hasPermission(ctx, "tasks", StandardActions.VIEW)
+   *   hasPermission(ctx, "tasks", 1)
    */
   hasPermission(
     target: AuthContext | AuthPrincipal | any,
-    required: number | PermissionTarget,
-    registry: RoleRegistry = this.roleRegistry
+    resourceOrTarget: string | PermissionTarget,
+    actionMask?: number
   ): boolean {
-    const principal = this.extractPrincipal(target);
-    if (!principal || !principal.username) return false;
-
-    // 1. SuperAdmin bypass
-    if (this.isSuperadmin(principal)) return true;
-
-    const reqId = resolvePermissionId(required, registry);
-    if (!reqId || reqId <= 0) return false;
-
-    // 2. Deny overrides always win
-    const rawDenies = Array.isArray(principal.overrides?.denies)
-      ? principal.overrides.denies
-      : Array.isArray((principal.permissions as any)?.denies)
-      ? (principal.permissions as any).denies
-      : [];
-    const userDenies = rawDenies.map((p: any) => resolvePermissionId(p, registry)).filter((id: number) => id > 0);
-    if (userDenies.includes(reqId)) return false;
-
-    // 3. User effective / allow overrides check
-    const rawAllows = Array.isArray(principal.overrides?.allows)
-      ? principal.overrides.allows
-      : Array.isArray((principal.permissions as any)?.allows)
-      ? (principal.permissions as any).allows
-      : Array.isArray(principal.permissions)
-      ? principal.permissions
-      : [];
-    const userAllows = rawAllows.map((p: any) => resolvePermissionId(p, registry)).filter((id: number) => id > 0);
-    if (userAllows.includes(reqId)) return true;
-
-    // 4. Role-based permissions
-    const userRoles = new Set<string>();
-    if (principal.role) userRoles.add(principal.role.toLowerCase());
-    if (Array.isArray(principal.roles)) {
-      for (const r of principal.roles) {
-        if (typeof r === "string" && r.trim()) userRoles.add(r.trim().toLowerCase());
-      }
-    }
-
-    for (const roleName of userRoles) {
-      if (registry.checkRoleHasPermission(roleName, reqId)) {
-        return true;
-      }
-    }
-
-    return false;
+    const ctx = this.extractContext(target);
+    return evaluatePermission(ctx, resourceOrTarget, actionMask);
   }
 
-  /**
-   * Evaluates if the principal has all of the required numeric permissions.
-   */
   hasAllPermissions(
     target: AuthContext | AuthPrincipal | any,
-    requiredList: (number | PermissionTarget)[],
-    registry: RoleRegistry = this.roleRegistry
+    targets: (PermissionTarget | [string, number])[]
   ): boolean {
-    return requiredList.every((p) => this.hasPermission(target, p, registry));
+    const ctx = this.extractContext(target);
+    if (ctx.isSuperadmin) return true;
+    return targets.every((t) => {
+      if (Array.isArray(t)) return evaluatePermission(ctx, t[0], t[1]);
+      return evaluatePermission(ctx, t);
+    });
   }
 
-  /**
-   * Evaluates if the principal has at least one of the required numeric permissions.
-   */
   hasAnyPermission(
     target: AuthContext | AuthPrincipal | any,
-    requiredList: (number | PermissionTarget)[],
-    registry: RoleRegistry = this.roleRegistry
+    targets: (PermissionTarget | [string, number])[]
   ): boolean {
-    return requiredList.some((p) => this.hasPermission(target, p, registry));
+    const ctx = this.extractContext(target);
+    if (ctx.isSuperadmin) return true;
+    return targets.some((t) => {
+      if (Array.isArray(t)) return evaluatePermission(ctx, t[0], t[1]);
+      return evaluatePermission(ctx, t);
+    });
   }
 
-  /**
-   * Checks if the principal is authorized to access a given application.
-   */
   canAccessApp(target: AuthContext | AuthPrincipal | any, appKey?: string): boolean {
-    const principal = this.extractPrincipal(target);
-    if (this.isSuperadmin(principal)) return true;
-
-    const targetApp = (appKey || mbkautheVar.APP_NAME || "").toLowerCase().trim();
-    if (!targetApp) return true;
-
-    const allowed = principal.allowed_apps || [];
-    return Array.isArray(allowed) && allowed.some((app: any) => String(app).toLowerCase().trim() === targetApp);
+    const ctx = this.extractContext(target);
+    return evaluateAppAccess(ctx, appKey || mbkautheVar.APP_NAME);
   }
 
-  /**
-   * Evaluates an arbitrary authorization policy function against the AuthContext.
-   */
   async evaluatePolicy(target: AuthContext | AuthPrincipal | any, policy: PolicyFn): Promise<boolean> {
-    const context = this.toAuthContext(target);
+    const authContext = target instanceof AuthContext ? target : new AuthContext({ principal: target });
     try {
-      return Boolean(await policy(context));
+      return Boolean(await policy(authContext));
     } catch {
       return false;
     }

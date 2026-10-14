@@ -7,7 +7,6 @@ import { TokenEngine } from "../core/tokens/TokenEngine.js";
 import { emitAuthEvent } from "../core/events/index.js";
 import { MbkAuthError } from "../core/errors/MbkAuthError.js";
 import { ErrorCodes } from "../core/errors/catalog.js";
-import { intersectPermissions } from "../core/permissions/roleRegistry.js";
 import { createLogger } from "../utils/logger.js";
 
 const debug = createLogger("mbkauthe:cli-auth-service");
@@ -248,16 +247,7 @@ export class CliAuthService {
     }
 
     const profilePermissions = Array.isArray(profile.permissions) ? profile.permissions : [];
-    let tokenPermissions: any[] = profilePermissions;
-    if (role && role !== "superadmin" && profilePermissions.length > 0) {
-      try {
-        const effective = await this.permRepo.computeEffectiveForUser(username);
-        const intersected = intersectPermissions(effective.effective, profilePermissions);
-        tokenPermissions = intersected.allows;
-      } catch {
-        // Fall back to profile permissions if permission repo is not available
-      }
-    }
+    const tokenPermissions: any[] = profilePermissions;
 
     const tokenName = `${session.client_name} (CLI)`.slice(0, 255);
     const { token, tokenRecord } = await this.tokenService.createToken(username, {

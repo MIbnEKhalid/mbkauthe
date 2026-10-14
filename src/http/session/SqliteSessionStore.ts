@@ -2,6 +2,13 @@ import session from "express-session";
 
 const toSqliteTimestamp = (date: Date): string => date.toISOString().slice(0, 19).replace("T", " ");
 
+interface CachedSqliteSession {
+  sessObj: any;
+  cachedAt: number;
+}
+const sqliteSessionCache = new Map<string, CachedSqliteSession>();
+const SQLITE_SESSION_CACHE_TTL_MS = 5000;
+
 export interface SqliteSessionStoreOptions {
   db: any;
   tableName?: string;
@@ -56,6 +63,11 @@ export class SqliteSessionStore extends session.Store {
   }
 
   get(sid: string, callback: (err?: any, session?: session.SessionData | null) => void): void {
+    const cached = sqliteSessionCache.get(sid);
+    if (cached && (Date.now() - cached.cachedAt) < SQLITE_SESSION_CACHE_TTL_MS) {
+      return callback(null, JSON.parse(JSON.stringify(cached.sessObj)));
+    }
+
     const query = `
       SELECT s.sess, s.expire, s.sid AS session_id,
              u.username, u.user_id, u.is_active, u.is_local_only, u.role, u.allowed_apps, u.full_name, u.image
@@ -101,8 +113,17 @@ export class SqliteSessionStore extends session.Store {
           } else {
             sessObj._liveAuth = null;
           }
+          sqliteSessionCache.set(sid, {
+            sessObj: JSON.parse(JSON.stringify(sessObj)),
+            cachedAt: Date.now(),
+          });
+          if (sqliteSessionCache.size > 2000) {
+            const oldest = sqliteSessionCache.keys().next().value;
+            if (oldest) sqliteSessionCache.delete(oldest);
+          }
           callback(null, sessObj);
         } catch (err) {
+          sqliteSessionCache.delete(sid);
           callback(err);
         }
       })
@@ -124,6 +145,7 @@ export class SqliteSessionStore extends session.Store {
   }
 
   set(sid: string, session_data: session.SessionData, callback?: (err?: any) => void): void {
+    sqliteSessionCache.delete(sid);
     const max_age = session_data.cookie?.maxAge;
     const expire_date = typeof max_age === "number" ? new Date(Date.now() + max_age) : new Date(Date.now() + 86400000);
     const sess = JSON.stringify(session_data);
@@ -144,6 +166,7 @@ export class SqliteSessionStore extends session.Store {
   }
 
   destroy(sid: string, callback?: (err?: any) => void): void {
+    sqliteSessionCache.delete(sid);
     this.db.query(`DELETE FROM "${this.tableName}" WHERE sid = ?`, [sid])
       .then(() => callback?.(null))
       .catch((err: any) => callback?.(err));

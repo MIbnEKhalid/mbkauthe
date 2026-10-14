@@ -7,13 +7,14 @@ import { ErrorCodes, createErrorResponse } from "../../core/errors/catalog.js";
 import { extractAuthorizationToken, timingSafeTokenMatch } from "../../core/tokens/index.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
-import { defaultRoleRegistry, GlobalPermissions, resolvePermission } from "../../core/permissions/index.js";
+import { GlobalAccess, GlobalPermissions, STANDARD_NAME_TO_BIT } from "../../core/permissions/index.js";
+import type { ResourceMasks } from "../../core/types/permission.types.js";
 import { authorizationService } from "../../core/permissions/AuthorizationService.js";
 import { AuthContext, createSessionAuthContext, createTokenAuthContext, createAnonymousContext, principalFromUser } from "../../core/context/AuthContext.js";
 import { attachSessionPermissions, hasNoSessionPermissions } from "../session/sessionPermissions.js";
 import { createLogger } from "../../utils/logger.js";
 import { type AuthUser, isLocalOnlyUser } from "../../core/types/user.types.js";
-import { ensureSessionAsync } from "./security.js";
+import { ensureSessionAsync, isStaticOrAssetRequest } from "./security.js";
 
 const IS_DEV = process.env.env === "dev" || process.env.test === "dev" || process.env.NODE_ENV === "development";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,7 +23,7 @@ const MAX_API_TOKEN_LENGTH = 4096;
 const API_TOKEN_LAST_USED_INTERVAL_MS = 15 * 60 * 1000;
 const apiTokenLastUsedCache = new Map<string | number, number>();
 const logAuth = createLogger("auth");
-const DEFAULT_PERMISSION = GlobalPermissions.basic.access;
+const DEFAULT_PERMISSION = GlobalAccess;
 
 function describeRequirement(values: unknown, label: string): string {
   const items = (Array.isArray(values) ? values : [values])
@@ -130,21 +131,64 @@ async function authenticateToken(req: Request): Promise<AuthenticateTokenResult>
     return { ok: false, errorCode: ErrorCodes.ACCOUNT_INACTIVE, statusCode: 401 };
   }
 
+function parseScopesToMasks(scopes: string[]): ResourceMasks {
+  const masks: ResourceMasks = {};
+  for (const s of scopes) {
+    const raw = String(s || "").trim().toLowerCase();
+    if (!raw) continue;
+    if (raw === "basic.access" || raw === "global:basic:access" || raw === "global.access" || raw === "global:access") {
+      masks["global"] = (masks["global"] || 0) | 1;
+      continue;
+    }
+    masks[raw] = (masks[raw] || 0) | 1;
+    if (raw.includes(":")) {
+      const parts = raw.split(":");
+      const resource = parts.length === 3 ? parts[1] : parts[0];
+      const action = parts.length === 3 ? parts[2] : parts[1];
+      const bit = STANDARD_NAME_TO_BIT[action] || 1;
+      masks[resource] = (masks[resource] || 0) | bit;
+    } else if (raw.includes(".")) {
+      const parts = raw.split(".");
+      const resource = parts[0];
+      const action = parts[1];
+      const bit = STANDARD_NAME_TO_BIT[action] || 1;
+      masks[resource] = (masks[resource] || 0) | bit;
+    }
+  }
+  return masks;
+}
+
   const token_permissions = parseTokenPermissionList(row.permissions);
   updateApiTokenLastUsedThrottled(row.id);
 
   const hasExplicitPermissions = token_permissions.length > 0;
   const effectiveRole = hasExplicitPermissions ? null : row.role;
 
+  let masks: ResourceMasks = {};
+  let roles: string[] = row.role ? [row.role] : [];
+  if (hasExplicitPermissions) {
+    masks = parseScopesToMasks(token_permissions);
+  } else {
+    try {
+      const snapshot = await permissionRepository.computeEffectiveForUser(row.username, row.role);
+      masks = snapshot.masks;
+      roles = snapshot.roles;
+    } catch {
+      masks = { global: 1 };
+    }
+  }
+
   const principal = principalFromUser({
     user_id: row.user_id || undefined,
     username: row.username,
     full_name: row.full_name,
     role: effectiveRole,
+    roles,
+    perms: masks,
+    permissions: masks,
     owner_role: row.role,
     session_id: "api-token-session",
     is_active: row.is_active,
-    ...(hasExplicitPermissions ? { overrides: { allows: token_permissions, denies: [] }, permissions: { allows: token_permissions, denies: [] } } : {}),
   });
 
   const context = new AuthContext({
@@ -157,7 +201,7 @@ async function authenticateToken(req: Request): Promise<AuthenticateTokenResult>
       scopes: token_permissions,
       expiresAt: row.expires_at,
     },
-    permissions: hasExplicitPermissions ? principal.overrides : null,
+    permissions: masks,
   });
 
   return { ok: true, context };
@@ -192,6 +236,9 @@ function respondSessionFailure(req: Request, res: Response, { prefersJson, code,
  * Validates cookie session authentication.
  */
 async function validateCookieSession(req: Request, res: Response, next: NextFunction, { prefersJson }: { prefersJson: boolean }) {
+  if (isStaticOrAssetRequest(req)) {
+    return next();
+  }
   await ensureSessionAsync(req, res);
   const session_id = (req as any).session?.user?.session_id;
   const username = (req as any).session?.user?.username;
@@ -337,8 +384,9 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
 
         if (isSuper) {
           (req as any).session.user.roles = ["superadmin"];
-          (req as any).session.user.overrides = { allows: [0], denies: [] };
-          (req as any).session.user.permissions = { allows: [0], denies: [] };
+          (req as any).session.user.perms = {};
+          (req as any).session.user.permissions = {};
+          (req as any).session.user.isSuperadmin = true;
         } else if (hasNoSessionPermissions((req as any).session.user) || existingUser?.role !== sessionRow.role) {
           await attachSessionPermissions((req as any).session.user, userForSession.username, sessionRow.role);
         }
@@ -346,8 +394,9 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     } else {
       if (isSuper) {
         (userForSession as any).roles = ["superadmin"];
-        (userForSession as any).overrides = { allows: [0], denies: [] };
-        (userForSession as any).permissions = { allows: [0], denies: [] };
+        (userForSession as any).perms = {};
+        (userForSession as any).permissions = {};
+        (userForSession as any).isSuperadmin = true;
       } else {
         await attachSessionPermissions(userForSession, userForSession.username, sessionRow.role);
       }
@@ -490,6 +539,9 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
   next: NextFunction
 ): Promise<any> => {
   try {
+    if (isStaticOrAssetRequest(req)) {
+      return next();
+    }
     if (!(req as any).authContext && !(req as any).session?.user) {
       await ensureSessionAsync(req, res);
     }
@@ -564,6 +616,9 @@ export const checkRolePermission = (requiredRoles: string | string[], notAllowed
  */
 export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    if (isStaticOrAssetRequest(req)) {
+      return next();
+    }
     if (!(req as any).authContext && !(req as any).session?.user) {
       await ensureSessionAsync(req, res);
     }
@@ -583,18 +638,15 @@ export const checkPermission = (permission: any = DEFAULT_PERMISSION) => async (
     // Superadmin bypass: instant return, zero DB lookups, zero permission comparison
     if (authorizationService.isSuperadmin(authContext)) return next();
 
-    if (defaultRoleRegistry.roles.size === 0 && !defaultRoleRegistry.isLoaded) {
-      await permissionRepository.loadAllRolesIntoRegistry(defaultRoleRegistry).catch(() => {});
-    }
-
-    const resolvedPermission = resolvePermission(permission, defaultRoleRegistry);
-    if (authorizationService.hasPermission(authContext, resolvedPermission)) {
+    if (authorizationService.hasPermission(authContext, permission)) {
       return next();
     }
 
     const homeRedirect = mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
-    const desc = defaultRoleRegistry.getDescriptorById(resolvedPermission);
-    const permDisplay = desc?.key || (typeof permission === "string" ? permission : String(resolvedPermission));
+    const permDisplay =
+      typeof permission === "object" && permission?.resource
+        ? `${permission.resource}:${permission.action || permission.mask}`
+        : String(permission);
     if (isJsonRequest(req)) {
       return res.status(403).json(
         createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {

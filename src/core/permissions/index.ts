@@ -1,10 +1,11 @@
 /**
- * MBKAuthe Permissions & Authorization Subsystem
+ * MBKAuthe — Bitmask Permissions & Authorization Subsystem
+ * Copyright (c) 2026 Muhammad Bin Khalid, MBKTech.org and contributors
+ * Licensed under the MIT License.
  */
 
-export * from "./matcher.js";
-export * from "./roleRegistry.js";
-export * from "./manifest.js";
+export * from "./bitmask.js";
+export * from "./resource.js";
+export * from "./evaluator.js";
 export * from "./AuthorizationService.js";
-export { syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult } from "../../services/PermissionSyncService.js";
 export { attachSessionPermissions, hasNoSessionPermissions } from "../../http/session/sessionPermissions.js";

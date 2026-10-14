@@ -23,7 +23,7 @@ for (const file of files) {
 
   try {
     execSync(
-      `npx -y @mermaid-js/mermaid-cli -i "${inputPath}" -o "${svgPath}" -c "${configFile}" -w 2800 -b white`,
+      `npx -y @mermaid-js/mermaid-cli -i "${inputPath}" -o "${svgPath}" -c "${configFile}" -b white`,
       { stdio: "inherit" }
     );
   } catch (err) {

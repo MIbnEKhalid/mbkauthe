@@ -131,30 +131,40 @@ export { createAuth, MbkAuthInstance, type AuthConfig, type OAuthConfig, type Au
 // 6. Diagnostics & Observability
 export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";
 
-// 7. Permissions, Roles, Authorization & Manifest
+// 7. Bitmask Authorization Engine
 export {
-  normalizePermission,
-  resolvePermission,
+  StandardActionBits,
+  isValidActionMask,
+  hasAction,
+  combineActionMasks,
+  combineResourceMasks,
+  applyOverrides,
+} from "./core/permissions/bitmask.js";
+export {
+  defineResource,
+  defineResources,
+  definePermissions,
+  createActionDescriptor,
   resolvePermissionId,
   permissionIdMatches,
-  permissionMatches,
-  matchPermission,
-  normalizePermissions,
-} from "./core/permissions/matcher.js";
+  GlobalAccess,
+  GlobalPermissions,
+} from "./core/permissions/resource.js";
 export {
-  RoleRegistry,
-  defaultRoleRegistry,
-  buildEffectivePermissions,
-  intersectPermissions,
-  hasPermission,
-  GLOBAL_APP_KEY,
-  GlobalRoles,
-} from "./core/permissions/roleRegistry.js";
-export {
+  evaluatePermission,
+  evaluateRole,
+  evaluateAppAccess,
+  SUPERADMIN_ROLE,
+} from "./core/permissions/evaluator.js";
+import {
   AuthorizationService,
   authorizationService,
+  RoleRegistry,
   type PolicyFn,
 } from "./core/permissions/AuthorizationService.js";
+export { AuthorizationService, authorizationService, RoleRegistry, type PolicyFn };
+export const hasPermission = (authContextOrUser: any, permission: any) =>
+  authorizationService.hasPermission(authContextOrUser, permission);
 export {
   AuthContext,
   createAuthContext,
@@ -169,18 +179,11 @@ export {
   type AuthContextOptions,
 } from "./core/context/AuthContext.js";
 export {
-  definePermissions,
-  defineGlobalPermissions,
-  GlobalPermissions,
-  resolveAppKey,
-  collectPermissions,
-  collectRoles,
-  MANIFEST_KEY,
-  APP_KEY_KEY,
-  ALL_PERMISSIONS_KEY,
-  ROLES_KEY,
-} from "./core/permissions/manifest.js";
-export { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_PERMISSIONS } from "./http/session/sessionPermissions.js";
+  attachSessionPermissions,
+  hasNoSessionPermissions,
+  SUPERADMIN_SNAPSHOT,
+  EMPTY_SNAPSHOT,
+} from "./http/session/sessionPermissions.js";
 
 // 8. Types
 export * from "./core/types/index.js";

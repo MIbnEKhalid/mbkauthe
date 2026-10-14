@@ -13,8 +13,8 @@
       "title": "Authentication & Access",
       "items": [
         { "slug": "authentication", "title": "Session Engine & Multi-Session", "description": "Encrypted session cookies, session restoration middleware, auto-pruning, and multi-device accounts." },
-        { "slug": "rbac", "title": "Role-Based Access Control (RBAC)", "description": "Role hierarchies, RoleRegistry, default roles (superadmin, admin, normaluser, guest), and role checking middleware." },
-        { "slug": "permissions", "title": "Dynamic Permission Catalogs", "description": "Manifest-driven app:service:action permissions, definePermissions, syncAppPermissions, AuthorizationService, and sessPerm." },
+        { "slug": "rbac", "title": "Role-Based Access Control (RBAC)", "description": "Role hierarchies, multi-role aggregation, default roles (superadmin, admin, normaluser, guest), and role checking middleware." },
+        { "slug": "permissions", "title": "Numeric Bitmask Permissions", "description": "31-bit integer action masks, defineResource, definePermissions, zero-DB nanosecond authorization, and sessPerm / permChk." },
         { "slug": "oauth", "title": "Provider-Neutral OAuth & OIDC", "description": "Multi-provider social login (Google, GitHub, Microsoft, Discord, Apple, Custom OIDC), account linking, and token encryption." },
         { "slug": "passkeys", "title": "WebAuthn & Passkeys", "description": "FIDO2 WebAuthn passkey registration, biometric passwordless authentication, and resident key management." },
         { "slug": "2fa", "title": "Two-Factor Authentication (TOTP)", "description": "RFC 6238 Time-based One-Time Passwords with speakeasy, QR codes, and multi-factor verification." }

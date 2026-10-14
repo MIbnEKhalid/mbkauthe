@@ -75,16 +75,15 @@ import { syncAppPermissions } from "mbkauthe/services";
 
 const app = express();
 
-// 1. Define App Permissions & Roles
+// 1. Define App Resources & Role Bitmasks
 const AppPermissions = definePermissions({
-  appKey: "my_app",
-  permissions: {
-    dashboard: { view: "View main analytics dashboard" },
-    admin: { manage: "Manage system configuration" },
-  },
+  dashboard: { view: "View main analytics dashboard" },
+  admin: { manage: "Manage system configuration" },
+}, {
+  app: "my_app",
   roles: {
-    superadmin: ["my_app:*"],
-    normaluser: ["my_app:dashboard:view"],
+    superadmin: ["*"],
+    normaluser: ["dashboard:view"],
   },
 });
 

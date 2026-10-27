@@ -31,7 +31,8 @@ function coerceBindValue(value: any): any {
 
 const DEFAULT_JSON_COLUMNS = [
   "allowed_apps", "user_allowed_apps", "permissions", "positions",
-  "social_accounts", "meta", "conversation_history", "allowed_record_types", "sections", "semester"
+  "social_accounts", "meta", "conversation_history", "allowed_record_types", "sections", "semester",
+  "audit_trail", "additional_fields", "category_ids", "category_names"
 ];
 
 const DEFAULT_TIMESTAMP_COLUMNS = [

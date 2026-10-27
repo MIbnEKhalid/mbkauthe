@@ -7,29 +7,9 @@
 
 // 1. Config & Environment
 export { mbkautheVar, packageJson, appVersion, validateConfiguration, checkConfigurationStatus, findValue, isProductionEnvironment, default as en } from "./config/index.js";
-export {
-  hashPassword,
-  verifyPassword,
-  hashApiToken,
-  generatePrefixedToken,
-  generateRandomHex,
-  setPasswordPepper,
-  getPasswordPepper,
-} from "./config/security.js";
+export { hashPassword, verifyPassword, hashApiToken, generatePrefixedToken, generateRandomHex, setPasswordPepper, getPasswordPepper } from "./config/security.js";
 export * from "./core/security/index.js";
-export {
-  encryptSessionId,
-  decryptSessionId,
-  getCookieOptions,
-  getClearCookieOptions,
-  getCookieDomain,
-  getCookieSecure,
-  resolveCookieDomain,
-  isAllowedOriginHostname,
-  clearSessionCookies,
-  DEVICE_ID_COOKIE,
-  getOrCreateDeviceId,
-} from "./config/cookies.js";
+export { encryptSessionId, decryptSessionId, getCookieOptions, getClearCookieOptions, getCookieDomain, getCookieSecure, resolveCookieDomain, isAllowedOriginHostname, clearSessionCookies, DEVICE_ID_COOKIE, getOrCreateDeviceId } from "./config/cookies.js";
 export { extractRequestOrigin, completeLoginProcess } from "./http/session/authFlow.js";
 
 // 2. Database Adapters, Dialects, Pools, and Schema
@@ -43,7 +23,7 @@ export { applySchema } from "./db/schema/applySchema.js";
 export { translatePgToSqlite } from "./db/schema/ddlTranslate.js";
 export { wrapPoolWithRetry, withQueryRetry, isRetryableDbError } from "./db/retry.js";
 export { registerGracefulShutdown, closeAllConnections } from "./db/shutdown.js";
-export { dblogin, dialect, dbType, runWithRequestContext, getRequestContext } from "./db/pool.js";
+export { dblogin, defaultAdapter, getDefaultAdapter, getDbLogin, dialect, dbType, runWithRequestContext, getRequestContext } from "./db/pool.js";
 export { getQueryCount, getQueryLog, resetQueryCount, resetQueryLog, attachDevQueryLogger } from "./db/dbQueryLogger.js";
 
 // 3. Database Repositories
@@ -60,136 +40,63 @@ export { OAuthAccountRepository, oAuthAccountRepository } from "./db/repositorie
 
 // 4. Domain Events & Token Engine
 export {
-  authEvents,
-  AuthEventEmitter,
-  emitAuthEvent,
-  type AuthLoginSuccessEvent,
-  type AuthLoginFailedEvent,
-  type AuthLogoutEvent,
-  type AuthTokenCreatedEvent,
-  type AuthTokenRevokedEvent,
-  type AuthAccountSwitchedEvent,
-  type AuthCliApprovedEvent,
-  type AuthCliDeniedEvent,
-  type AuthEventMap,
-  type AuthEventName,
-  type AuthEventListener,
+  authEvents, AuthEventEmitter, emitAuthEvent, type AuthLoginSuccessEvent, type AuthLoginFailedEvent, type AuthLogoutEvent, type AuthTokenCreatedEvent, type AuthTokenRevokedEvent, type AuthAccountSwitchedEvent, type AuthCliApprovedEvent, type AuthCliDeniedEvent, type AuthEventMap, type AuthEventName, type AuthEventListener
 } from "./core/events/index.js";
 export {
-  TokenEngine,
-  TOKEN_PREFIXES,
-  type TokenType,
-  type ParsedToken,
+  TokenEngine, TOKEN_PREFIXES, type TokenType, type ParsedToken
 } from "./core/tokens/index.js";
 export {
-  validateLoginDto,
-  validateTotpDto,
-  validateCreateApiTokenDto,
-  validateCliDeviceCodeDto,
-  type LoginDto,
-  type VerifyTotpDto,
-  type CreateApiTokenDto,
-  type CliDeviceCodeDto,
+  validateLoginDto, validateTotpDto, validateCreateApiTokenDto, validateCliDeviceCodeDto, type LoginDto, type VerifyTotpDto, type CreateApiTokenDto, type CliDeviceCodeDto
 } from "./core/validation/index.js";
 
 // 5. Service Layer
 export {
-  AuthService,
-  authService,
-  type LoginOptions,
-  type LoginResult,
-  type DeviceAccount,
-  type SwitchSessionResult,
-  type SessionValidityResult,
-  PasskeyService,
-  passkeyService,
-  type PasskeyServiceOptions,
-  ApiTokenService,
-  apiTokenService,
-  type CreateTokenResult,
-  type CreateTokenOptions,
-  type VerifyTokenResult,
-  CliAuthService,
-  cliAuthService,
-  type InitiateCliAuthParams,
-  type CliAuthInitiateResult,
-  type PollCliAuthResult,
-  OAuthFlowService,
-  oAuthFlowService,
-  getDefaultOAuthFlowService,
-  syncAppPermissions,
-  type SyncAppPermissionsOptions,
-  type SyncResult,
+  AuthService, authService, type LoginOptions, type LoginResult, type DeviceAccount, type SwitchSessionResult, type SessionValidityResult, PasskeyService, passkeyService, type PasskeyServiceOptions, ApiTokenService, apiTokenService, type CreateTokenResult, type CreateTokenOptions, type VerifyTokenResult, CliAuthService, cliAuthService, type InitiateCliAuthParams, type CliAuthInitiateResult, type PollCliAuthResult, OAuthFlowService, oAuthFlowService, getDefaultOAuthFlowService, syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult
 } from "./services/index.js";
 
 
 // 5b. OAuth & OIDC Provider-Neutral Engine & createAuth DI Factory
 export * from "./oauth/index.js";
-export { createAuth, MbkAuthInstance, type AuthConfig, type OAuthConfig, type AuthRepositoriesConfig } from "./core/createAuth.js";
+export {
+  createAuth, MbkAuthInstance, type AuthConfig, type OAuthConfig, type AuthRepositoriesConfig
+} from "./core/createAuth.js";
 
 
 // 6. Diagnostics & Observability
-export { getAuthHealthReport, AuthHealthStatus } from "./diagnostics/index.js";
+export {
+  getAuthHealthReport, AuthHealthStatus
+} from "./diagnostics/index.js";
 
 // 7. Bitmask Authorization Engine
 export {
-  StandardActionBits,
-  isValidActionMask,
-  hasAction,
-  combineActionMasks,
-  combineResourceMasks,
-  applyOverrides,
+  StandardActionBits, isValidActionMask, hasAction, combineActionMasks, combineResourceMasks, applyOverrides
 } from "./core/permissions/bitmask.js";
 export {
-  defineResource,
-  defineResources,
-  definePermissions,
-  createActionDescriptor,
-  resolvePermissionId,
-  permissionIdMatches,
-  GlobalAccess,
-  GlobalPermissions,
+  defineResource, defineResources, definePermissions, createActionDescriptor, resolvePermissionId, permissionIdMatches, GlobalAccess, GlobalPermissions
 } from "./core/permissions/resource.js";
 export {
-  evaluatePermission,
-  evaluateRole,
-  evaluateAppAccess,
-  SUPERADMIN_ROLE,
+  evaluatePermission, evaluateRole, evaluateAppAccess, SUPERADMIN_ROLE,
 } from "./core/permissions/evaluator.js";
 import {
-  AuthorizationService,
-  authorizationService,
-  RoleRegistry,
-  type PolicyFn,
+  AuthorizationService, authorizationService, RoleRegistry, type PolicyFn
 } from "./core/permissions/AuthorizationService.js";
 export { AuthorizationService, authorizationService, RoleRegistry, type PolicyFn };
 export const hasPermission = (authContextOrUser: any, permission: any) =>
   authorizationService.hasPermission(authContextOrUser, permission);
 export {
-  AuthContext,
-  createAuthContext,
-  createAnonymousContext,
-  createSessionAuthContext,
-  createTokenAuthContext,
-  principalFromUser,
-  type AuthPrincipal,
-  type AuthSessionInfo,
-  type AuthTokenInfo,
-  type AuthMethod,
-  type AuthContextOptions,
+  AuthContext, createAuthContext, createAnonymousContext, createSessionAuthContext, createTokenAuthContext, principalFromUser, type AuthPrincipal, type AuthSessionInfo, type AuthTokenInfo, type AuthMethod, type AuthContextOptions
 } from "./core/context/AuthContext.js";
 export {
-  attachSessionPermissions,
-  hasNoSessionPermissions,
-  SUPERADMIN_SNAPSHOT,
-  EMPTY_SNAPSHOT,
+  attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_SNAPSHOT, EMPTY_SNAPSHOT
 } from "./http/session/sessionPermissions.js";
 
 // 8. Types
 export * from "./core/types/index.js";
 
 // 9. Errors
-export { ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError } from "./core/errors/catalog.js";
+export {
+  ErrorCodes, ErrorMessages, getErrorByCode, createErrorResponse, logError
+} from "./core/errors/catalog.js";
 export { MbkAuthError } from "./core/errors/MbkAuthError.js";
 
 // 10. Auth UI Helpers & Access
@@ -199,34 +106,14 @@ export { extractAuthorizationToken, timingSafeTokenMatch } from "./core/tokens/i
 
 // 11. HTTP & Express Middleware
 export { SqliteSessionStore } from "./http/session/SqliteSessionStore.js";
-export { sessionConfig, getSessionStore, getSessionMiddleware, hasSessionCookie } from "./http/session/sessionConfig.js";
 export {
-  securityHeadersMiddleware,
-  corsMiddleware,
-  ensureSession,
-  ensureSessionAsync,
-  sessionRestorationMiddleware,
-  sessionCookieSyncMiddleware,
-  requestContextMiddleware,
+  sessionConfig, getSessionStore, getSessionMiddleware, hasSessionCookie
+} from "./http/session/sessionConfig.js";
+export {
+  securityHeadersMiddleware, corsMiddleware, ensureSession, ensureSessionAsync, sessionRestorationMiddleware, sessionCookieSyncMiddleware, requestContextMiddleware
 } from "./http/middleware/security.js";
 export {
-  validateSession,
-  validateApiSession,
-  checkRolePermission,
-  checkPermission,
-  validateSessionAndRole,
-  validateSessionAndPermission,
-  authenticate,
-  reloadSessionUser,
-  strictValidateSession,
-  strictValidateSessionAndRole,
-  sessVal,
-  sessRole,
-  roleChk,
-  strictSessVal,
-  strictSessRole,
-  permChk,
-  sessPerm,
+  validateSession, validateApiSession, checkRolePermission, checkPermission, validateSessionAndRole, validateSessionAndPermission, authenticate, reloadSessionUser, strictValidateSession, strictValidateSessionAndRole, sessVal, sessRole, roleChk, strictSessVal, strictSessRole, permChk, sessPerm
 } from "./http/middleware/authMiddleware.js";
 
 // 12. Express Routers & App Factory

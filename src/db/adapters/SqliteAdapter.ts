@@ -49,9 +49,9 @@ function createRowNormalizer(options: { jsonColumns: Set<string>; booleanColumns
     if (!row || typeof row !== "object") return row;
     for (const [key, value] of Object.entries(row)) {
       if (typeof value === "string") {
-        if (jsonColumns.has(key)) {
+        if (jsonColumns.has(key) || key.endsWith("_json") || key.endsWith("_meta") || key === "metadata" || key === "payload") {
           try { row[key] = JSON.parse(value); } catch {}
-        } else if (timestampColumns.has(key)) {
+        } else if (timestampColumns.has(key) || key.endsWith("_at") || key.endsWith("_date") || key.endsWith("_time") || key === "timestamp") {
           const m = SQLITE_TIMESTAMP_RE.exec(value);
           if (m) row[key] = new Date(`${m[1]}T${m[2]}Z`);
         }
@@ -64,7 +64,18 @@ function createRowNormalizer(options: { jsonColumns: Set<string>; booleanColumns
   };
 }
 
-function runQuery(db: any, rawText: string, rawValues: any[], normalizeRow: (row: any) => any): QueryResult {
+function isReadOnlyQuery(sql: string): boolean {
+  const trimmed = sql.trim();
+  return /^\s*(SELECT|PRAGMA|EXPLAIN)\b/i.test(trimmed) && !/\b(INTO|RETURNING)\b/i.test(trimmed);
+}
+
+function runQuery(
+  db: any,
+  rawText: string,
+  rawValues: any[],
+  normalizeRow: (row: any) => any,
+  stmtCache?: Map<string, any>
+): QueryResult {
   const trimmed = String(rawText || "").trim();
   const upper = trimmed.toUpperCase();
 
@@ -79,7 +90,19 @@ function runQuery(db: any, rawText: string, rawValues: any[], normalizeRow: (row
   }
 
   const { text, values } = translatePgToSqlite(trimmed, rawValues);
-  const stmt = db.prepare(text);
+
+  let stmt = stmtCache?.get(text);
+  if (!stmt) {
+    stmt = db.prepare(text);
+    if (stmtCache) {
+      if (stmtCache.size >= 500) {
+        const firstKey = stmtCache.keys().next().value;
+        if (firstKey) stmtCache.delete(firstKey);
+      }
+      stmtCache.set(text, stmt);
+    }
+  }
+
   const bindValues = values.map(coerceBindValue);
 
   if (stmt.reader || /\bRETURNING\b/i.test(text)) {
@@ -104,6 +127,7 @@ export class SqliteAdapter implements IDatabaseAdapter {
   public db: any;
   public filePath: string | null = null;
   private _mutex: Mutex = new Mutex();
+  private _stmtCache = new Map<string, any>();
   private _jsonColumns: Set<string>;
   private _booleanColumns: Set<string>;
   private _timestampColumns: Set<string>;
@@ -122,10 +146,24 @@ export class SqliteAdapter implements IDatabaseAdapter {
         this.db.pragma("foreign_keys = ON");
         this.db.pragma("busy_timeout = 5000");
         this.db.pragma("synchronous = NORMAL");
+        this.db.pragma("cache_size = -64000");
+        this.db.pragma("temp_store = MEMORY");
+        this.db.pragma("mmap_size = 268435456");
       } catch {}
     } else {
       this.db = filePathOrDb;
       this.filePath = options.filePath || null;
+      try {
+        if (this.db && typeof this.db.pragma === "function") {
+          this.db.pragma("journal_mode = WAL");
+          this.db.pragma("foreign_keys = ON");
+          this.db.pragma("busy_timeout = 5000");
+          this.db.pragma("synchronous = NORMAL");
+          this.db.pragma("cache_size = -64000");
+          this.db.pragma("temp_store = MEMORY");
+          this.db.pragma("mmap_size = 268435456");
+        }
+      } catch {}
     }
 
     this._jsonColumns = new Set([...DEFAULT_JSON_COLUMNS, ...(options.jsonColumns || [])]);
@@ -158,19 +196,20 @@ export class SqliteAdapter implements IDatabaseAdapter {
 
   async query<T = any>(queryOrText: string | QueryOptions, maybeValues?: any[]): Promise<QueryResult<T>> {
     const { text, values } = normalizeQueryArgs(queryOrText, maybeValues);
-    const release = await this._mutex.acquire();
+    const isReadOnly = isReadOnlyQuery(text);
+    const release = isReadOnly ? await this._mutex.acquireRead() : await this._mutex.acquireWrite();
     try {
-      return runQuery(this.db, text, values, this._normalizeRow) as QueryResult<T>;
+      return runQuery(this.db, text, values, this._normalizeRow, this._stmtCache) as QueryResult<T>;
     } finally {
       release();
     }
   }
 
   async connect(): Promise<SqliteClient> {
-    const release = await this._mutex.acquire();
+    const release = await this._mutex.acquireWrite();
     const queryFn = async (db: any, queryOrText: any, maybeValues?: any[]) => {
       const { text, values } = normalizeQueryArgs(queryOrText, maybeValues);
-      return runQuery(db, text, values, this._normalizeRow);
+      return runQuery(db, text, values, this._normalizeRow, this._stmtCache);
     };
     return new SqliteClient(this.db, release, queryFn);
   }
@@ -193,6 +232,9 @@ export class SqliteAdapter implements IDatabaseAdapter {
   }
 
   close(): void {
+    if (this._stmtCache) {
+      this._stmtCache.clear();
+    }
     if (this.db && typeof this.db.close === "function") {
       try {
         this.db.close();

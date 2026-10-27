@@ -1,22 +1,83 @@
 export class Mutex {
-  private _tail: Promise<void>;
+  private _readers = 0;
+  private _writerActive = false;
+  private _writeQueue: Array<{ resolve: (release: () => void) => void }> = [];
+  private _readQueue: Array<{ resolve: (release: () => void) => void }> = [];
 
-  constructor() {
-    this._tail = Promise.resolve();
+  /**
+   * Acquire exclusive write lock (aliased to acquire() for 100% backwards compatibility)
+   */
+  acquire(): Promise<() => void> {
+    return this.acquireWrite();
   }
 
-  acquire(): Promise<() => void> {
-    const prev = this._tail;
-    let release!: () => void;
-    this._tail = new Promise<void>((resolve) => {
+  /**
+   * Acquire exclusive write lock
+   */
+  acquireWrite(): Promise<() => void> {
+    if (!this._writerActive && this._readers === 0) {
+      this._writerActive = true;
       let released = false;
-      release = () => {
+      return Promise.resolve(() => {
         if (released) return;
         released = true;
-        resolve();
-      };
+        this._writerActive = false;
+        this._drain();
+      });
+    }
+
+    return new Promise<() => void>((resolve) => {
+      this._writeQueue.push({ resolve });
     });
-    return prev.then(() => release);
+  }
+
+  /**
+   * Acquire shared read lock (concurrent readers allowed)
+   */
+  acquireRead(): Promise<() => void> {
+    if (!this._writerActive && this._writeQueue.length === 0) {
+      this._readers++;
+      let released = false;
+      return Promise.resolve(() => {
+        if (released) return;
+        released = true;
+        this._readers--;
+        this._drain();
+      });
+    }
+
+    return new Promise<() => void>((resolve) => {
+      this._readQueue.push({ resolve });
+    });
+  }
+
+  private _drain(): void {
+    if (this._readers === 0 && !this._writerActive && this._writeQueue.length > 0) {
+      const nextWriter = this._writeQueue.shift()!;
+      this._writerActive = true;
+      let released = false;
+      nextWriter.resolve(() => {
+        if (released) return;
+        released = true;
+        this._writerActive = false;
+        this._drain();
+      });
+      return;
+    }
+
+    if (!this._writerActive && this._writeQueue.length === 0 && this._readQueue.length > 0) {
+      const readersToWake = this._readQueue.splice(0, this._readQueue.length);
+      this._readers += readersToWake.length;
+      for (const r of readersToWake) {
+        let released = false;
+        r.resolve(() => {
+          if (released) return;
+          released = true;
+          this._readers--;
+          this._drain();
+        });
+      }
+    }
   }
 }
 

@@ -109,6 +109,40 @@ describe('translatePgToSqlite', () => {
       "SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count FROM t WHERE created_at >= CURRENT_DATE "
     );
   });
+
+  test('preserves TRUE, FALSE, and ::type inside string literals without mutating', () => {
+    const { text } = translatePgToSqlite(
+      "SELECT * FROM logs WHERE message = 'Status is TRUE and FALSE' AND tag = 'user::profile' AND is_ok = TRUE",
+      []
+    );
+    expect(text).toBe(
+      "SELECT * FROM logs WHERE message = 'Status is TRUE and FALSE' AND tag = 'user::profile' AND is_ok = 1"
+    );
+  });
+
+  test('translates NOW() and column date intervals to SQLite DATETIME modifiers', () => {
+    const { text: t1 } = translatePgToSqlite(
+      "SELECT * FROM t WHERE created_at >= NOW() - INTERVAL '7 days'",
+      []
+    );
+    expect(t1).toBe("SELECT * FROM t WHERE created_at >= DATETIME('now', '-7 days')");
+
+    const { text: t2 } = translatePgToSqlite(
+      "SELECT * FROM t WHERE expires_at <= CURRENT_TIMESTAMP + INTERVAL '1 hour'",
+      []
+    );
+    expect(t2).toBe("SELECT * FROM t WHERE expires_at <= DATETIME('now', '+1 hour')");
+  });
+
+  test('translates GREATEST, LEAST, POSITION, and SUBSTRING', () => {
+    const { text } = translatePgToSqlite(
+      "SELECT GREATEST(score, 0) as hi, LEAST(score, 100) as lo, POSITION('admin' IN role) as pos, SUBSTRING(code FROM 1 FOR 4) as prefix FROM t",
+      []
+    );
+    expect(text).toBe(
+      "SELECT MAX(score, 0) as hi, MIN(score, 100) as lo, INSTR(role, 'admin') as pos, SUBSTR(code, 1, 4) as prefix FROM t"
+    );
+  });
 });
 
 describe('SqlitePool bind-value coercion', () => {
@@ -731,6 +765,45 @@ describe('SqliteSessionStore', () => {
       const row = adapter['_normalizeRow']({ extra_json: '{"k":"v"}', extra_flag: 1 });
       expect(row.extra_json).toEqual({ k: 'v' });
       expect(row.extra_flag).toBe(true);
+    });
+
+    test('SqliteAdapter automatically caches prepared statements and normalizes _at and _meta columns', async () => {
+      const adapter = new SqlitePool(':memory:');
+      adapter.exec('CREATE TABLE test_items (id INTEGER PRIMARY KEY, item_name TEXT, item_meta TEXT, created_at TEXT)');
+      await adapter.query("INSERT INTO test_items (item_name, item_meta, created_at) VALUES ('box', '{\"weight\":10}', '2026-10-27 12:00:00')");
+
+      // Verify cached statement reuse
+      expect(adapter['_stmtCache'].size).toBe(1);
+      const res1 = await adapter.query('SELECT * FROM test_items WHERE id = ?', [1]);
+      expect(adapter['_stmtCache'].size).toBe(2);
+      const res2 = await adapter.query('SELECT * FROM test_items WHERE id = ?', [1]);
+      expect(adapter['_stmtCache'].size).toBe(2);
+
+      // Verify automatic _meta JSON and _at timestamp normalization
+      expect(res1.rows[0].item_meta).toEqual({ weight: 10 });
+      expect(res1.rows[0].created_at instanceof Date).toBe(true);
+
+      adapter.close();
+      expect(adapter['_stmtCache'].size).toBe(0);
+    });
+
+    test('SqliteAdapter allows concurrent reads without blocking each other', async () => {
+      const adapter = new SqlitePool(':memory:');
+      adapter.exec('CREATE TABLE concurrency_test (val INT)');
+      await adapter.query('INSERT INTO concurrency_test VALUES (1)');
+
+      // Execute 5 concurrent reads simultaneously
+      const results = await Promise.all([
+        adapter.query('SELECT val FROM concurrency_test'),
+        adapter.query('SELECT val FROM concurrency_test'),
+        adapter.query('SELECT val FROM concurrency_test'),
+        adapter.query('SELECT val FROM concurrency_test'),
+        adapter.query('SELECT val FROM concurrency_test')
+      ]);
+
+      expect(results.length).toBe(5);
+      results.forEach((r) => expect(r.rows[0].val).toBe(1));
+      adapter.close();
     });
   });
 });

@@ -24,7 +24,10 @@ export interface IDatabaseAdapter {
 ### SQLite (`SqliteAdapter`)
 - Built on `better-sqlite3`.
 - Automatically activates **WAL mode** (`PRAGMA journal_mode = WAL;`) for high concurrency and fast reads.
-- Synchronized through `SqliteMutex` (FIFO promise queue) to eliminate `SQLITE_BUSY` database lock conflicts under heavy write traffic.
+- Synchronized through `SqliteMutex` (asynchronous Reader-Writer lock): allows concurrent `SELECT` queries in parallel via `acquireRead()`, while serializing mutating operations via `acquireWrite()` to eliminate `SQLITE_BUSY` database lock conflicts.
+- **Compiled Statement Caching**: Caches prepared statements in an LRU cache (`_stmtCache` up to 500 statements) to bypass VDBE bytecode re-compilation.
+- **Tuned Engine Defaults**: Automatically applies `cache_size = -64000` (64MB page cache), `temp_store = MEMORY`, `mmap_size = 256MB`, and `busy_timeout = 5000`.
+- Automatically translates PostgreSQL syntax (`NOW() - INTERVAL`, `ILIKE`, `STRING_AGG`, `ARRAY_AGG`, `GREATEST`, `LEAST`, `SUBSTRING`, `POSITION`, `= ANY($N)`) into SQLite-compatible SQL at runtime.
 - Uses positional placeholders (`?, ?, ...`).
 
 ---

@@ -6,10 +6,10 @@ describe("Origin Extraction and Local-Only User Restrictions", () => {
     test("extracts domain from Origin header", () => {
       const req = {
         headers: {
-          origin: "https://portal.mbktech.org/dashboard",
+          origin: "https://core.mbktech.org/dashboard",
         },
       };
-      expect(extractRequestOrigin(req)).toBe("portal.mbktech.org");
+      expect(extractRequestOrigin(req)).toBe("core.mbktech.org");
     });
 
     test("extracts domain with custom port from Origin header", () => {

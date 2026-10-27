@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     full_name TEXT,
     user_id TEXT UNIQUE CHECK (user_id IS NULL OR length(user_id) = 9),
     email TEXT DEFAULT 'support@mbktech.org',
-    image TEXT DEFAULT 'https://portal.mbktech.org/icon.svg',
+    image TEXT DEFAULT 'https://core.mbktech.org/icon.svg',
     bio TEXT DEFAULT 'I am ....',
     social_accounts TEXT DEFAULT '{}',
     positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}',

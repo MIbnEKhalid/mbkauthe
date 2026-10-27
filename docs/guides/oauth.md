@@ -19,14 +19,7 @@ MBKAuthe supports declarative, dependency-injected configuration without polluti
 
 ```typescript
 import { createAuth } from "mbkauthe";
-import {
-  googleProvider,
-  githubProvider,
-  microsoftProvider,
-  discordProvider,
-  appleProvider,
-  customOIDCProvider,
-} from "mbkauthe/oauth/presets";
+import { googleProvider, githubProvider, microsoftProvider, discordProvider, appleProvider, customOIDCProvider } from "mbkauthe/oauth/presets";
 
 const auth = createAuth({
   appName: "portal",

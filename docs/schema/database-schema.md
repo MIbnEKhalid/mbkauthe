@@ -33,7 +33,7 @@ Core user credentials, profiles, multi-role assignments, and application permiss
 - `full_name` (VARCHAR(100))
 - `user_id` (VARCHAR(9) UNIQUE) — 9-digit alphanumeric member identifier
 - `email` (TEXT DEFAULT 'support@mbktech.org')
-- `image` (TEXT DEFAULT 'https://portal.mbktech.org/icon.svg')
+- `image` (TEXT DEFAULT 'https://core.mbktech.org/icon.svg')
 - `bio` (TEXT DEFAULT 'I am ....')
 - `social_accounts` (TEXT DEFAULT '{}')
 - `positions` (JSONB / TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}')

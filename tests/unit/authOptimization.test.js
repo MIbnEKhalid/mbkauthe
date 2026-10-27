@@ -1,17 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  attachSessionPermissions,
-  hasNoSessionPermissions,
-  SUPERADMIN_SNAPSHOT,
-  checkPermission,
-  checkRolePermission,
-  AuthorizationService,
-  ensureSession,
-  ensureSessionAsync,
-  hasSessionCookie,
-  defineResource,
-  hasAction,
-} from "../../dist/index.js";
+import { attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_SNAPSHOT, checkPermission, checkRolePermission, AuthorizationService, ensureSession, ensureSessionAsync, hasSessionCookie, defineResource, hasAction } from "../../dist/index.js";
 
 const DnsResource = defineResource("dns", {
   view: 1,
@@ -51,7 +39,7 @@ describe("Authentication & Authorization Speed Optimizations", () => {
         statusCode: null,
         status(code) { this.statusCode = code; return this; },
         json(p) { return p; },
-        render() {},
+        render() { },
       };
 
       await checkPermission(DnsResource.actions.delete)(req, res, () => {
@@ -74,7 +62,7 @@ describe("Authentication & Authorization Speed Optimizations", () => {
         statusCode: null,
         status(code) { this.statusCode = code; return this; },
         json(p) { return p; },
-        render() {},
+        render() { },
       };
 
       await checkRolePermission("auditor")(req, res, () => {

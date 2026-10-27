@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     full_name character varying(100),
     user_id character varying(9),
     email text DEFAULT 'support@mbktech.org'::text,
-    image text DEFAULT 'https://portal.mbktech.org/icon.svg'::text,
+    image text DEFAULT 'https://core.mbktech.org/icon.svg'::text,
     bio text DEFAULT 'I am ....'::text,
     social_accounts text DEFAULT '{}'::text,
     positions jsonb DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}'::jsonb,

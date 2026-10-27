@@ -1,22 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  StandardActionBits,
-  isValidActionMask,
-  hasAction,
-  combineActionMasks,
-  combineResourceMasks,
-  applyOverrides,
-  defineResource,
-  defineResources,
-  definePermissions,
-  evaluatePermission,
-  evaluateRole,
-  evaluateAppAccess,
-  SUPERADMIN_ROLE,
-  GlobalAccess,
-  GlobalPermissions,
-  authorizationService,
-} from "../../dist/index.js";
+import { StandardActionBits, isValidActionMask, hasAction, combineActionMasks, combineResourceMasks, applyOverrides, defineResource, defineResources, definePermissions, evaluatePermission, evaluateRole, evaluateAppAccess, SUPERADMIN_ROLE, GlobalAccess, GlobalPermissions, authorizationService } from "../../dist/index.js";
 
 describe("Bitmask Engine — Action Bits & Mask Operations", () => {
   it("defines standard action bits correctly", () => {

@@ -927,7 +927,7 @@ describe('Session Origin and Local-Only User Restrictions', () => {
       .post('/mbkauthe/api/login')
       .set('X-Forwarded-For', nextIp())
       .set('User-Agent', BROWSER_UA)
-      .set('Origin', 'https://portal.mbktech.org')
+      .set('Origin', 'https://core.mbktech.org')
       .send({ username: 'origin.user', password: PASSWORD });
 
     expect(res.status).toBe(200);
@@ -936,8 +936,8 @@ describe('Session Origin and Local-Only User Restrictions', () => {
     const sessionRes = await dblogin.query('SELECT meta FROM mbkcore_session WHERE username = $1', ['origin.user']);
     expect(sessionRes.rows.length).toBeGreaterThan(0);
     const meta = typeof sessionRes.rows[0].meta === 'string' ? JSON.parse(sessionRes.rows[0].meta) : sessionRes.rows[0].meta;
-    expect(meta.origin).toBe('portal.mbktech.org');
-    expect(meta.domain).toBe('portal.mbktech.org');
+    expect(meta.origin).toBe('core.mbktech.org');
+    expect(meta.domain).toBe('core.mbktech.org');
   });
 
   test('local-only user can log in when not in production environment', async () => {

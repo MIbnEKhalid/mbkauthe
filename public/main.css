@@ -774,7 +774,6 @@ code, pre, kbd {
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-700);
   box-shadow: 0 4px 12px rgba(15, 118, 110, 0.22);
-  transform: translateY(-1px);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -853,7 +852,6 @@ code, pre, kbd {
   background: var(--primary-50);
   border-color: rgba(15, 118, 110, 0.35);
   color: var(--primary-700);
-  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
@@ -912,7 +910,6 @@ code, pre, kbd {
   background: var(--primary-50);
   border-color: rgba(15, 118, 110, 0.3);
   color: var(--primary-800);
-  transform: translateY(-1px);
 }
 
 .oauth-icon {
@@ -1141,7 +1138,6 @@ code, pre, kbd {
 .otp-digit:focus {
   border-color: var(--primary-600);
   box-shadow: 0 0 0 3px var(--primary-ring);
-  transform: translateY(-2px);
 }
 
 .otp-separator {
@@ -1208,7 +1204,6 @@ code, pre, kbd {
 .account-item:hover {
   border-color: var(--primary-500);
   background: var(--primary-50);
-  transform: translateY(-1px);
 }
 
 .account-item.is-current {
@@ -1388,7 +1383,6 @@ code, pre, kbd {
   background: var(--primary-100);
   border-color: var(--primary-500);
   box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);
-  transform: translateY(-1px);
 }
 
 .cli-code-label {
@@ -1638,7 +1632,6 @@ code, pre, kbd {
   background: var(--primary-50);
   border-color: var(--primary-400);
   color: var(--primary-900);
-  transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -1924,7 +1917,6 @@ code, pre, kbd {
   background: #fee2e2;
   border-color: #fca5a5;
   color: #b91c1c;
-  transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.12);
 }
 
@@ -2258,7 +2250,6 @@ code, pre, kbd {
 .perm-tag.allow:hover {
   background: #d1fae5;
   border-color: #6ee7b7;
-  transform: translateY(-1px);
 }
 
 .perm-tag.deny {
@@ -2270,7 +2261,6 @@ code, pre, kbd {
 .perm-tag.deny:hover {
   background: #fee2e2;
   border-color: #fca5a5;
-  transform: translateY(-1px);
 }
 
 .session-api-check-box {
@@ -2353,7 +2343,6 @@ code, pre, kbd {
 .session-action-card:hover {
   border-color: var(--primary-500);
   background: var(--primary-50);
-  transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(15, 118, 110, 0.08);
 }
 
@@ -3453,7 +3442,6 @@ details.log-return-block pre {
 .doc-error-card:hover {
   border-color: rgba(15, 118, 110, 0.35);
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
 }
 
 .doc-error-card.highlight-flash {
@@ -3663,7 +3651,6 @@ details.log-return-block pre {
 .back-to-top:hover {
   background: var(--primary-50);
   color: var(--primary-800);
-  transform: translateY(-2px);
 }
 
 .back-to-top.visible {

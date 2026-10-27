@@ -52,12 +52,7 @@ Configure OAuth providers without global environment variables:
 
 ```typescript
 import { createAuth } from "mbkauthe";
-import {
-  googleProvider,
-  githubProvider,
-  microsoftProvider,
-  customOIDCProvider,
-} from "mbkauthe/oauth/presets";
+import { googleProvider, githubProvider, microsoftProvider, customOIDCProvider } from "mbkauthe/oauth/presets";
 
 const auth = createAuth({
   appName: "portal",

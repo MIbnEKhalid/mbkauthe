@@ -13,6 +13,7 @@ The `TokenEngine` creates cryptographically secure tokens with standard prefixes
 | `pat` | `mbk_pat_` | 32 bytes (64 hex) | Personal Access Token for API clients and automations. |
 | `cli` | `mbk_cli_` | 32 bytes (64 hex) | CLI Device Authorization session token. |
 | `session` | `mbk_sess_` | 32 bytes (64 hex) | Encrypted user session identifier. |
+| `service` | `mbk_svc_` | 24 bytes (48 hex) | Machine-to-Machine (M2M) service authentication token. |
 
 ### Generating Tokens Programmatically
 
@@ -127,5 +128,56 @@ MBKAuthe provides comprehensive REST endpoints for token management:
 - `DELETE /api/admin/api-tokens/:id`: Revoke any token by ID.
 - `POST /api/admin/api-tokens/bulk-revoke`: Bulk revoke multiple tokens by ID array (`{ "token_ids": [1, 2, 3] }`).
 - `DELETE /api/admin/api-tokens/user/:username`: Revoke all tokens for a user.
+
+---
+
+## 5. Machine-to-Machine (M2M) Service Accounts
+
+For automated daemons, CI/CD runners, and backend microservices, MBKAuthe provides dedicated M2M primitives and authentication workflows decoupled from human user accounts.
+
+### Token Format & Wire Protocols
+- **Bearer Tokens**: Standard `Authorization: Bearer mbk_svc_<entropy>` header format.
+- **HMAC-SHA256 Request Signing**:
+  - Headers:
+    - `X-MBK-Service-ID`: Registered service identifier (e.g. `deploy_station`, `billing_worker`).
+    - `X-MBK-Timestamp`: Epoch seconds when request was generated.
+    - `X-MBK-Signature`: HMAC-SHA256 hex digest over `${timestamp}.${rawBody}` using the service secret.
+  - **Replay Protection**: Requests are strictly validated within a 300-second replay window (`|now - timestamp| <= 300s`).
+  - **Constant-Time Verification**: All token hash and signature comparisons utilize `crypto.timingSafeEqual`.
+
+### Example Usage
+
+```typescript
+import {
+  generateServiceToken,
+  hashServiceToken,
+  computeHmacSignature,
+  verifyHmacSignature,
+  ServiceContext,
+} from "mbkauthe";
+
+// 1. Generate & Hash M2M Service Token
+const rawServiceToken = generateServiceToken(); // "mbk_svc_..."
+const secretHash = hashServiceToken(rawServiceToken); // Stored at rest
+
+// 2. Sign and Verify HTTP Payloads
+const timestamp = Math.floor(Date.now() / 1000);
+const rawBody = JSON.stringify({ event: "deployment.completed", status: "success" });
+const signature = computeHmacSignature(secretHash, timestamp, rawBody);
+
+const isValid = verifyHmacSignature(secretHash, timestamp, rawBody, signature, 300);
+console.log("HMAC Signature Valid:", isValid); // true
+
+// 3. Domain Service Context & Scope Enforcement
+const serviceContext = new ServiceContext({
+  serviceId: "deploy_station",
+  displayName: "Production Deploy Station",
+  allowedChannels: ["build_deploys", "system_status"],
+  ipWhitelist: ["192.168.1.10"],
+});
+
+console.log("Allowed Channel:", serviceContext.isChannelAllowed("build_deploys")); // true
+console.log("Unauthorized Channel:", serviceContext.isChannelAllowed("finance_alerts")); // false
+```
 
 

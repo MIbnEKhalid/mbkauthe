@@ -2,6 +2,20 @@
 
 All notable changes and architectural releases for MBKAuthe are documented here.
 
+## [6.7.1] - 2026-10-30
+
+### Machine-to-Machine (M2M) Service Authentication & Token Engine Primitives
+- **M2M Token Engine Primitives**:
+  - Added `generateServiceToken()` generating random hex tokens with the platform standard `mbk_svc_` prefix.
+  - Added `hashServiceToken(rawToken)` for constant-time SHA-256 storage and lookup.
+  - Added `computeHmacSignature(secret, timestamp, rawBody)` for HMAC-SHA256 signature calculation across `${timestamp}.${rawBody || ""}`.
+  - Added `verifyHmacSignature(secret, timestamp, rawBody, signature, maxDriftSec)` providing timing-safe validation with configurable replay drift window (defaults to 300 seconds).
+- **ServiceContext Domain Class**:
+  - Exported `ServiceContext` for machine credentials, tracking `serviceId`, `displayName`, `allowedChannels`, and `ipWhitelist`.
+  - Added `isChannelAllowed(channelKey)` helper supporting wildcard (`*`) and case-insensitive channel scope enforcement.
+
+---
+
 ## [6.7.0] - 2026-10-27
 
 ### High-Performance Dual-Database Translation & Execution Engine

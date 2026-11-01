@@ -147,7 +147,7 @@ export class AuthRepository extends BaseRepository {
              tfa.is_enabled, u.full_name, u.image
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
-      WHERE u.username = $1
+      WHERE (u.username = $1 OR u.user_id = $1)
     `;
     const result = await this.executeRaw({ name: query_name, text: query, values: [username] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;

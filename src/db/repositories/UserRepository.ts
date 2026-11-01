@@ -30,7 +30,7 @@ export class UserRepository extends BaseRepository {
              u.role, u.allowed_apps, u.is_active, u.is_local_only, tfa.is_enabled
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
-      WHERE u.username = $1
+      WHERE (u.username = $1 OR u.user_id = $1)
       LIMIT 1
     `;
     const result = await this.executeRaw({ name: "get-user-with-2fa", text: query, values: [username] });

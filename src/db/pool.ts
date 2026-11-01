@@ -9,8 +9,24 @@ import { wrapPoolWithRetry } from "./retry.js";
 import { attachDevQueryLogger } from "./dbQueryLogger.js";
 import { registerGracefulShutdown } from "./shutdown.js";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 const { Pool } = pkg;
+
+export function normalizePostgresConnectionString(connStr?: string): string | undefined {
+  if (!connStr || typeof connStr !== 'string') return connStr;
+  try {
+    const u = new URL(connStr);
+    const sslmode = u.searchParams.get('sslmode');
+    if (sslmode && ['require', 'prefer', 'verify-ca'].includes(sslmode)) {
+      if (!u.searchParams.has('uselibpqcompat')) {
+        u.searchParams.set('uselibpqcompat', 'true');
+      }
+    }
+    return u.toString();
+  } catch {
+    return connStr;
+  }
+}
 
 export const dbType = (mbkautheVar.DB_TYPE || "postgres").toLowerCase();
 export const dialect = dbType === "sqlite" ? sqliteDialect : postgresDialect;
@@ -46,7 +62,7 @@ export function getDbLogin(): any {
           : { rejectUnauthorized: true });
 
       _dbloginInstance = new Pool({
-        connectionString,
+        connectionString: normalizePostgresConnectionString(connectionString),
         ssl,
         max,
         idleTimeoutMillis,

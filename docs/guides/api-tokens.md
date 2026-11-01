@@ -148,13 +148,7 @@ For automated daemons, CI/CD runners, and backend microservices, MBKAuthe provid
 ### Example Usage
 
 ```typescript
-import {
-  generateServiceToken,
-  hashServiceToken,
-  computeHmacSignature,
-  verifyHmacSignature,
-  ServiceContext,
-} from "mbkauthe";
+import { generateServiceToken, hashServiceToken, computeHmacSignature, verifyHmacSignature, ServiceContext } from "mbkauthe";
 
 // 1. Generate & Hash M2M Service Token
 const rawServiceToken = generateServiceToken(); // "mbk_svc_..."

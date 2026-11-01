@@ -264,6 +264,7 @@ export class AuthService {
     const targetAppKey = appKey || mbkautheVar.APP_NAME;
     const sessionRows: any[] = await this.repo.findSessionsByDeviceId(deviceId);
     const validated: DeviceAccount[] = [];
+    const seenUsernames = new Set<string>();
 
     for (const row of sessionRows) {
       const expired = row.expires_at && new Date(row.expires_at) <= new Date();
@@ -282,6 +283,15 @@ export class AuthService {
         }
         continue;
       }
+
+      const lowerUsername = String(row.username || "").toLowerCase();
+      if (seenUsernames.has(lowerUsername)) {
+        if (row.sid) {
+          await this.repo.deleteAppSessionById(row.sid).catch(() => {});
+        }
+        continue;
+      }
+      seenUsernames.add(lowerUsername);
 
       let parsedMeta: any = {};
       if (typeof row.meta === "string") {

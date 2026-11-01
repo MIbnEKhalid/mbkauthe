@@ -71,10 +71,16 @@ const hasValue = (val: any) => !isBlank(val);
 
 export function parseJsonEnv(name: string, { required = false } = {}): Record<string, any> | null {
   const directKey = Object.keys(process.env).find((k) => k.toLowerCase() === name.toLowerCase());
-  const raw = directKey ? process.env[directKey] : undefined;
+  let raw = directKey ? process.env[directKey] : undefined;
   if (isBlank(raw)) {
     if (required) throw new Error(`[mbkauthe] Configuration Error:\n  - process.env.${name} is not defined`);
     return null;
+  }
+  if (typeof raw === "string") {
+    raw = raw.trim();
+    if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"') && raw.startsWith('"{'))) {
+      raw = raw.slice(1, -1).trim();
+    }
   }
   try {
     const parsed = JSON.parse(raw);

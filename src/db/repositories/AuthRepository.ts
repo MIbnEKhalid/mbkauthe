@@ -104,6 +104,10 @@ export class AuthRepository extends BaseRepository {
     return this.sessions.findDeviceSession(deviceId, sid);
   }
 
+  async deleteDeviceSessionsForUser(deviceId: string, username: string) {
+    return this.sessions.deleteDeviceSessionsForUser(deviceId, username);
+  }
+
   async deleteDeviceSession(deviceId: string, sid: string) {
     return this.sessions.deleteDeviceSession(deviceId, sid);
   }

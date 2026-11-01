@@ -114,6 +114,9 @@ export class SessionRepository extends BaseRepository {
     const configuredMax = Number.isInteger(maxSessions) && maxSessions > 0 ? maxSessions : 5;
 
     return this.withTransaction(async (txRepo: any) => {
+      if (device_id) {
+        await txRepo.deleteDeviceSessionsForUser(device_id, username);
+      }
       const currentSessions = await txRepo.cleanupAndCountUserSessions(username);
       if (currentSessions >= configuredMax) {
         const sessionsToDelete = currentSessions - configuredMax + 1;
@@ -166,6 +169,16 @@ export class SessionRepository extends BaseRepository {
          LIMIT 1`;
     const result = await this.executeRaw({ name: "find-device-session", text: query, values: [deviceId, sid] });
     return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
+  }
+
+  async deleteDeviceSessionsForUser(deviceId: string, username: string): Promise<number> {
+    if (!deviceId || !username) return 0;
+    const result = await this.executeRaw({
+      name: "delete-device-sessions-for-user",
+      text: "DELETE FROM mbkcore_session WHERE device_id = $1 AND username = $2",
+      values: [deviceId, username]
+    });
+    return result.rowCount ?? 0;
   }
 
   async deleteDeviceSession(deviceId: string, sid: string): Promise<boolean> {

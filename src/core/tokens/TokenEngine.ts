@@ -113,7 +113,67 @@ export class TokenEngine {
       raw,
     };
   }
+
+  /**
+   * Generates random bytes returning mbk_svc_${crypto.randomBytes(24).toString("hex")}
+   */
+  static generateServiceToken(): string {
+    return `mbk_svc_${crypto.randomBytes(24).toString("hex")}`;
+  }
+
+  /**
+   * Returns crypto.createHash("sha256").update(String(rawToken).trim()).digest("hex")
+   */
+  static hashServiceToken(rawToken: string | null | undefined): string {
+    return crypto.createHash("sha256").update(String(rawToken || "").trim()).digest("hex");
+  }
+
+  /**
+   * Computes HMAC-SHA256 of `${timestamp}.${rawBody || ""}` using `secret`
+   */
+  static computeHmacSignature(secret: string, timestamp: string | number, rawBody: string): string {
+    return crypto
+      .createHmac("sha256", String(secret || ""))
+      .update(`${timestamp}.${rawBody || ""}`)
+      .digest("hex");
+  }
+
+  /**
+   * Verifies signature safely using replay window check and crypto.timingSafeEqual
+   */
+  static verifyHmacSignature(
+    secret: string,
+    timestamp: string | number,
+    rawBody: string,
+    signature: string,
+    maxDriftSec = 300
+  ): boolean {
+    const tsNum = Number(timestamp);
+    if (!Number.isFinite(tsNum)) return false;
+    if (Math.abs(Math.floor(Date.now() / 1000) - tsNum) > maxDriftSec) {
+      return false;
+    }
+    const expected = this.computeHmacSignature(secret, timestamp, rawBody);
+    const expectedBuf = Buffer.from(expected.toLowerCase(), "utf8");
+    const sigBuf = Buffer.from(String(signature || "").trim().toLowerCase(), "utf8");
+    if (expectedBuf.length !== sigBuf.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(expectedBuf, sigBuf);
+  }
 }
+
+export const generateServiceToken = (): string => TokenEngine.generateServiceToken();
+export const hashServiceToken = (rawToken: string | null | undefined): string => TokenEngine.hashServiceToken(rawToken);
+export const computeHmacSignature = (secret: string, timestamp: string | number, rawBody: string): string =>
+  TokenEngine.computeHmacSignature(secret, timestamp, rawBody);
+export const verifyHmacSignature = (
+  secret: string,
+  timestamp: string | number,
+  rawBody: string,
+  signature: string,
+  maxDriftSec = 300
+): boolean => TokenEngine.verifyHmacSignature(secret, timestamp, rawBody, signature, maxDriftSec);
 
 export const extractAuthorizationToken = (authHeader?: string | null): string =>
   TokenEngine.extractBearerToken(authHeader);

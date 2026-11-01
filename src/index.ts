@@ -43,7 +43,8 @@ export {
   authEvents, AuthEventEmitter, emitAuthEvent, type AuthLoginSuccessEvent, type AuthLoginFailedEvent, type AuthLogoutEvent, type AuthTokenCreatedEvent, type AuthTokenRevokedEvent, type AuthAccountSwitchedEvent, type AuthCliApprovedEvent, type AuthCliDeniedEvent, type AuthEventMap, type AuthEventName, type AuthEventListener
 } from "./core/events/index.js";
 export {
-  TokenEngine, TOKEN_PREFIXES, type TokenType, type ParsedToken
+  TokenEngine, TOKEN_PREFIXES, type TokenType, type ParsedToken,
+  generateServiceToken, hashServiceToken, computeHmacSignature, verifyHmacSignature
 } from "./core/tokens/index.js";
 export {
   validateLoginDto, validateTotpDto, validateCreateApiTokenDto, validateCliDeviceCodeDto, type LoginDto, type VerifyTotpDto, type CreateApiTokenDto, type CliDeviceCodeDto
@@ -84,8 +85,9 @@ export { AuthorizationService, authorizationService, RoleRegistry, type PolicyFn
 export const hasPermission = (authContextOrUser: any, permission: any) =>
   authorizationService.hasPermission(authContextOrUser, permission);
 export {
-  AuthContext, createAuthContext, createAnonymousContext, createSessionAuthContext, createTokenAuthContext, principalFromUser, type AuthPrincipal, type AuthSessionInfo, type AuthTokenInfo, type AuthMethod, type AuthContextOptions
-} from "./core/context/AuthContext.js";
+  AuthContext, createAuthContext, createAnonymousContext, createSessionAuthContext, createTokenAuthContext, principalFromUser, type AuthPrincipal, type AuthSessionInfo, type AuthTokenInfo, type AuthMethod, type AuthContextOptions,
+  ServiceContext, type ServiceContextOptions
+} from "./core/context/index.js";
 export {
   attachSessionPermissions, hasNoSessionPermissions, SUPERADMIN_SNAPSHOT, EMPTY_SNAPSHOT
 } from "./http/session/sessionPermissions.js";

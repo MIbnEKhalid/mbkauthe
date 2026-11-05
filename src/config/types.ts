@@ -31,6 +31,8 @@ export interface MBKAuthConfig {
   MAX_SESSIONS_PER_USER?: number;
   CLI_AUTH_BASE_URL?: string;
   CLI_AUTH_ENABLED?: 'true' | 'false' | 'f' | boolean;
+  DB_ENCRYPTION_KEY?: string;
+  db_encryption_key?: string;
   OAUTH_PROVIDERS?: OAuthProvidersConfig;
 
   [key: string]: any;

@@ -7,6 +7,7 @@
 
 import { BaseRepository, BaseRepositoryOptions } from "./BaseRepository.js";
 import { dblogin, dialect } from "../pool.js";
+import { defaultTokenEncryptor } from "../../oauth/crypto/tokenEncryption.js";
 import type { CliAuthSession, ApiTokenProfile } from "../../core/types/token.types.js";
 
 const SESSION_COLUMNS = `id, device_code_hash, user_code_hash, client_name, profile_id,
@@ -52,6 +53,15 @@ export class CliAuthSessionRepository extends BaseRepository {
     super({ db: options.db || dblogin, dialect: options.dialect || dialect });
   }
 
+
+  private mapSessionRow(row: any): CliAuthSession | null {
+    if (!row) return null;
+    if (row.pending_token) {
+      row.pending_token = defaultTokenEncryptor.decrypt(row.pending_token) || row.pending_token;
+    }
+    return row as CliAuthSession;
+  }
+
   async create({ device_code_hash, user_code_hash, client_name, profile_id = null, expires_at }: CreateCliAuthSessionOptions): Promise<CliAuthSession | null> {
     const { rows } = await this.executeRaw({
       name: "cli-auth-create",
@@ -60,7 +70,7 @@ export class CliAuthSessionRepository extends BaseRepository {
              RETURNING ${SESSION_COLUMNS}`,
       values: [device_code_hash, user_code_hash, client_name, profile_id, expires_at],
     });
-    return (rows[0] as CliAuthSession) || null;
+    return this.mapSessionRow(rows[0]);
   }
 
   async findByDeviceCodeHash(device_code_hash: string): Promise<CliAuthSession | null> {
@@ -69,7 +79,7 @@ export class CliAuthSessionRepository extends BaseRepository {
       text: `SELECT ${SESSION_COLUMNS} FROM mbkcore_cli_auth_sessions WHERE device_code_hash = $1`,
       values: [device_code_hash],
     });
-    return (rows[0] as CliAuthSession) || null;
+    return this.mapSessionRow(rows[0]);
   }
 
   async findByUserCodeHash(user_code_hash: string): Promise<CliAuthSession | null> {
@@ -78,7 +88,7 @@ export class CliAuthSessionRepository extends BaseRepository {
       text: `SELECT ${SESSION_COLUMNS} FROM mbkcore_cli_auth_sessions WHERE user_code_hash = $1`,
       values: [user_code_hash],
     });
-    return (rows[0] as CliAuthSession) || null;
+    return this.mapSessionRow(rows[0]);
   }
 
   async markApproved(id: number | string, { username, token_id, pending_token }: ApproveCliAuthOptions): Promise<boolean> {
@@ -91,7 +101,7 @@ export class CliAuthSessionRepository extends BaseRepository {
                   pending_token = $4, approved_at = ${nowSql}
              WHERE id = $1 AND status = 'pending'
              RETURNING id`,
-      values: [id, username, token_id, pending_token],
+      values: [id, username, token_id, defaultTokenEncryptor.encrypt(pending_token) || pending_token],
     });
     return Boolean(rows[0]);
   }

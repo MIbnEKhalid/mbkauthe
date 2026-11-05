@@ -19,7 +19,7 @@ export { MemoryOAuthStateStore, defaultOAuthStateStore, type StateStoreOptions }
 export * from "./providers/index.js";
 
 // Token Encryption
-export { AesGcmTokenEncryptor, defaultTokenEncryptor } from "./crypto/tokenEncryption.js";
+export { AesGcmTokenEncryptor, defaultTokenEncryptor, encryptDbField, decryptDbField, resolveDbEncryptionSecret } from "./crypto/tokenEncryption.js";
 
 // Flow Service
 export { OAuthFlowService, oAuthFlowService, type OAuthFlowServiceOptions } from "./OAuthFlowService.js";

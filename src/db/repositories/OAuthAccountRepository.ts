@@ -9,6 +9,7 @@ import { BaseRepository, type BaseRepositoryOptions } from "./BaseRepository.js"
 import type { OAuthAccountRecord } from "../../oauth/types.js";
 import type { OAuthAccountRepository as IOAuthAccountRepository } from "../../oauth/ports.js";
 import { dblogin, dialect } from "../pool.js";
+import { defaultTokenEncryptor } from "../../oauth/crypto/tokenEncryption.js";
 
 const OAUTH_ACCOUNT_COLUMNS = `id, user_id, provider_id, provider_user_id, profile,
   access_token, refresh_token, id_token, token_expires_at, scope, created_at, updated_at`;
@@ -126,9 +127,9 @@ export class OAuthAccountRepository
       account.providerId.toLowerCase(),
       String(account.providerUserId),
       profileJson,
-      account.encryptedAccessToken || null,
-      account.encryptedRefreshToken || null,
-      account.encryptedIdToken || null,
+      defaultTokenEncryptor.encrypt(account.encryptedAccessToken) || null,
+      defaultTokenEncryptor.encrypt(account.encryptedRefreshToken) || null,
+      defaultTokenEncryptor.encrypt(account.encryptedIdToken) || null,
       account.tokenExpiresAt ? account.tokenExpiresAt.toISOString() : null,
       account.scope || null,
     ];
@@ -156,15 +157,15 @@ export class OAuthAccountRepository
     }
     if (account.encryptedAccessToken !== undefined) {
       sets.push(`access_token = $${paramIndex++}`);
-      values.push(account.encryptedAccessToken);
+      values.push(defaultTokenEncryptor.encrypt(account.encryptedAccessToken));
     }
     if (account.encryptedRefreshToken !== undefined) {
       sets.push(`refresh_token = $${paramIndex++}`);
-      values.push(account.encryptedRefreshToken);
+      values.push(defaultTokenEncryptor.encrypt(account.encryptedRefreshToken));
     }
     if (account.encryptedIdToken !== undefined) {
       sets.push(`id_token = $${paramIndex++}`);
-      values.push(account.encryptedIdToken);
+      values.push(defaultTokenEncryptor.encrypt(account.encryptedIdToken));
     }
     if (account.tokenExpiresAt !== undefined) {
       sets.push(`token_expires_at = $${paramIndex++}`);
@@ -212,6 +213,18 @@ export class OAuthAccountRepository
   /**
    * Deletes an OAuth account by user ID and provider.
    */
+
+  /**
+   * Returns decrypted OAuth tokens from an account record.
+   */
+  getDecryptedTokens(account: OAuthAccountRecord | null): { accessToken: string | null; refreshToken: string | null; idToken: string | null } {
+    if (!account) return { accessToken: null, refreshToken: null, idToken: null };
+    return {
+      accessToken: defaultTokenEncryptor.decrypt(account.encryptedAccessToken),
+      refreshToken: defaultTokenEncryptor.decrypt(account.encryptedRefreshToken),
+      idToken: defaultTokenEncryptor.decrypt(account.encryptedIdToken),
+    };
+  }
   async deleteByUserAndProvider(userId: string | number, providerId: string): Promise<boolean> {
     const text = `DELETE FROM mbkcore_oauth_accounts WHERE user_id = $1 AND provider_id = $2`;
     const res = await this.executeRaw({

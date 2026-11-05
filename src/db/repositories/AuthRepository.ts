@@ -5,6 +5,7 @@ import { SessionRepository, sessionRepository } from "./SessionRepository.js";
 import { PasskeyRepository, passkeyRepository } from "./PasskeyRepository.js";
 import { ApiTokenRepository, apiTokenRepository } from "./ApiTokenRepository.js";
 import { dblogin, dialect as defaultDialect } from "../pool.js";
+import { defaultTokenEncryptor } from "../../oauth/crypto/tokenEncryption.js";
 
 export { normalizeUserRow };
 
@@ -158,8 +159,15 @@ export class AuthRepository extends BaseRepository {
   }
 
   async getTwoFASecret(username: string): Promise<any> {
-    const result = await this.executeRaw({ name: "verify-2fa-secret", text: "SELECT tfa.two_fa_secret FROM mbkcore_two_factor tfa WHERE tfa.username = $1", values: [username] });
-    return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
+    const result = await this.executeRaw({ name: "verify-2fa-secret", text: "SELECT tfa.two_fa_secret, tfa.is_enabled FROM mbkcore_two_factor tfa WHERE tfa.username = $1", values: [username] });
+    if (!result.rows?.[0]) return null;
+    const row = result.rows[0];
+    const rawSecret = row.two_fa_secret;
+    return {
+      ...normalizeUserRow(row),
+      two_fa_secret: rawSecret ? defaultTokenEncryptor.decrypt(rawSecret) : null,
+      is_enabled: Boolean(row.is_enabled),
+    };
   }
 
   async getApiTokenByHash(token_hash: string, query_name: string = "validate-api-token"): Promise<any> {

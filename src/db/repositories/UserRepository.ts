@@ -1,6 +1,7 @@
 import { BaseRepository } from "./BaseRepository.js";
 import { AuthUser } from "../../core/types/user.types.js";
 import { dblogin, dialect as defaultDialect } from "../pool.js";
+import { defaultTokenEncryptor } from "../../oauth/crypto/tokenEncryption.js";
 
 export function normalizeUserRow(row: any): AuthUser | null {
   if (!row || typeof row !== "object") return row;
@@ -64,14 +65,49 @@ export class UserRepository extends BaseRepository {
     return result.rows?.[0] || null;
   }
 
-  async getTwoFASecret(username: string): Promise<{ two_fa_secret: string; is_enabled: boolean } | null> {
+  /**
+   * Retrieves and automatically decrypts user's TOTP 2FA secret from mbkcore_two_factor.
+   */
+  async getTwoFASecret(username: string): Promise<{ two_fa_secret: string | null; is_enabled: boolean } | null> {
     const query = `SELECT two_fa_secret, is_enabled FROM mbkcore_two_factor WHERE username = $1 LIMIT 1`;
     const result = await this.executeRaw({ name: "get-user-2fa-secret", text: query, values: [username] });
     if (!result.rows?.[0]) return null;
+    const rawSecret = result.rows[0].two_fa_secret;
     return {
-      two_fa_secret: result.rows[0].two_fa_secret,
-      is_enabled: result.rows[0].is_enabled,
+      two_fa_secret: rawSecret ? defaultTokenEncryptor.decrypt(rawSecret) : null,
+      is_enabled: Boolean(result.rows[0].is_enabled),
     };
+  }
+
+  /**
+   * Saves or updates user's TOTP 2FA secret, automatically encrypting it at rest in mbkcore_two_factor.
+   */
+  async saveTwoFASecret(username: string, secret: string, is_enabled: boolean = false): Promise<void> {
+    const encrypted = defaultTokenEncryptor.encrypt(secret) || secret;
+    const query = `
+      INSERT INTO mbkcore_two_factor (username, is_enabled, two_fa_secret)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (username) DO UPDATE SET
+        two_fa_secret = EXCLUDED.two_fa_secret,
+        is_enabled = EXCLUDED.is_enabled
+    `;
+    await this.executeRaw({
+      name: "save-user-2fa-secret",
+      text: query,
+      values: [username, is_enabled ? (this.dialect?.name === "sqlite" ? 1 : true) : (this.dialect?.name === "sqlite" ? 0 : false), encrypted],
+    });
+  }
+
+  /**
+   * Disables 2FA and clears secret for user.
+   */
+  async disableTwoFA(username: string): Promise<void> {
+    const query = `UPDATE mbkcore_two_factor SET is_enabled = $1, two_fa_secret = '' WHERE username = $2`;
+    await this.executeRaw({
+      name: "disable-user-2fa",
+      text: query,
+      values: [this.dialect?.name === "sqlite" ? 0 : false, username],
+    });
   }
 }
 

@@ -44,6 +44,7 @@ const {
   checkRolePermission,
   strictValidateSession,
   ErrorCodes,
+  defaultTokenEncryptor,
 } = await import('../../dist/index.js');
 
 import { setupViewEngine } from 'mbkutils';
@@ -172,7 +173,7 @@ async function createUser(username, {
   if (twoFASecret) {
     await dblogin.query(
       `INSERT INTO mbkcore_two_factor (username, is_enabled, two_fa_secret) VALUES ($1, $2, $3)`,
-      [username, twoFAStatus, twoFASecret]
+      [username, twoFAStatus, defaultTokenEncryptor.encrypt(twoFASecret)]
     );
   }
 }

@@ -41,7 +41,7 @@ const CANONICAL_KEYS = [
   "app_name", "main_secret_token", "session_secret_key",
   "is_deployed", "db_type", "login_db", "sqlite_path", "mbkauth_two_fa_enable",
   "cookie_expire_time", "domain", "login_redirect_url", "oauth_providers",
-  "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled"
+  "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled", "db_encryption_key"
 ].map((k) => ({ lower: k, upper: k.toUpperCase() }));
 
 const DEFAULT_CONFIG: Record<string, any> = {
@@ -56,12 +56,13 @@ const DEFAULT_CONFIG: Record<string, any> = {
   oauth_providers: {},
   max_sessions_per_user: 5,
   cli_auth_enabled: "false",
+  db_encryption_key: "",
 };
 
 const BOOLEAN_KEYS = new Set(["mbkauth_two_fa_enable", "is_deployed", "cli_auth_enabled"]);
 const STRING_KEYS = new Set([
   "app_name", "main_secret_token", "session_secret_key", "db_type", "login_db", "sqlite_path",
-  "domain", "login_redirect_url", "cli_auth_base_url"
+  "domain", "login_redirect_url", "cli_auth_base_url", "db_encryption_key"
 ]);
 const REQUIRED_KEYS = ["app_name", "main_secret_token", "session_secret_key", "is_deployed", "mbkauth_two_fa_enable", "domain"];
 

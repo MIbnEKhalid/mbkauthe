@@ -5,3 +5,4 @@ export * from "../oauth/OAuthFlowService.js";
 export * from "./PasskeyService.js";
 export * from "./PermissionSyncService.js";
 export * from "./AvatarService.js";
+export * from "./AuthResetService.js";

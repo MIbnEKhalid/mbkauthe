@@ -65,6 +65,7 @@ export async function sessionRestorationMiddleware(req: Request, res: Response, 
         role: row.role,
         allowed_apps: row.allowed_apps,
         is_local_only: isLocalOnly,
+        must_change_password: Boolean(row.must_change_password),
       };
       await attachSessionPermissions((req as any).session.user, row.username, row.role);
     }
@@ -107,7 +108,7 @@ export function isStaticOrAssetRequest(req: Request): boolean {
  * Unprotected routes and static assets never invoke this, ensuring zero database session queries.
  */
 export function ensureSession(req: Request, res: Response, next: NextFunction): void {
-  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req) || (req as any).session) {
+  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req)) {
     return next();
   }
   const initCookies = (done: () => void) => {
@@ -118,6 +119,15 @@ export function ensureSession(req: Request, res: Response, next: NextFunction): 
     }
   };
   initCookies(() => {
+    if ((req as any).session) {
+      if (!(req as any).session.user) {
+        return sessionRestorationMiddleware(req, res, (err2: any) => {
+          if (err2) return next(err2);
+          sessionCookieSyncMiddleware(req, res, next);
+        });
+      }
+      return next();
+    }
     getSessionMiddleware()(req, res, (err: any) => {
       if (err) return next(err);
       sessionRestorationMiddleware(req, res, (err2: any) => {
@@ -129,7 +139,7 @@ export function ensureSession(req: Request, res: Response, next: NextFunction): 
 }
 
 export async function ensureSessionAsync(req: Request, res: Response): Promise<void> {
-  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req) || (req as any).session) {
+  if (isStaticOrAssetRequest(req) || hasAuthorizationHeader(req) || (req as any).session?.user) {
     return;
   }
   return new Promise<void>((resolve, reject) => {

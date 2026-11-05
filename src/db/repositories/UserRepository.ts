@@ -16,6 +16,9 @@ export function normalizeUserRow(row: any): AuthUser | null {
     is_active: row.is_active !== undefined ? Boolean(row.is_active) : undefined,
     is_local_only: row.is_local_only !== undefined ? Boolean(row.is_local_only && row.is_local_only !== "0" && row.is_local_only !== "false") : undefined,
     is_enabled: row.is_enabled !== undefined && row.is_enabled !== null ? Boolean(row.is_enabled) : null,
+    must_change_password: row.must_change_password !== undefined && row.must_change_password !== null
+      ? Boolean(row.must_change_password && row.must_change_password !== "0" && row.must_change_password !== "false")
+      : undefined,
     permissions,
   };
 }
@@ -28,7 +31,7 @@ export class UserRepository extends BaseRepository {
   async getUserWithTwoFA(username: string): Promise<AuthUser | null> {
     const query = `
       SELECT u.user_id, u.username, u.password_hash, u.full_name, u.image,
-             u.role, u.allowed_apps, u.is_active, u.is_local_only, tfa.is_enabled
+             u.role, u.allowed_apps, u.is_active, u.is_local_only, u.must_change_password, tfa.is_enabled
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
       WHERE (u.username = $1 OR u.user_id = $1)
@@ -40,7 +43,7 @@ export class UserRepository extends BaseRepository {
 
   async getUserById(userId: string | number): Promise<AuthUser | null> {
     const query = `
-      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only
+      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only, u.must_change_password
       FROM mbkcore_users u
       WHERE u.user_id = $1
       LIMIT 1
@@ -51,7 +54,7 @@ export class UserRepository extends BaseRepository {
 
   async getUserByUsername(username: string): Promise<AuthUser | null> {
     const query = `
-      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only
+      SELECT u.user_id, u.username, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only, u.must_change_password
       FROM mbkcore_users u
       WHERE u.username = $1
       LIMIT 1
@@ -108,6 +111,64 @@ export class UserRepository extends BaseRepository {
       text: query,
       values: [this.dialect?.name === "sqlite" ? 0 : false, username],
     });
+  }
+
+  /**
+   * Updates user's password hash
+   */
+  async updatePassword(username: string, passwordHash: string): Promise<void> {
+    const query = `UPDATE mbkcore_users SET password_hash = $1 WHERE username = $2`;
+    await this.executeRaw({
+      name: "update-user-password",
+      text: query,
+      values: [passwordHash, username],
+    });
+  }
+
+  /**
+   * Updates user's must_change_password flag
+   */
+  async setMustChangePassword(username: string, mustChange: boolean): Promise<void> {
+    const val = this.dialect?.name === "sqlite" ? (mustChange ? 1 : 0) : mustChange;
+    const query = `UPDATE mbkcore_users SET must_change_password = $1 WHERE username = $2`;
+    await this.executeRaw({
+      name: "set-must-change-password",
+      text: query,
+      values: [val, username],
+    });
+  }
+
+  /**
+   * Checks if user is required to change password
+   */
+  async mustChangePassword(username: string): Promise<boolean> {
+    const query = `SELECT must_change_password FROM mbkcore_users WHERE username = $1 LIMIT 1`;
+    const result = await this.executeRaw({
+      name: "get-must-change-password",
+      text: query,
+      values: [username],
+    });
+    const row = result.rows?.[0];
+    if (!row) return false;
+    return Boolean(row.must_change_password && row.must_change_password !== "0" && row.must_change_password !== "false");
+  }
+
+  /**
+   * Finds user by username or email
+   */
+  async findByUsernameOrEmail(identifier: string): Promise<AuthUser | null> {
+    const query = `
+      SELECT u.user_id, u.username, u.email, u.full_name, u.image, u.role, u.allowed_apps, u.is_active, u.is_local_only, u.must_change_password
+      FROM mbkcore_users u
+      WHERE (u.username = $1 OR LOWER(u.email) = LOWER($1))
+      LIMIT 1
+    `;
+    const result = await this.executeRaw({
+      name: "find-user-by-username-or-email",
+      text: query,
+      values: [identifier],
+    });
+    return result.rows?.[0] ? normalizeUserRow(result.rows[0]) : null;
   }
 }
 

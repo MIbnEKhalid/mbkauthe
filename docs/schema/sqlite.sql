@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS mbkcore_users (
     bio TEXT DEFAULT 'I am ....',
     social_accounts TEXT DEFAULT '{}',
     positions TEXT DEFAULT '{"Not_Permanent": "Member Is Not Permanent"}',
-    perm_version INTEGER DEFAULT 1
+    perm_version INTEGER DEFAULT 1,
+    must_change_password INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_active ON mbkcore_users (is_active);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_users_is_local_only ON mbkcore_users (is_local_only);
@@ -120,17 +121,21 @@ CREATE TABLE IF NOT EXISTS mbkcore_cli_auth_sessions (
 CREATE INDEX IF NOT EXISTS idx_mbkcore_cli_auth_sessions_expires ON mbkcore_cli_auth_sessions (expires_at);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_cli_auth_sessions_status ON mbkcore_cli_auth_sessions (status);
 
--- Table: mbkcore_password_resets
-CREATE TABLE IF NOT EXISTS mbkcore_password_resets (
+-- Table: mbkcore_auth_challenges (Unified Password Reset, OTP & Account Recovery)
+CREATE TABLE IF NOT EXISTS mbkcore_auth_challenges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(50) NOT NULL REFERENCES mbkcore_users(username) ON DELETE CASCADE,
-    reset_token TEXT,
-    reset_token_expires TEXT,
-    reset_attempts INTEGER DEFAULT 0,
-    last_reset_attempt TEXT,
+    challenge_type VARCHAR(20) NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 5,
+    last_attempt_at TEXT,
+    consumed_at TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_mbkcore_password_resets_token ON mbkcore_password_resets (reset_token);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_auth_challenges_lookup ON mbkcore_auth_challenges (username, challenge_type, expires_at);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_auth_challenges_token ON mbkcore_auth_challenges (token_hash);
 
 -- Table: mbkcore_passkeys
 CREATE TABLE IF NOT EXISTS mbkcore_passkeys (

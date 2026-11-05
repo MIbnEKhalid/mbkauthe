@@ -15,3 +15,4 @@ export * from "./ApiTokenRepository.js";
 export * from "./CliAuthSessionRepository.js";
 export * from "./OAuthAccountRepository.js";
 
+export * from "./AuthChallengeRepository.js";

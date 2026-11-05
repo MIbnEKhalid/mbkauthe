@@ -149,7 +149,7 @@ export class AuthRepository extends BaseRepository {
   async getUserWithTwoFA(username: string, query_name: string = "login-get-user"): Promise<AuthUser | null> {
     const query = `
       SELECT u.username, u.user_id, u.password_hash, u.is_active, u.is_local_only, u.role, u.allowed_apps,
-             tfa.is_enabled, u.full_name, u.image
+             tfa.is_enabled, u.full_name, u.image, u.must_change_password
       FROM mbkcore_users u
       LEFT JOIN mbkcore_two_factor tfa ON u.username = tfa.username
       WHERE (u.username = $1 OR u.user_id = $1)

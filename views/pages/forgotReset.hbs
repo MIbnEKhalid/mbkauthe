@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{{#if (eq mode 'reset')}}
+{{> mbkutils_head pageTitle="Reset Password" ogUrl="/mbkauthe/reset-password"}}
+{{else}}
+{{> mbkutils_head pageTitle="Forgot Password" ogUrl="/mbkauthe/forgot-password"}}
+{{/if}}
+
+<body>
+    {{> mbkutils_header}}
+    {{> mbkutils_showmessage}}
+
+    <section class="login-container">
+        {{> mbkutils_backgroundElements}}
+
+        <div class="auth-card login-box login-box-split">
+            <div class="login-box-inner">
+                <!-- Left Sidebar -->
+                <div class="login-sidebar">
+                    <div class="sidebar-content">
+                        <div class="brand-section">
+                            <div class="logo logo-sidebar">
+                                <img src="/icon.svg{{acachebust}}" alt="MBK Tech Logo" class="logo-image">
+                                <span class="logo-text">BK<span>Authe</span></span>
+                            </div>
+                            <h2 class="brand-title">Account Recovery</h2>
+                            <p class="brand-description">Secure self-service password reset and identity verification across MBKTech services.</p>
+                        </div>
+
+                        <div class="sidebar-switch">
+                            <a href="/mbkauthe/login" class="btn-action-link">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Back to Login</span>
+                            </a>
+                        </div>
+
+                        <div class="sidebar-links" style="margin-top: auto;">
+                            <a href="https://mbktech.org/Support" target="_blank" rel="noopener noreferrer" class="sidebar-link">
+                                <i class="fas fa-headset"></i> Need Help?
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Main -->
+                <div class="login-main">
+                    {{#if (eq mode 'reset')}}
+                    <!-- Reset Password Form -->
+                    <div class="login-main-header">
+                        <h1 class="login-title">Create New Password</h1>
+                        <p class="login-subtitle">Enter your new password below for account <strong>@{{username}}</strong>.</p>
+                    </div>
+
+                    {{#if error}}
+                    <div class="alert-banner alert-warning" role="alert">
+                        <div class="alert-icon"><i class="fas fa-circle-exclamation"></i></div>
+                        <div class="alert-body">
+                            <strong class="alert-heading">Password Reset Error</strong>
+                            <p class="alert-text">{{error}}</p>
+                        </div>
+                    </div>
+                    <div class="form-footer-links">
+                        <a href="/mbkauthe/forgot-password" class="auth-link">Request a new reset link</a>
+                    </div>
+                    {{else}}
+                    <form id="resetForm" class="login-form auth-form" autocomplete="off">
+                        <input type="hidden" id="resetUsername" value="{{username}}">
+                        <input type="hidden" id="resetToken" value="{{token}}">
+
+                        <div class="form-group floating-group">
+                            <input id="resetNewPassword" class="form-input" type="password" name="password" placeholder=" "
+                                minlength="8" autocomplete="new-password" required />
+                            <label class="form-label" for="resetNewPassword">New Password (min 8 chars)</label>
+                            <button type="button" class="icon-button input-icon toggle-password-btn" data-target="resetNewPassword" aria-label="Toggle password visibility">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+
+                        <div class="form-group floating-group">
+                            <input id="resetConfirmPassword" class="form-input" type="password" name="confirmPassword" placeholder=" "
+                                minlength="8" autocomplete="new-password" required />
+                            <label class="form-label" for="resetConfirmPassword">Confirm New Password</label>
+                            <button type="button" class="icon-button input-icon toggle-password-btn" data-target="resetConfirmPassword" aria-label="Toggle password visibility">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+
+                        <div id="resetErrorMsg" style="display: none; color: #ff7675; background: rgba(255, 118, 117, 0.1); border: 1px solid rgba(255, 118, 117, 0.2); padding: 10px; border-radius: 6px; font-size: 13px;"></div>
+
+                        <button type="submit" class="btn-primary btn-submit" id="resetSubmitBtn">
+                            <i class="fas fa-check-circle" id="resetSubmitIcon"></i>
+                            <span id="resetSubmitText">Reset Password</span>
+                        </button>
+                    </form>
+                    {{/if}}
+
+                    {{else}}
+                    <!-- Forgot Password Request Form -->
+                    <div class="login-main-header">
+                        <h1 class="login-title">Reset Your Password</h1>
+                        <p class="login-subtitle">Enter your MBKTech username or registered email address to receive password reset instructions.</p>
+                    </div>
+
+                    <form id="forgotForm" class="login-form auth-form" autocomplete="off">
+                        <div class="form-group floating-group">
+                            <input id="forgotIdentifier" class="form-input" type="text" name="identifier" placeholder=" " required />
+                            <label class="form-label" for="forgotIdentifier">Username or Email</label>
+                        </div>
+
+                        <div id="forgotNotice" style="display: none; padding: 12px; border-radius: 6px; font-size: 13px;"></div>
+
+                        <button type="submit" class="btn-primary btn-submit" id="forgotSubmitBtn">
+                            <i class="fas fa-paper-plane" id="forgotSubmitIcon"></i>
+                            <span id="forgotSubmitText">Send Instructions</span>
+                        </button>
+
+                        <div class="form-footer-links">
+                            <a href="/mbkauthe/login" class="auth-link">Remembered your password? Sign in</a>
+                        </div>
+                    </form>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Password Toggles
+            document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    if (!input) return;
+                    const isPass = input.type === 'password';
+                    input.type = isPass ? 'text' : 'password';
+                    btn.querySelector('i').classList.toggle('fa-eye', !isPass);
+                    btn.querySelector('i').classList.toggle('fa-eye-slash', isPass);
+                });
+            });
+
+            // Forgot form
+            const forgotForm = document.getElementById('forgotForm');
+            if (forgotForm) {
+                const identifierInput = document.getElementById('forgotIdentifier');
+                const forgotBtn = document.getElementById('forgotSubmitBtn');
+                const forgotBtnText = document.getElementById('forgotSubmitText');
+                const noticeBox = document.getElementById('forgotNotice');
+
+                forgotForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const identifier = identifierInput.value.trim();
+                    if (!identifier) return;
+
+                    forgotBtn.disabled = true;
+                    forgotBtnText.textContent = 'Sending...';
+                    noticeBox.style.display = 'none';
+
+                    try {
+                        const res = await fetch('/mbkauthe/api/forgot-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ identifier })
+                        });
+                        const data = await res.json();
+                        forgotBtn.disabled = false;
+                        forgotBtnText.textContent = 'Send Instructions';
+
+                        noticeBox.textContent = data.message || 'If an account matches, instructions have been sent to your registered email.';
+                        noticeBox.style.color = '#00b894';
+                        noticeBox.style.background = 'rgba(0, 184, 148, 0.1)';
+                        noticeBox.style.border = '1px solid rgba(0, 184, 148, 0.3)';
+                        noticeBox.style.display = 'block';
+                        forgotForm.reset();
+                    } catch (err) {
+                        forgotBtn.disabled = false;
+                        forgotBtnText.textContent = 'Send Instructions';
+                        noticeBox.textContent = err.message || 'Network error occurred. Please try again.';
+                        noticeBox.style.color = '#ff7675';
+                        noticeBox.style.background = 'rgba(255, 118, 117, 0.1)';
+                        noticeBox.style.border = '1px solid rgba(255, 118, 117, 0.3)';
+                        noticeBox.style.display = 'block';
+                    }
+                });
+            }
+
+            // Reset form
+            const resetForm = document.getElementById('resetForm');
+            if (resetForm) {
+                const username = document.getElementById('resetUsername')?.value;
+                const token = document.getElementById('resetToken')?.value;
+                const newPasswordInput = document.getElementById('resetNewPassword');
+                const confirmPasswordInput = document.getElementById('resetConfirmPassword');
+                const resetBtn = document.getElementById('resetSubmitBtn');
+                const resetBtnText = document.getElementById('resetSubmitText');
+                const resetIcon = document.getElementById('resetSubmitIcon');
+                const errBox = document.getElementById('resetErrorMsg');
+
+                const showResetError = (msg) => {
+                    if (errBox) {
+                        errBox.textContent = msg;
+                        errBox.style.display = 'block';
+                    } else alert(msg);
+                };
+
+                resetForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (errBox) errBox.style.display = 'none';
+
+                    const password = newPasswordInput.value;
+                    const confirm = confirmPasswordInput.value;
+
+                    if (!password || password.length < 8) {
+                        return showResetError('Password must be at least 8 characters long.');
+                    }
+                    if (password !== confirm) {
+                        return showResetError('Passwords do not match.');
+                    }
+
+                    resetBtn.disabled = true;
+                    resetBtnText.textContent = 'Resetting...';
+
+                    try {
+                        const res = await fetch('/mbkauthe/api/reset-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, token, password })
+                        });
+                        const data = await res.json();
+
+                        if (!res.ok || !data.success) {
+                            resetBtn.disabled = false;
+                            resetBtnText.textContent = 'Reset Password';
+                            return showResetError(data.error || data.message || 'Failed to reset password.');
+                        }
+
+                        resetBtnText.textContent = 'Success! Redirecting...';
+                        if (resetIcon) resetIcon.className = 'fas fa-check-double';
+                        setTimeout(() => {
+                            window.location.href = '/mbkauthe/login';
+                        }, 1000);
+                    } catch (err) {
+                        resetBtn.disabled = false;
+                        resetBtnText.textContent = 'Reset Password';
+                        showResetError(err.message || 'Network error occurred.');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -27,6 +27,7 @@ export const ErrorCodes = {
   // Authorization (900-999)
   INSUFFICIENT_PERMISSIONS: 901,
   ROLE_NOT_ALLOWED: 902,
+  MUST_CHANGE_PASSWORD: 903,
 
   // Validation (1000-1099)
   MISSING_REQUIRED_FIELD: 1001,
@@ -131,6 +132,11 @@ export const ErrorMessages: Record<number, ErrorDetail> = {
     message: "Insufficient permissions",
     userMessage: "You don't have permission to perform this action.",
     hint: "Contact your administrator if you need access",
+  },
+  [ErrorCodes.MUST_CHANGE_PASSWORD]: {
+    message: "Password change required",
+    userMessage: "You must change your password before continuing.",
+    hint: "Please set a new password to activate or secure your account",
   },
   [ErrorCodes.ROLE_NOT_ALLOWED]: {
     message: "Role not allowed",

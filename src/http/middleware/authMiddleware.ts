@@ -432,6 +432,34 @@ async function validateCookieSession(req: Request, res: Response, next: NextFunc
     }
 
     attachAuthContextToRequest(req, context);
+
+    const mustChange = Boolean(sessionUser.must_change_password ?? context.mustChangePassword);
+    if (mustChange) {
+      const allowedPaths = [
+        "/mbkauthe/change-password",
+        "/mbkauthe/api/change-password",
+        "/mbkauthe/logout",
+        "/mbkauthe/api/logout",
+        "/mbkauthe/api/accounts/logout",
+        "/change-password",
+        "/api/change-password",
+      ];
+      const reqPath = req.baseUrl ? `${req.baseUrl}${req.path}` : req.path;
+      const isAllowed = allowedPaths.some((p) => reqPath.startsWith(p) || req.path.startsWith(p));
+      if (!isAllowed) {
+        if (req.method === "GET" && !prefersJson && req.accepts("html")) {
+          const returnUrl = encodeURIComponent(req.originalUrl || "/dashboard");
+          return res.redirect(`/mbkauthe/change-password?redirect=${returnUrl}`);
+        }
+        return res.status(403).json(
+          createErrorResponse(403, ErrorCodes.MUST_CHANGE_PASSWORD, {
+            message: "Password change is required before accessing this application",
+            redirect: "/mbkauthe/change-password",
+          })
+        );
+      }
+    }
+
     return next();
   } catch (err) {
     console.error(`[mbkauthe] Session validation error:`, err);
@@ -507,6 +535,7 @@ export async function reloadSessionUser(req: Request, res: Response): Promise<bo
     (req as any).session.user.role = row.role;
     (req as any).session.user.allowed_apps = row.allowed_apps;
     (req as any).session.user.user_id = row.user_id || undefined;
+    (req as any).session.user.must_change_password = Boolean(row.must_change_password);
 
     if (typeof row.full_name === "string" && row.full_name.trim() !== "") {
       (req as any).session.user.full_name = row.full_name;
@@ -726,3 +755,37 @@ export const strictSessVal = strictValidateSession;
 export const strictSessRole = strictValidateSessionAndRole;
 export const permChk = checkPermission;
 export const sessPerm = validateSessionAndPermission;
+export function enforcePasswordChange(req: Request, res: Response, next: NextFunction): any {
+  const allowedPaths = [
+    "/mbkauthe/change-password",
+    "/mbkauthe/api/change-password",
+    "/mbkauthe/logout",
+    "/mbkauthe/api/logout",
+    "/mbkauthe/api/accounts/logout",
+    "/change-password",
+    "/api/change-password",
+    "/favicon.ico",
+  ];
+  const reqPath = req.baseUrl ? `${req.baseUrl}${req.path}` : req.path;
+  if (allowedPaths.some((p) => reqPath.startsWith(p) || req.path.startsWith(p))) {
+    return next();
+  }
+
+  const username = (req as any).auth?.username || (req as any).session?.user?.username;
+  if (!username) return next();
+
+  const mustChange = Boolean((req as any).session?.user?.must_change_password ?? (req as any).auth?.mustChangePassword);
+  if (mustChange) {
+    if (req.method === "GET" && req.accepts("html")) {
+      const returnUrl = encodeURIComponent(req.originalUrl || "/dashboard");
+      return res.redirect(`/mbkauthe/change-password?redirect=${returnUrl}`);
+    }
+    return res.status(403).json(
+      createErrorResponse(403, ErrorCodes.MUST_CHANGE_PASSWORD, {
+        message: "Password change is required before accessing this application",
+        redirect: "/mbkauthe/change-password",
+      })
+    );
+  }
+  return next();
+}

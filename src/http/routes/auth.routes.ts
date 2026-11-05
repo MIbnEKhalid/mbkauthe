@@ -9,12 +9,14 @@ import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 import { isLocalOnlyUser } from "../../core/types/user.types.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { authService } from "../../services/AuthService.js";
+import { authResetService } from "../../services/AuthResetService.js";
 import { passkeyService } from "../../services/PasskeyService.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
 import { completeLoginProcess, invalidateAvatarCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
 import { createLogger } from "../../utils/logger.js";
 import { isOAuthProviderConfigured, getEnabledOAuthProvidersUI } from "../../oauth/providers/loader.js";
 import { ensureSession } from "../middleware/security.js";
+import { validateSession } from "../middleware/authMiddleware.js";
 import { renderPage } from "mbkutils";
 
 const router = express.Router();
@@ -35,6 +37,12 @@ const authSessionPaths = [
   "/api/logout-all",
   "/login",
   "/accounts",
+  "/change-password",
+  "/api/change-password",
+  "/forgot-password",
+  "/api/forgot-password",
+  "/reset-password",
+  "/api/reset-password",
 ];
 router.use(authSessionPaths, ensureSession);
 
@@ -118,6 +126,7 @@ router.post("/api/passkey/login-verify", LoginLimit, async (req, res) => {
       full_name: user.full_name,
       image: user.image,
       is_local_only: isLocalOnly,
+      must_change_password: Boolean(user.must_change_password),
     };
 
     return completeLoginProcess(req, res, user_for_session, requested_redirect, "passkey");
@@ -265,6 +274,7 @@ router.post("/api/login", LoginLimit, async (req, res) => {
       full_name: user.full_name,
       image: user.image,
       is_local_only: isLocalOnly,
+      must_change_password: Boolean(user.must_change_password),
     };
 
     if (result.requires2FA) {
@@ -477,12 +487,17 @@ router.post(["/api/accounts/logout-all", "/api/logout-all"], LoginLimit, async (
 });
 
 router.get("/login", LoginLimit, csrfProtection, (req, res) => {
+  const isAddAccount = req.query.prompt === "add_account";
+  const sessionUser = (req as any).session?.user;
+  if (!isAddAccount && sessionUser && sessionUser.must_change_password) {
+    const returnUrl = encodeURIComponent((req.query.redirect as string) || "/dashboard");
+    return res.redirect(`/mbkauthe/change-password?redirect=${returnUrl}`);
+  }
   const lastLogin = typeof (req as any).cookies?.last_login_method === "string" ? (req as any).cookies.last_login_method : null;
   const oauthProviders = mbkautheVar.OAUTH_PROVIDERS || mbkautheVar.oauth_providers;
   const githubEnabled = isOAuthProviderConfigured("github", oauthProviders) ? "true" : "false";
   const googleEnabled = isOAuthProviderConfigured("google", oauthProviders) ? "true" : "false";
   const enabledOAuthProviders = getEnabledOAuthProvidersUI(oauthProviders, lastLogin);
-  const isAddAccount = req.query.prompt === "add_account";
 
   return renderPage(req, res, "pages/loginmbkauthe.hbs", false, {
     githubLoginEnabled: githubEnabled,
@@ -522,6 +537,123 @@ router.get("/accounts", LoginLimit, csrfProtection, (req, res) => {
     full_name: (req as any).session?.user?.full_name,
     role: (req as any).session?.user?.role,
   });
+});
+
+
+// ============================================
+// Forced Password Change & Recovery Endpoints
+// ============================================
+
+router.get("/change-password", LoginLimit, ensureSession, (req, res) => {
+  const username = (req as any).session?.user?.username || (req as any).auth?.username;
+  if (!username) {
+    const returnUrl = encodeURIComponent(req.originalUrl || "/mbkauthe/change-password");
+    return res.redirect(`/mbkauthe/login?redirect=${returnUrl}`);
+  }
+
+  const redirectTarget = req.query.redirect || mbkautheVar.LOGIN_REDIRECT_URL || "/dashboard";
+  return renderPage(req, res, "pages/changePassword.hbs", false, {
+    pageTitle: "Change Password",
+    username,
+    redirectTarget,
+    version: packageJson.version,
+    appName: mbkautheVar.APP_NAME,
+  });
+});
+
+router.post("/api/change-password", LoginLimit, ensureSession, validateSession, async (req, res) => {
+  const username = (req as any).session?.user?.username || (req as any).auth?.username;
+  if (!username) {
+    return res.status(401).json(createErrorResponse(401, ErrorCodes.SESSION_NOT_FOUND, { message: "Authentication required" }));
+  }
+
+  const { newPassword, confirmPassword } = req.body || {};
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.INVALID_PASSWORD_LENGTH, { message: "New password must be at least 8 characters long." }));
+  }
+  if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.INVALID_PASSWORD_LENGTH, { message: "Passwords do not match." }));
+  }
+
+  try {
+    const result = await authResetService.changePasswordForced(username, newPassword);
+    if ((req as any).session?.user) {
+      (req as any).session.user.must_change_password = false;
+      await new Promise<void>((resolve, reject) => (req as any).session.save((err: any) => err ? reject(err) : resolve()));
+    }
+    return res.json({ success: true, message: result.message, redirect_url: req.query.redirect || "/dashboard" });
+  } catch (err: any) {
+    logAuth("Error changing password:", err);
+    return res.status(err.statusCode || 500).json(createErrorResponse(err.statusCode || 500, err.errorCode || ErrorCodes.INTERNAL_SERVER_ERROR, { message: err.message || "Failed to change password" }));
+  }
+});
+
+router.get("/forgot-password", LoginLimit, (req, res) => {
+  return renderPage(req, res, "pages/forgotReset.hbs", false, {
+    mode: "forgot",
+    version: packageJson.version,
+    appName: mbkautheVar.APP_NAME,
+  });
+});
+
+router.post("/api/forgot-password", LoginLimit, async (req, res) => {
+  const { identifier, username } = req.body || {};
+  const targetIdentifier = identifier || username;
+  if (!targetIdentifier) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD, { message: "Username or email is required" }));
+  }
+
+  try {
+    const origin = `${req.protocol}://${req.get("host")}`;
+    const result = await authResetService.requestPasswordReset(targetIdentifier, { origin });
+    return res.json(result);
+  } catch (err: any) {
+    logAuth("Forgot password error:", err);
+    return res.status(err.statusCode || 500).json(createErrorResponse(err.statusCode || 500, err.errorCode || ErrorCodes.INTERNAL_SERVER_ERROR, { message: err.message || "An error occurred. Please try again." }));
+  }
+});
+
+router.get("/reset-password", LoginLimit, async (req, res) => {
+  const { token, username } = req.query as { token?: string; username?: string };
+  if (!token || !username) {
+    return renderPage(req, res, "pages/forgotReset.hbs", false, {
+      mode: "reset",
+      error: "Invalid password reset link.",
+      version: packageJson.version,
+    });
+  }
+
+  const validation = await authResetService.validateResetToken(username, token);
+  if (!validation.valid) {
+    return renderPage(req, res, "pages/forgotReset.hbs", false, {
+      mode: "reset",
+      error: validation.message || "Invalid or expired reset link.",
+      version: packageJson.version,
+    });
+  }
+
+  return renderPage(req, res, "pages/forgotReset.hbs", false, {
+    mode: "reset",
+    username,
+    token,
+    version: packageJson.version,
+    appName: mbkautheVar.APP_NAME,
+  });
+});
+
+router.post("/api/reset-password", LoginLimit, async (req, res) => {
+  const { username, token, password } = req.body || {};
+  if (!username || !token || !password) {
+    return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD, { message: "Username, token, and new password are required." }));
+  }
+
+  try {
+    const result = await authResetService.resetPassword(username, token, password);
+    return res.json(result);
+  } catch (err: any) {
+    logAuth("Reset password submission error:", err);
+    return res.status(err.statusCode || 500).json(createErrorResponse(err.statusCode || 500, err.errorCode || ErrorCodes.INTERNAL_SERVER_ERROR, { message: err.message || "Failed to reset password." }));
+  }
 });
 
 export const authRouter = router;

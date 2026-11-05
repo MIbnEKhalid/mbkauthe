@@ -81,6 +81,21 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
     return res.redirect(`/mbkauthe/login${queryParams ? `?${queryParams}` : ""}`);
   });
 
+  router.get("/change-password", (req, res) => {
+    const queryParams = new URLSearchParams(req.query as any).toString();
+    return res.redirect(`/mbkauthe/change-password${queryParams ? `?${queryParams}` : ""}`);
+  });
+
+  router.get("/forgot-password", (req, res) => {
+    const queryParams = new URLSearchParams(req.query as any).toString();
+    return res.redirect(`/mbkauthe/forgot-password${queryParams ? `?${queryParams}` : ""}`);
+  });
+
+  router.get("/reset-password", (req, res) => {
+    const queryParams = new URLSearchParams(req.query as any).toString();
+    return res.redirect(`/mbkauthe/reset-password${queryParams ? `?${queryParams}` : ""}`);
+  });
+
   if (enableStaticAssets) {
     router.get(["/icon.svg", "/favicon.ico", "/icon.png"], (req, res) => {
       res.setHeader("Cache-Control", "public, max-age=31536000");

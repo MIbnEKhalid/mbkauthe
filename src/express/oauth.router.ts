@@ -125,7 +125,7 @@ export function createOAuthRouter(
       res.json = originalJson;
       res.status = originalStatus;
       if (data?.success && statusCode === 200 && !isJsonRequest(req)) {
-        const finalRedirect = returnTo && isSafeRelativeRedirect(returnTo) ? returnTo : defaultRedirect;
+        const finalRedirect = data?.redirect_url || (returnTo && isSafeRelativeRedirect(returnTo) ? returnTo : defaultRedirect);
         logOAuth(`${providerId} login successful: Redirecting to ${finalRedirect}`);
         return res.redirect(finalRedirect);
       }

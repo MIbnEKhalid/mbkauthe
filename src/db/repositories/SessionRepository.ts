@@ -9,7 +9,7 @@ export class SessionRepository extends BaseRepository {
   }
 
   buildSessionUserSelect({ includeProfile = false, includeTwoFA = false } = {}): string {
-    const fields = ["s.sid as sid", "s.expire as expires_at", "u.username", "u.user_id", "u.is_active", "u.is_local_only", "u.role", "u.allowed_apps"];
+    const fields = ["s.sid as sid", "s.expire as expires_at", "u.username", "u.user_id", "u.is_active", "u.is_local_only", "u.role", "u.allowed_apps", "u.must_change_password"];
     if (includeProfile) fields.push("u.full_name", "u.image");
     if (includeTwoFA) fields.push("tfa.is_enabled");
     return fields.join(", ");

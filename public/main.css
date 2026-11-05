@@ -541,7 +541,7 @@ code, pre, kbd {
    Form Controls & Inputs
    ========================================================================== */
 
-.login-form, .otp-form {
+.login-form, .otp-form, .auth-form {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
@@ -785,7 +785,9 @@ code, pre, kbd {
   cursor: not-allowed;
 }
 
-.btn-primary.btn-submit {
+.btn-primary.btn-submit,
+.login-form > button[type="submit"],
+.auth-form > button[type="submit"] {
   width: 100%;
   height: 46px;
   font-size: 0.95rem;

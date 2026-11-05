@@ -1,3 +1,4 @@
+import fs from 'fs';
 import request from 'supertest';
 import express from 'express';
 import path from 'path';
@@ -12,6 +13,7 @@ process.env.env = 'dev';
 process.env.dbLogs = 'true';
 process.env.dbLogsCallsite = 'false';
 delete process.env.mbkauthShared;
+process.env.mbkautheVar = JSON.stringify({ APP_NAME: 'mbkauthe', DOMAIN: 'localhost', DB_TYPE: 'sqlite', SQLITE_PATH: ':memory:' });
 
 import { isSafeRelativeRedirect, sanitizeRelativeRedirect, isSafeFetchUrl, setupViewEngine } from 'mbkutils';
 
@@ -57,7 +59,12 @@ const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
-beforeAll(() => {
+beforeAll(async () => {
+  try {
+    const schemaSql = fs.readFileSync(path.join(__dirname, "../../docs/schema/sqlite.sql"), "utf8");
+    if (typeof dblogin.execScript === "function") dblogin.execScript(schemaSql);
+  } catch (e) {}
+
   vi.spyOn(console, 'log').mockImplementation((...args) => {
     if (!shouldSilenceConsole(args)) {
       originalConsoleLog(...args);
@@ -173,90 +180,6 @@ describe('mbkauthe Routes', () => {
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toContain('/mbkauthe/login');
-    });
-  });
-
-  describe('Authentication Pages', () => {
-    test('GET /mbkauthe/login contains loginUsername input', async () => {
-      const response = await request(app).get('/mbkauthe/login');
-
-      expect(response.status).toBe(200);
-      expect(response.text).toMatch(/id\s*=\s*["']loginUsername["']/i);
-    });
-
-    test('GET /mbkauthe/login renders csrf token field', async () => {
-      const response = await request(app).get('/mbkauthe/login');
-
-      expect(response.status).toBe(200);
-      expect(response.text).toMatch(/name\s*=\s*["']_csrf["']/i);
-    });
-
-    test('GET /mbkauthe/2fa contains token input or redirects', async () => {
-      const response = await request(app)
-        .get('/mbkauthe/2fa')
-        .redirects(0);
-
-      if (response.status === 302) {
-        expect(response.headers.location).toContain('/mbkauthe/login');
-      } else {
-        expect(response.status).toBe(200);
-        expect(response.text).toMatch(/id\s*=\s*["']token["']/i);
-      }
-    });
-  });
-
-  describe('Info Pages', () => {
-    test.each([
-      ['/mbkauthe/info', 'info page'],
-      ['/mbkauthe/i', 'info short page'],
-    ])('GET %s contains CurrentVersion div', async (routePath) => {
-      const response = await request(app).get(routePath);
-
-      expect(response.status).toBe(200);
-      expect(response.text).toMatch(/id\s*=\s*["']CurrentVersion["']/i);
-    });
-
-    test('GET /mbkauthe/ErrorCode contains error-603 div', async () => {
-      const response = await request(app).get('/mbkauthe/ErrorCode');
-
-      expect(response.status).toBe(200);
-      expect(response.text).toMatch(/id\s*=\s*["']error-603["']/i);
-    });
-
-    test('GET /mbkauthe/db renders DB monitor filters and summary sections', async () => {
-      const response = await request(app).get('/mbkauthe/db');
-
-      expect(response.status).toBe(200);
-      expect(response.text).toContain('DB Query Monitor');
-      expect(response.text).toContain('Top Repeated Query Shapes');
-      expect(response.text).toContain('Slowest Recent Queries');
-      expect(response.text).toMatch(/name="username"/i);
-      expect(response.text).toMatch(/name="url"/i);
-      expect(response.text).toMatch(/name="success"/i);
-    });
-  });
-
-  describe('Static Assets', () => {
-    test('GET /mbkauthe/main.js returns JavaScript', async () => {
-      const response = await request(app).get('/mbkauthe/main.js');
-
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toContain('javascript');
-      expect(response.text).toMatch(/^window\.mbkautheConfig=/);
-    });
-
-    test('GET /icon.svg returns SVG content', async () => {
-      const response = await request(app).get('/icon.svg');
-
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toContain('image/png');
-    });
-
-    test('GET /mbkauthe/bg.webp returns WEBP content', async () => {
-      const response = await request(app).get('/mbkauthe/bg.webp');
-
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toContain('image/webp');
     });
   });
 

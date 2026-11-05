@@ -36,6 +36,7 @@ export { PermissionRepository, permissionRepository } from "./db/repositories/Pe
 export { ApiTokenRepository, apiTokenRepository } from "./db/repositories/ApiTokenRepository.js";
 export { CliAuthSessionRepository, cliAuthSessionRepository } from "./db/repositories/CliAuthSessionRepository.js";
 export { OAuthAccountRepository, oAuthAccountRepository } from "./db/repositories/OAuthAccountRepository.js";
+export { AuthChallengeRepository, authChallengeRepository, type AuthChallengeRow, type ChallengeType, type CreateChallengeParams } from "./db/repositories/AuthChallengeRepository.js";
 
 
 // 4. Domain Events & Token Engine
@@ -52,7 +53,7 @@ export {
 
 // 5. Service Layer
 export {
-  AuthService, authService, type LoginOptions, type LoginResult, type DeviceAccount, type SwitchSessionResult, type SessionValidityResult, PasskeyService, passkeyService, type PasskeyServiceOptions, ApiTokenService, apiTokenService, type CreateTokenResult, type CreateTokenOptions, type VerifyTokenResult, CliAuthService, cliAuthService, type InitiateCliAuthParams, type CliAuthInitiateResult, type PollCliAuthResult, OAuthFlowService, oAuthFlowService, getDefaultOAuthFlowService, syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult
+  AuthService, authService, type LoginOptions, type LoginResult, type DeviceAccount, type SwitchSessionResult, type SessionValidityResult, PasskeyService, passkeyService, type PasskeyServiceOptions, ApiTokenService, apiTokenService, type CreateTokenResult, type CreateTokenOptions, type VerifyTokenResult, CliAuthService, cliAuthService, type InitiateCliAuthParams, type CliAuthInitiateResult, type PollCliAuthResult, OAuthFlowService, oAuthFlowService, getDefaultOAuthFlowService, syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult, AuthResetService, authResetService, setAuthEmailProvider, getAuthEmailProvider, type AuthEmailProvider, hashChallengeToken
 } from "./services/index.js";
 
 
@@ -115,7 +116,7 @@ export {
   securityHeadersMiddleware, corsMiddleware, ensureSession, ensureSessionAsync, sessionRestorationMiddleware, sessionCookieSyncMiddleware, requestContextMiddleware
 } from "./http/middleware/security.js";
 export {
-  validateSession, validateApiSession, checkRolePermission, checkPermission, validateSessionAndRole, validateSessionAndPermission, authenticate, reloadSessionUser, strictValidateSession, strictValidateSessionAndRole, sessVal, sessRole, roleChk, strictSessVal, strictSessRole, permChk, sessPerm
+  validateSession, validateApiSession, checkRolePermission, checkPermission, validateSessionAndRole, validateSessionAndPermission, authenticate, reloadSessionUser, strictValidateSession, strictValidateSessionAndRole, sessVal, sessRole, roleChk, strictSessVal, strictSessRole, permChk, sessPerm, enforcePasswordChange
 } from "./http/middleware/authMiddleware.js";
 
 // 12. Express Routers & App Factory

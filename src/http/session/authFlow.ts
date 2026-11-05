@@ -130,6 +130,7 @@ export async function completeLoginProcess(
       origin: originDomain,
       domain: originDomain,
       device_id: deviceId,
+      must_change_password: Boolean(user.must_change_password),
     };
 
     invalidateAvatarCache(username);
@@ -156,8 +157,14 @@ export async function completeLoginProcess(
 
       logAuth(`User "${username}" logged in successfully via ${method || "password"} on device "${deviceId}" (last_login updated)`);
 
-      const responsePayload: Record<string, any> = { success: true, message: "Login successful", username };
-      if (redirect_url) responsePayload.redirect_url = redirect_url;
+      const mustChange = Boolean(user.must_change_password);
+      const responsePayload: Record<string, any> = { success: true, message: "Login successful", username, must_change_password: mustChange };
+      if (mustChange) {
+        const safeReturn = redirect_url ? `?redirect=${encodeURIComponent(redirect_url)}` : "";
+        responsePayload.redirect_url = `/mbkauthe/change-password${safeReturn}`;
+      } else if (redirect_url) {
+        responsePayload.redirect_url = redirect_url;
+      }
       res.status(200).json(responsePayload);
     });
   } catch (err) {

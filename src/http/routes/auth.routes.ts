@@ -9,7 +9,7 @@ import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 import { isLocalOnlyUser } from "../../core/types/user.types.js";
 import { authRepository } from "../../db/repositories/AuthRepository.js";
 import { authService } from "../../services/AuthService.js";
-import { authResetService } from "../../services/AuthResetService.js";
+import { authResetService, isPasswordResetAllowed } from "../../services/AuthResetService.js";
 import { passkeyService } from "../../services/PasskeyService.js";
 import { attachSessionPermissions } from "../session/sessionPermissions.js";
 import { completeLoginProcess, invalidateAvatarCache, fetchActiveSession, invalidateDbSession, isUuid } from "../session/authFlow.js";
@@ -39,10 +39,6 @@ const authSessionPaths = [
   "/accounts",
   "/change-password",
   "/api/change-password",
-  "/forgot-password",
-  "/api/forgot-password",
-  "/reset-password",
-  "/api/reset-password",
 ];
 router.use(authSessionPaths, ensureSession);
 
@@ -518,6 +514,7 @@ router.get("/login", LoginLimit, csrfProtection, (req, res) => {
     lastLoginGoogle: lastLogin === "google",
     showLoggedOutMessage: req.query.reason === "logged_out",
     redirectTarget: req.query.redirect || null,
+    allowPasswordReset: isPasswordResetAllowed(),
   });
 });
 
@@ -536,6 +533,7 @@ router.get("/accounts", LoginLimit, csrfProtection, (req, res) => {
     username: (req as any).session?.user?.username,
     full_name: (req as any).session?.user?.full_name,
     role: (req as any).session?.user?.role,
+    allowPasswordReset: isPasswordResetAllowed(),
   });
 });
 
@@ -589,6 +587,11 @@ router.post("/api/change-password", LoginLimit, ensureSession, validateSession, 
 });
 
 router.get("/forgot-password", LoginLimit, (req, res) => {
+  if (!isPasswordResetAllowed()) {
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    const coreUrl = process.env.MBKCORE_URL || "https://core.mbktech.org";
+    return res.redirect(`${coreUrl}/forgot-password${query}`);
+  }
   return renderPage(req, res, "pages/forgotReset.hbs", false, {
     mode: "forgot",
     version: packageJson.version,
@@ -597,6 +600,11 @@ router.get("/forgot-password", LoginLimit, (req, res) => {
 });
 
 router.post("/api/forgot-password", LoginLimit, async (req, res) => {
+  if (!isPasswordResetAllowed()) {
+    return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+      message: "Password reset is not enabled for this application. Please visit https://core.mbktech.org/forgot-password",
+    }));
+  }
   const { identifier, username } = req.body || {};
   const targetIdentifier = identifier || username;
   if (!targetIdentifier) {
@@ -604,7 +612,7 @@ router.post("/api/forgot-password", LoginLimit, async (req, res) => {
   }
 
   try {
-    const origin = `${req.protocol}://${req.get("host")}`;
+    const origin = process.env.MBKCORE_URL || `${req.protocol}://${req.get("host")}`;
     const result = await authResetService.requestPasswordReset(targetIdentifier, { origin });
     return res.json(result);
   } catch (err: any) {
@@ -614,6 +622,11 @@ router.post("/api/forgot-password", LoginLimit, async (req, res) => {
 });
 
 router.get("/reset-password", LoginLimit, async (req, res) => {
+  if (!isPasswordResetAllowed()) {
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    const coreUrl = process.env.MBKCORE_URL || "https://core.mbktech.org";
+    return res.redirect(`${coreUrl}/reset-password${query}`);
+  }
   const { token, username } = req.query as { token?: string; username?: string };
   if (!token || !username) {
     return renderPage(req, res, "pages/forgotReset.hbs", false, {
@@ -642,6 +655,11 @@ router.get("/reset-password", LoginLimit, async (req, res) => {
 });
 
 router.post("/api/reset-password", LoginLimit, async (req, res) => {
+  if (!isPasswordResetAllowed()) {
+    return res.status(403).json(createErrorResponse(403, ErrorCodes.INSUFFICIENT_PERMISSIONS, {
+      message: "Password reset is not enabled for this application. Please visit https://core.mbktech.org/reset-password",
+    }));
+  }
   const { username, token, password } = req.body || {};
   if (!username || !token || !password) {
     return res.status(400).json(createErrorResponse(400, ErrorCodes.MISSING_REQUIRED_FIELD, { message: "Username, token, and new password are required." }));

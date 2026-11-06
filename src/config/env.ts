@@ -41,7 +41,8 @@ const CANONICAL_KEYS = [
   "app_name", "main_secret_token", "session_secret_key",
   "is_deployed", "db_type", "login_db", "sqlite_path", "mbkauth_two_fa_enable",
   "cookie_expire_time", "domain", "login_redirect_url", "oauth_providers",
-  "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled", "db_encryption_key"
+  "max_sessions_per_user", "cli_auth_base_url", "cli_auth_enabled", "db_encryption_key",
+  "allow_password_reset"
 ].map((k) => ({ lower: k, upper: k.toUpperCase() }));
 
 const DEFAULT_CONFIG: Record<string, any> = {
@@ -59,7 +60,7 @@ const DEFAULT_CONFIG: Record<string, any> = {
   db_encryption_key: "",
 };
 
-const BOOLEAN_KEYS = new Set(["mbkauth_two_fa_enable", "is_deployed", "cli_auth_enabled"]);
+const BOOLEAN_KEYS = new Set(["mbkauth_two_fa_enable", "is_deployed", "cli_auth_enabled", "allow_password_reset"]);
 const STRING_KEYS = new Set([
   "app_name", "main_secret_token", "session_secret_key", "db_type", "login_db", "sqlite_path",
   "domain", "login_redirect_url", "cli_auth_base_url", "db_encryption_key"
@@ -186,6 +187,11 @@ function normalizeAndValidateConfig(config: Record<string, any>, errors: string[
     if (!redirectUrl.startsWith("/") || redirectUrl.startsWith("//")) {
       errors.push("LOGIN_REDIRECT_URL must be a relative path starting with '/'");
     }
+  }
+
+  if (!hasValue(config.allow_password_reset)) {
+    const isCore = String(config.app_name || "").toLowerCase() === "mbkcore";
+    setBoth(config, "allow_password_reset", "ALLOW_PASSWORD_RESET", isCore ? "true" : "false");
   }
 
   for (const { lower, upper } of CANONICAL_KEYS) {

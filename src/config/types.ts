@@ -34,6 +34,8 @@ export interface MBKAuthConfig {
   DB_ENCRYPTION_KEY?: string;
   db_encryption_key?: string;
   OAUTH_PROVIDERS?: OAuthProvidersConfig;
+  ALLOW_PASSWORD_RESET?: 'true' | 'false' | 'f' | boolean;
+  allow_password_reset?: 'true' | 'false' | 'f' | boolean;
 
   [key: string]: any;
 }

@@ -17,6 +17,7 @@ import miscRoutes, { checkVersion } from "./routes/misc.routes.js";
 import dbLogsRoutes from "./routes/dbLogs.routes.js";
 import cliAuthRouter from "./routes/cliAuth.routes.js";
 import devRoutes from "./routes/dev.routes.js";
+import { isPasswordResetAllowed } from "../services/AuthResetService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,12 +89,30 @@ export function createMbkautheApp(options: MbkautheAppOptions = {}): Router {
 
   router.get("/forgot-password", (req, res) => {
     const queryParams = new URLSearchParams(req.query as any).toString();
+    if (!isPasswordResetAllowed()) {
+      const coreAuthUrl = process.env.MBKCORE_URL || "https://core.mbktech.org";
+      return res.redirect(`${coreAuthUrl}/forgot-password${queryParams ? `?${queryParams}` : ""}`);
+    }
     return res.redirect(`/mbkauthe/forgot-password${queryParams ? `?${queryParams}` : ""}`);
   });
 
   router.get("/reset-password", (req, res) => {
     const queryParams = new URLSearchParams(req.query as any).toString();
+    if (!isPasswordResetAllowed()) {
+      const coreAuthUrl = process.env.MBKCORE_URL || "https://core.mbktech.org";
+      return res.redirect(`${coreAuthUrl}/reset-password${queryParams ? `?${queryParams}` : ""}`);
+    }
     return res.redirect(`/mbkauthe/reset-password${queryParams ? `?${queryParams}` : ""}`);
+  });
+
+  router.post("/api/forgot-password", (req, res, next) => {
+    req.url = "/api/forgot-password";
+    return authRoutes(req, res, next);
+  });
+
+  router.post("/api/reset-password", (req, res, next) => {
+    req.url = "/api/reset-password";
+    return authRoutes(req, res, next);
   });
 
   if (enableStaticAssets) {

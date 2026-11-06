@@ -392,5 +392,46 @@ describe('Config Resolution and Validation', () => {
       expect(config.OAUTH_PROVIDERS.microsoft.client_id).toBe('ms-id');
     });
   });
-});
+  describe('ALLOW_PASSWORD_RESET configuration', () => {
+    it('defaults ALLOW_PASSWORD_RESET to true for mbkcore', () => {
+      process.env.APP_NAME = 'portal';
+      process.env.MAIN_SECRET_TOKEN = 'secret-123';
+      process.env.SESSION_SECRET_KEY = 'session-secret-32-chars-long-ok';
+      process.env.IS_DEPLOYED = 'false';
+      process.env.MBKAUTH_TWO_FA_ENABLE = 'false';
+      process.env.DOMAIN = 'localhost';
+      delete process.env.ALLOW_PASSWORD_RESET;
+      delete process.env.allow_password_reset;
 
+      const config = validateConfiguration();
+      expect(config.ALLOW_PASSWORD_RESET).toBe('true');
+    });
+
+    it('defaults ALLOW_PASSWORD_RESET to false for other apps', () => {
+      process.env.APP_NAME = 'otherapp';
+      process.env.MAIN_SECRET_TOKEN = 'secret-123';
+      process.env.SESSION_SECRET_KEY = 'session-secret-32-chars-long-ok';
+      process.env.IS_DEPLOYED = 'false';
+      process.env.MBKAUTH_TWO_FA_ENABLE = 'false';
+      process.env.DOMAIN = 'localhost';
+      delete process.env.ALLOW_PASSWORD_RESET;
+      delete process.env.allow_password_reset;
+
+      const config = validateConfiguration();
+      expect(config.ALLOW_PASSWORD_RESET).toBe('false');
+    });
+
+    it('respects explicit ALLOW_PASSWORD_RESET override in env or mbkautheVar', () => {
+      process.env.APP_NAME = 'customapp';
+      process.env.MAIN_SECRET_TOKEN = 'secret-123';
+      process.env.SESSION_SECRET_KEY = 'session-secret-32-chars-long-ok';
+      process.env.IS_DEPLOYED = 'false';
+      process.env.MBKAUTH_TWO_FA_ENABLE = 'false';
+      process.env.DOMAIN = 'localhost';
+      process.env.ALLOW_PASSWORD_RESET = 'true';
+
+      const config = validateConfiguration();
+      expect(config.ALLOW_PASSWORD_RESET).toBe('true');
+    });
+  });
+});

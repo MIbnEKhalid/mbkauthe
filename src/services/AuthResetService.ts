@@ -22,6 +22,14 @@ export function getAuthEmailProvider(): AuthEmailProvider | null {
   return activeEmailProvider;
 }
 
+export function isPasswordResetAllowed(): boolean {
+  const val = mbkautheVar.ALLOW_PASSWORD_RESET ?? mbkautheVar.allow_password_reset;
+  if (typeof val === "boolean") return val;
+  if (typeof val === "string") return val.toLowerCase() === "true";
+  const appName = (mbkautheVar.APP_NAME || "").toLowerCase();
+  return appName === "portal";
+}
+
 export function hashChallengeToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -85,7 +93,7 @@ export class AuthResetService {
       max_attempts: 5,
     });
 
-    const baseUrl = options.origin || mbkautheVar.BASE_URL || "";
+    const baseUrl = options.origin || process.env.portal_URL || mbkautheVar.BASE_URL || "https://core.mbktech.org";
     const resetLink = `${baseUrl}/mbkauthe/reset-password?token=${rawToken}&username=${encodeURIComponent(username)}`;
 
     if (email && activeEmailProvider) {

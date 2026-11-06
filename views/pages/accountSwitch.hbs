@@ -32,7 +32,7 @@
                         </div>
 
                         <div class="sidebar-links">
-                            <a href="/forgot-password" class="sidebar-link">
+                            <a href="{{#if allowPasswordReset}}/mbkauthe/forgot-password{{else}}https://core.mbktech.org/forgot-password{{/if}}" class="sidebar-link" rel="noopener noreferrer">
                                 <i class="fas fa-key"></i> Forgot Password?
                             </a>
                             <a href="https://mbktech.org/Support" target="_blank" class="sidebar-link">

@@ -53,7 +53,7 @@ export {
 
 // 5. Service Layer
 export {
-  AuthService, authService, type LoginOptions, type LoginResult, type DeviceAccount, type SwitchSessionResult, type SessionValidityResult, PasskeyService, passkeyService, type PasskeyServiceOptions, ApiTokenService, apiTokenService, type CreateTokenResult, type CreateTokenOptions, type VerifyTokenResult, CliAuthService, cliAuthService, type InitiateCliAuthParams, type CliAuthInitiateResult, type PollCliAuthResult, OAuthFlowService, oAuthFlowService, getDefaultOAuthFlowService, syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult, AuthResetService, authResetService, setAuthEmailProvider, getAuthEmailProvider, type AuthEmailProvider, hashChallengeToken
+  AuthService, authService, type LoginOptions, type LoginResult, type DeviceAccount, type SwitchSessionResult, type SessionValidityResult, PasskeyService, passkeyService, type PasskeyServiceOptions, ApiTokenService, apiTokenService, type CreateTokenResult, type CreateTokenOptions, type VerifyTokenResult, CliAuthService, cliAuthService, type InitiateCliAuthParams, type CliAuthInitiateResult, type PollCliAuthResult, OAuthFlowService, oAuthFlowService, getDefaultOAuthFlowService, syncAppPermissions, type SyncAppPermissionsOptions, type SyncResult, AuthResetService, authResetService, setAuthEmailProvider, getAuthEmailProvider, isPasswordResetAllowed, type AuthEmailProvider, hashChallengeToken
 } from "./services/index.js";
 
 

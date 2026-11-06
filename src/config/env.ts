@@ -190,7 +190,8 @@ function normalizeAndValidateConfig(config: Record<string, any>, errors: string[
   }
 
   if (!hasValue(config.allow_password_reset)) {
-    const isCore = String(config.app_name || "").toLowerCase() === "mbkcore";
+    const appName = String(config.app_name || "").toLowerCase();
+    const isCore = appName === "portal";
     setBoth(config, "allow_password_reset", "ALLOW_PASSWORD_RESET", isCore ? "true" : "false");
   }
 

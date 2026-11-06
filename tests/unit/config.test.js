@@ -393,7 +393,7 @@ describe('Config Resolution and Validation', () => {
     });
   });
   describe('ALLOW_PASSWORD_RESET configuration', () => {
-    it('defaults ALLOW_PASSWORD_RESET to true for mbkcore', () => {
+    it('defaults ALLOW_PASSWORD_RESET to true for portal', () => {
       process.env.APP_NAME = 'portal';
       process.env.MAIN_SECRET_TOKEN = 'secret-123';
       process.env.SESSION_SECRET_KEY = 'session-secret-32-chars-long-ok';
@@ -417,7 +417,11 @@ describe('Config Resolution and Validation', () => {
       delete process.env.ALLOW_PASSWORD_RESET;
       delete process.env.allow_password_reset;
 
-      const config = validateConfiguration();
+      let config = validateConfiguration();
+      expect(config.ALLOW_PASSWORD_RESET).toBe('false');
+
+      process.env.APP_NAME = 'mbkcore';
+      config = validateConfiguration();
       expect(config.ALLOW_PASSWORD_RESET).toBe('false');
     });
 

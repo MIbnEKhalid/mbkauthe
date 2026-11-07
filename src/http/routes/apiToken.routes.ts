@@ -4,7 +4,6 @@ import { sessRole, sessPerm } from "../middleware/authMiddleware.js";
 import { apiTokenRepository } from "../../db/repositories/ApiTokenRepository.js";
 import { apiTokenService } from "../../services/ApiTokenService.js";
 import { permissionRepository } from "../../db/repositories/PermissionRepository.js";
-import { evaluatePermission } from "../../core/permissions/evaluator.js";
 import { MbkAuthError } from "../../core/errors/MbkAuthError.js";
 
 const router = express.Router();
@@ -13,29 +12,155 @@ function normalizeRequestedPermissions(value: unknown): string[] {
   let list: any[] = [];
   if (Array.isArray(value)) list = value;
   else if (typeof value === "string") list = value.split(",");
-  return Array.from(new Set(list.map((s) => String(s).trim()).filter(Boolean)));
+  return Array.from(new Set(list.map((s) => String(s).trim().toLowerCase()).filter(Boolean)));
+}
+
+function parseJsonObject(val: any): Record<string, any> {
+  if (!val) return {};
+  if (typeof val === "object" && !Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    try {
+      const parsed = JSON.parse(val);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+async function computeLiveUserMasks(username: string, fallbackPerms: Record<string, number> = {}): Promise<{ isSuperadmin: boolean; masks: Record<string, number> }> {
+  try {
+    const userRes = await (apiTokenRepository as any).execute(
+      `SELECT role, extra_roles, perm_overrides FROM mbkcore_users WHERE LOWER(username) = LOWER($1) LIMIT 1`,
+      [username]
+    );
+    const userRow = userRes?.rows?.[0];
+    if (!userRow) return { isSuperadmin: false, masks: fallbackPerms };
+
+    const primaryRole = String(userRow.role || "normaluser").trim().toLowerCase();
+    let extraRoles: string[] = [];
+    if (Array.isArray(userRow.extra_roles)) {
+      extraRoles = userRow.extra_roles;
+    } else if (typeof userRow.extra_roles === "string") {
+      try {
+        const parsed = JSON.parse(userRow.extra_roles);
+        if (Array.isArray(parsed)) extraRoles = parsed;
+      } catch {}
+    }
+
+    const allRoles = Array.from(new Set([primaryRole, ...extraRoles.map((r) => String(r).trim().toLowerCase())].filter(Boolean)));
+    if (allRoles.includes("superadmin")) {
+      return { isSuperadmin: true, masks: {} };
+    }
+
+    const combinedMasks: Record<string, number> = {};
+    for (const roleName of allRoles) {
+      const roleRes = await (apiTokenRepository as any).execute(
+        `SELECT permissions FROM mbkcore_roles WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+        [roleName]
+      );
+      const rolePerms = parseJsonObject(roleRes?.rows?.[0]?.permissions);
+      for (const [resKey, maskVal] of Object.entries(rolePerms)) {
+        const numMask = Number(maskVal) || 0;
+        if (numMask > 0) {
+          const cleanKey = resKey.trim().toLowerCase();
+          combinedMasks[cleanKey] = (combinedMasks[cleanKey] || 0) | numMask;
+        }
+      }
+    }
+
+    const rawOverrides = parseJsonObject(userRow.perm_overrides);
+    const allows = parseJsonObject(rawOverrides.allows);
+    const denies = parseJsonObject(rawOverrides.denies);
+
+    for (const [resKey, maskVal] of Object.entries(allows)) {
+      const numMask = Number(maskVal) || 0;
+      if (numMask > 0) {
+        const cleanKey = resKey.trim().toLowerCase();
+        combinedMasks[cleanKey] = (combinedMasks[cleanKey] || 0) | numMask;
+      }
+    }
+    for (const [resKey, maskVal] of Object.entries(denies)) {
+      const numMask = Number(maskVal) || 0;
+      if (numMask > 0) {
+        const cleanKey = resKey.trim().toLowerCase();
+        combinedMasks[cleanKey] = (combinedMasks[cleanKey] || 0) & ~numMask;
+      }
+    }
+
+    return { isSuperadmin: false, masks: combinedMasks };
+  } catch (err) {
+    try {
+      const effective = await permissionRepository.computeEffectiveForUser(username);
+      return { isSuperadmin: false, masks: effective?.masks || fallbackPerms };
+    } catch {
+      return { isSuperadmin: false, masks: fallbackPerms };
+    }
+  }
 }
 
 async function loadGrantablePermissions(user: any) {
-  const roles = await permissionRepository.listRoles();
-  if (user.role === "superadmin") {
-    return { active: roles, grantable: roles, effective: user.perms || {} };
+  const catalogRes = await (apiTokenRepository as any).execute(
+    `SELECT permission AS id, app_key, service_key, action_key, label, mask, is_active
+     FROM mbkcore_permission_catalog
+     WHERE is_active = TRUE
+       AND app_key IS NOT NULL AND BTRIM(app_key) <> ''
+       AND service_key IS NOT NULL AND BTRIM(service_key) <> ''
+     ORDER BY app_key ASC, service_key ASC, mask ASC`
+  );
+
+  const active = (catalogRes?.rows || []).map((r: any) => ({
+    id: String(r.id).trim().toLowerCase(),
+    app_key: String(r.app_key || "portal").trim().toLowerCase(),
+    service_key: String(r.service_key || "general").trim().toLowerCase(),
+    action_key: String(r.action_key || "access").trim().toLowerCase(),
+    label: r.label || r.id,
+    mask: Number(r.mask) || 1,
+  }));
+
+  if (user?.role === "superadmin") {
+    return { active, grantable: active, effective: user.perms || {} };
   }
-  const effective = await permissionRepository.computeEffectiveForUser(user.username);
-  return { active: roles, grantable: roles, effective: effective.masks };
+
+  const { isSuperadmin, masks } = await computeLiveUserMasks(user?.username, user?.perms || {});
+  if (isSuperadmin) {
+    return { active, grantable: active, effective: masks };
+  }
+
+  const grantable = active.filter((row: any) => {
+    if (row.id === "global:basic:access") return true;
+    const svcMask = Number(masks[row.service_key] || 0);
+    return (svcMask & row.mask) !== 0;
+  });
+
+  return { active, grantable, effective: masks };
 }
 
 function groupPermissions(rows: any[]) {
   const apps = new Map<string, Map<string, any[]>>();
-  for (const { id, app_key, service_key, label } of rows) {
+  for (const row of rows) {
+    const { id, app_key, service_key, action_key, label, mask } = row;
     if (!apps.has(app_key)) apps.set(app_key, new Map());
     const services = apps.get(app_key)!;
     if (!services.has(service_key)) services.set(service_key, []);
-    services.get(service_key)!.push({ id, label });
+    services.get(service_key)!.push({
+      id,
+      permission: id,
+      key: id,
+      app_key,
+      service_key,
+      action_key,
+      label,
+      mask,
+    });
   }
   return [...apps.entries()].map(([appKey, services]) => ({
     appKey,
-    services: [...services.entries()].map(([serviceKey, permissions]) => ({ serviceKey, permissions })),
+    services: [...services.entries()].map(([serviceKey, permissions]) => ({
+      serviceKey,
+      permissions,
+    })),
   }));
 }
 
@@ -78,7 +203,8 @@ router.post("/api/token", sessPerm("basic.access"), async (req, res) => {
   if (!name || typeof name !== "string") return res.status(400).json({ success: false, message: "Token name is required" });
   if (name.length > 255) return res.status(400).json({ success: false, message: "Token name must be 255 characters or less" });
 
-  const requested = normalizeRequestedPermissions(req.body.permissions);
+const rawPermsInput = req.body.permissions ?? req.body.scopes ?? req.body.permission_ids;
+  const requested = normalizeRequestedPermissions(rawPermsInput);
   if (requested.length === 0) {
     return res.status(400).json({ success: false, message: "Select at least one permission for this token." });
   }
@@ -87,8 +213,8 @@ router.post("/api/token", sessPerm("basic.access"), async (req, res) => {
 
   try {
     const { active, grantable } = await loadGrantablePermissions((req as any).session.user);
-    const activeSet = new Set(active.map((p) => p.id));
-    const grantableSet = new Set(grantable.map((p) => p.id));
+    const activeSet = new Set(active.map((p: any) => p.id));
+    const grantableSet = new Set(grantable.map((p: any) => p.id));
 
     const unknown = requested.filter((p) => !activeSet.has(p));
     if (unknown.length > 0) {

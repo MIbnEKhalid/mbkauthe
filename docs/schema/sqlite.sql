@@ -184,6 +184,27 @@ CREATE INDEX IF NOT EXISTS idx_mbkcore_session_expire ON mbkcore_session (expire
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_username ON mbkcore_session (username);
 CREATE INDEX IF NOT EXISTS idx_mbkcore_session_device_id ON mbkcore_session (device_id);
 
+-- Table: mbkcore_permission_catalog
+CREATE TABLE IF NOT EXISTS mbkcore_permission_catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_key VARCHAR(50) NOT NULL,
+    service_key VARCHAR(50) NOT NULL,
+    action_key VARCHAR(50) NOT NULL,
+    label TEXT,
+    permission VARCHAR(150) UNIQUE,
+    mask INTEGER DEFAULT 1,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app ON mbkcore_permission_catalog (app_key);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_active ON mbkcore_permission_catalog (app_key, is_active);
+CREATE INDEX IF NOT EXISTS idx_mbkcore_permission_catalog_app_service ON mbkcore_permission_catalog (app_key, service_key);
+
+-- Built-in permission shared by every application; app sync never manages it.
+INSERT OR IGNORE INTO mbkcore_permission_catalog (app_key, service_key, action_key, label, permission, mask, is_active)
+VALUES ('global', 'basic', 'access', 'Basic global access', 'global:basic:access', 1, 1);
+
 -- Table: mbkcore_oauth_accounts
 CREATE TABLE IF NOT EXISTS mbkcore_oauth_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

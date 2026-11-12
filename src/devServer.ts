@@ -14,8 +14,6 @@ import mbkautheRouter from "./http/app.js";
 import { authHandlebarsHelpers } from "./ui/helpers/handlebarsHelpers.js";
 import { setupViewEngine, createNotFoundHandler, createErrorHandler } from "mbkutils";
 import { mbkautheVar } from "./config/env.js";
-import { apiTokensRouter } from "./http/routes/apiToken.routes.js";
-import { adminApiTokensRouter } from "./http/routes/adminApiToken.routes.js";
 import { devRouter } from "./http/routes/dev.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,10 +36,6 @@ app.use("/Assets", express.static(path.join(rootDir, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-// API Tokens & Admin API Tokens Routers
-app.use(apiTokensRouter);
-app.use(adminApiTokensRouter);
 
 // Dev Preview Routes
 app.use("/dev", devRouter);

@@ -26,7 +26,7 @@ const {
   ApiTokenRepository,
   hashApiToken,
   generatePrefixedToken,
-  apiTokensRouter,
+  verifyApiToken,
 } = await import('../../dist/index.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -47,7 +47,7 @@ async function insertUser(username, { role = 'normaluser', active = 1 } = {}) {
 
 const app = express();
 app.use(express.json());
-app.use(apiTokensRouter);
+app.post('/api/tokens/verify', verifyApiToken);
 
 describe('POST /api/tokens/verify', () => {
   test('returns valid with username and permissions for a real token', async () => {

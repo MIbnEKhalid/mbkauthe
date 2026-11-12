@@ -126,4 +126,22 @@ describe("PermissionRepository — Bitmask Roles & Overrides", () => {
     const secondSnap = await repo.computeEffectiveForUser("carol");
     expect(secondSnap.masks.docs).toBe(7);
   });
+
+  it("lists catalog and active permissions with proper fields", async () => {
+    const { repo } = createRepo();
+
+    const catalog = await repo.listCatalog();
+    expect(Array.isArray(catalog)).toBe(true);
+    expect(catalog.length).toBeGreaterThan(0);
+
+    const globalPerm = catalog.find((c) => c.permission === "global:basic:access");
+    expect(globalPerm).toBeDefined();
+    expect(globalPerm.app_key).toBe("global");
+    expect(globalPerm.service_key).toBe("basic");
+    expect(globalPerm.action_key).toBe("access");
+    expect(globalPerm.is_active).toBe(true);
+
+    const active = await repo.listActiveCatalog();
+    expect(active.length).toBe(catalog.filter((c) => c.is_active).length);
+  });
 });

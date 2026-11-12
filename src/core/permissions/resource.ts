@@ -177,13 +177,32 @@ export function defineResource(
   actions["*"] = createActionDescriptor(resourceName, "*", allMask, `All ${resourceName} actions`, options.app);
   actions["all"] = actions["*"];
 
-  return Object.freeze({
+  const resourceDef = Object.freeze({
     name: resourceName,
     label: options.label || resourceName,
     app: options.app,
     actions: Object.freeze(actions),
     allMask,
   });
+
+  registerResourceDefinition(resourceDef);
+  return resourceDef;
+}
+
+const registeredDefinitions = new Map<string, ResourceDefinition>();
+
+export function registerResourceDefinition(def: ResourceDefinition): void {
+  if (def && def.name) {
+    registeredDefinitions.set(def.name, def);
+  }
+}
+
+export function getRegisteredDefinitions(): ResourceDefinition[] {
+  return Array.from(registeredDefinitions.values());
+}
+
+export function clearRegisteredDefinitions(): void {
+  registeredDefinitions.clear();
 }
 
 /**

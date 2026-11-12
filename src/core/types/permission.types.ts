@@ -57,3 +57,16 @@ export interface DefineResourcesOptions {
   fallbackAppKey?: string;
   roles?: Record<string, { label?: string; description?: string; permissions?: Record<string, number> | string[] }>;
 }
+
+export interface CatalogPermission {
+  id: number;
+  app_key: string;
+  service_key: string;
+  action_key: string;
+  label: string;
+  permission: string;
+  mask: number;
+  is_active: boolean;
+  created_at?: Date | string;
+  updated_at?: Date | string;
+}

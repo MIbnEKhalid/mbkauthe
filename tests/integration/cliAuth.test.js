@@ -39,7 +39,7 @@ const {
   hashApiToken,
   dblogin,
   cliAuthRouter,
-  apiTokensRouter,
+  verifyApiToken,
 } = await import('../../dist/index.js');
 
 import { setupViewEngine } from 'mbkutils';
@@ -58,7 +58,7 @@ setupViewEngine(app, {
   }
 });
 app.use(router);
-app.use(apiTokensRouter);
+app.post('/api/tokens/verify', verifyApiToken);
 app.use(cliAuthRouter);
 
 // ---- console silencing (same pattern as integration tests) ----

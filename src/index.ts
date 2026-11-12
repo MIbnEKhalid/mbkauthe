@@ -119,9 +119,10 @@ export {
   validateSession, validateApiSession, checkRolePermission, checkPermission, validateSessionAndRole, validateSessionAndPermission, authenticate, reloadSessionUser, strictValidateSession, strictValidateSessionAndRole, sessVal, sessRole, roleChk, strictSessVal, strictSessRole, permChk, sessPerm, enforcePasswordChange
 } from "./http/middleware/authMiddleware.js";
 
+// 11b. Controllers
+export * from "./http/controllers/apiToken.controller.js";
+
 // 12. Express Routers & App Factory
-export { apiTokensRouter } from "./http/routes/apiToken.routes.js";
-export { adminApiTokensRouter } from "./http/routes/adminApiToken.routes.js";
 export { cliAuthRouter } from "./http/routes/cliAuth.routes.js";
 export { authRouter } from "./http/routes/auth.routes.js";
 export { oauthRouter } from "./http/routes/oauth.routes.js";

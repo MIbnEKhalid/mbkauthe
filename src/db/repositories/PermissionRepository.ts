@@ -8,7 +8,8 @@
 import { dblogin, dialect } from "../pool.js";
 import { BaseRepository, BaseRepositoryOptions } from "./BaseRepository.js";
 import { combineResourceMasks, applyOverrides } from "../../core/permissions/bitmask.js";
-import type { ResourceMasks, RoleDefinition, UserPermissionOverrides, UserAuthorizationSnapshot } from "../../core/types/permission.types.js";
+import { getRegisteredDefinitions, hashPermissionKey } from "../../core/permissions/resource.js";
+import type { ResourceMasks, RoleDefinition, UserPermissionOverrides, UserAuthorizationSnapshot, CatalogPermission } from "../../core/types/permission.types.js";
 
 const toBool = (val: unknown): boolean => Boolean(val === 1 || val === true || val === "1" || val === "true");
 
@@ -406,6 +407,76 @@ export class PermissionRepository extends BaseRepository {
       }
     }
     return synced;
+  }
+
+  async listCatalog(): Promise<CatalogPermission[]> {
+    await this.ensureSchema();
+    try {
+      const result = await this.executeRaw({
+        name: "permission-list-catalog",
+        text: `SELECT id, app_key, service_key, action_key, label, permission, mask, is_active, created_at, updated_at
+               FROM mbkcore_permission_catalog
+               WHERE app_key IS NOT NULL AND service_key IS NOT NULL
+               ORDER BY app_key ASC, service_key ASC, mask ASC`,
+        values: [],
+      });
+      if (result.rows && result.rows.length > 0) {
+        return result.rows.map((r: any) => ({
+          id: Number(r.id),
+          app_key: r.app_key,
+          service_key: r.service_key,
+          action_key: r.action_key,
+          label: r.label || `${r.service_key} ${r.action_key}`,
+          permission: r.permission || `${r.app_key}:${r.service_key}:${r.action_key}`,
+          mask: Number(r.mask) || 1,
+          is_active: toBool(r.is_active),
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }));
+      }
+    } catch {
+      // Gracefully continue to fallback if table query fails
+    }
+
+    // Fallback to in-memory registered definitions
+    const list: CatalogPermission[] = [];
+    const registered = getRegisteredDefinitions();
+    for (const def of registered) {
+      const appKey = def.app || "portal";
+      for (const [actKey, desc] of Object.entries(def.actions || {})) {
+        if (actKey === "*" || actKey === "all") continue;
+        list.push({
+          id: desc.id || hashPermissionKey(desc.key || `${appKey}:${def.name}:${actKey}`),
+          app_key: appKey,
+          service_key: def.name,
+          action_key: actKey,
+          label: desc.label || `${def.name} ${actKey}`,
+          permission: desc.key || `${appKey}:${def.name}:${actKey}`,
+          mask: desc.mask,
+          is_active: true,
+        });
+      }
+    }
+
+    if (list.length === 0) {
+      list.push({
+        id: 1,
+        app_key: "global",
+        service_key: "basic",
+        action_key: "access",
+        label: "Basic global access",
+        permission: "global:basic:access",
+        mask: 1,
+        is_active: true,
+      });
+    }
+
+    return list;
+  }
+
+  async listActiveCatalog(): Promise<CatalogPermission[]> {
+    const catalog = await this.listCatalog();
+    return catalog.filter((row) => row.is_active);
   }
 }
 
